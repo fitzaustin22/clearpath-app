@@ -1,0 +1,15 @@
+/* Tailwind utilities only — preflight (base) intentionally skipped so existing
+   inline-styled components (buttons, headings, etc.) keep their browser defaults. */
+@layer theme, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+
+:root {
+  --color-primary: #1B2A4A;
+  --color-accent: #C8A96E;
+  --color-bg: #FAF8F2;
+  --font-heading: "Playfair Display", serif;
+  --font-body: "Source Sans Pro", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; }

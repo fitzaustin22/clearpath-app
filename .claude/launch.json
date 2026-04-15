@@ -1,0 +1,13 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "clearpath-app (Next.js dev)",
+      "runtimeExecutable": "/Users/austinfitzpatrick/clearpath-app/node_modules/.bin/next",
+      "runtimeArgs": ["dev", "--port", "3001"],
+      "cwd": "/Users/austinfitzpatrick/clearpath-app",
+      "port": 3001,
+      "autoPort": false
+    }
+  ]
+}
