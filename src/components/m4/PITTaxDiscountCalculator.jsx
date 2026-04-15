@@ -904,7 +904,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
 
       {/* Results panels — filled in Tasks 5–9 */}
       <div style={{ marginTop: 32 }}>
-        {/* PANEL-1 */}
+        <Panel1TaxDiscount results={results} inputs={inputs} />
         {/* PANEL-2 */}
         {/* PANEL-3 */}
         {/* PANEL-4 */}
@@ -912,6 +912,118 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
       </div>
 
       {/* Print button + disclaimer + print stylesheet — filled in Task 10 */}
+    </div>
+  );
+}
+
+// ─── Panel 1 — Tax Discount Results ───────────────────────────────────────────
+function Panel1TaxDiscount({ results, inputs }) {
+  if (!results) {
+    return (
+      <div style={{ padding: 24, backgroundColor: PARCHMENT, borderRadius: 8, fontFamily: SOURCE, color: MUTED }}>
+        Enter valid inputs above to see your tax discount.
+      </div>
+    );
+  }
+
+  const chartData = [
+    { name: 'Traditional', amount: Math.round(results.traditionalTD), fill: RED },
+    { name: 'Point in Time', amount: Math.round(results.tdDollars),   fill: GOLD },
+  ];
+
+  return (
+    <div
+      style={{
+        backgroundColor: WHITE,
+        border: `1px solid ${GOLD}`,
+        borderRadius: 10,
+        padding: '24px 24px 20px',
+        marginBottom: 24,
+      }}
+    >
+      <h2 style={{ fontFamily: PLAYFAIR, fontWeight: 700, fontSize: 22, color: NAVY, margin: '0 0 16px' }}>
+        Tax Discount Results
+      </h2>
+
+      <div style={{ textAlign: 'center', marginBottom: 12 }}>
+        <div
+          style={{
+            fontFamily: PLAYFAIR,
+            fontWeight: 700,
+            fontSize: 'clamp(36px, 8vw, 48px)',
+            color: GOLD,
+            lineHeight: 1.1,
+          }}
+        >
+          {fmtPercent(results.tdPercent, 2)}
+        </div>
+        <div style={{ fontFamily: SOURCE, fontSize: 24, fontWeight: 600, color: NAVY, marginTop: 4 }}>
+          {fmtCurrency(results.tdDollars)}
+        </div>
+        <div style={{ fontFamily: SOURCE, fontSize: 13, color: MUTED, marginTop: 4 }}>
+          Point in Time Tax Discount on {fmtCurrency(results.PB)} plan balance
+        </div>
+      </div>
+
+      <div style={{ height: 1, backgroundColor: '#E5E7EB', margin: '18px 0' }} />
+
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, justifyContent: 'space-between' }}>
+        <div>
+          <div style={{ fontFamily: SOURCE, fontSize: 13, color: MUTED }}>Tax Adjusted Plan Value (TA)</div>
+          <div style={{ fontFamily: SOURCE, fontSize: 28, fontWeight: 600, color: NAVY }}>
+            {fmtCurrency(results.taxAdjustedValue)}
+          </div>
+        </div>
+        <div>
+          <div style={{ fontFamily: SOURCE, fontSize: 13, color: MUTED }}>Years to withdrawal midpoint</div>
+          <div style={{ fontFamily: SOURCE, fontSize: 20, fontWeight: 600, color: NAVY }}>{results.n}</div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: 20 }}>
+        <div style={{ fontFamily: SOURCE, fontSize: 14, color: NAVY, marginBottom: 4 }}>
+          <strong>Traditional Tax Discount:</strong> {fmtPercent(results.TR, 2)} ({fmtCurrency(results.traditionalTD)})
+        </div>
+        <div style={{ fontFamily: SOURCE, fontSize: 14, color: NAVY }}>
+          <strong>Point in Time Tax Discount:</strong> {fmtPercent(results.tdPercent, 2)} ({fmtCurrency(results.tdDollars)})
+        </div>
+      </div>
+
+      <div
+        style={{
+          marginTop: 12,
+          padding: '10px 14px',
+          backgroundColor: '#FDECEC',
+          borderLeft: `4px solid ${RED}`,
+          color: RED,
+          fontFamily: SOURCE,
+          fontSize: 14,
+          fontWeight: 600,
+          borderRadius: 4,
+        }}
+      >
+        Potential Overage Using Traditional Method: {fmtCurrency(results.overage)}
+      </div>
+
+      <p style={{ fontFamily: SOURCE, fontSize: 14, color: NAVY, lineHeight: 1.55, marginTop: 14 }}>
+        The traditional method would discount <strong>{fmtCurrency(results.traditionalTD)}</strong>. Point in Time discounts <strong>{fmtCurrency(results.tdDollars)}</strong>. That's <strong>{fmtCurrency(results.overage)}</strong> — money that should stay in the property division.
+      </p>
+
+      <div style={{ marginTop: 18, height: 200 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 16, right: 16, bottom: 8, left: 8 }}>
+            <XAxis dataKey="name" tick={{ fontFamily: SOURCE, fontSize: 13, fill: NAVY }} />
+            <YAxis tickFormatter={(v) => fmtCurrency(v)} tick={{ fontFamily: SOURCE, fontSize: 12, fill: NAVY }} width={80} />
+            <Tooltip formatter={(v) => [fmtCurrency(v), 'Discount']} contentStyle={{ fontFamily: SOURCE, fontSize: 13 }} />
+            <Bar dataKey="amount" radius={[4, 4, 0, 0]}>
+              <LabelList dataKey="amount" position="top" formatter={(v) => fmtCurrency(v)} style={{ fontFamily: SOURCE, fontSize: 12, fill: NAVY }} />
+              {chartData.map((entry, idx) => (
+                <Cell key={idx} fill={entry.fill} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
