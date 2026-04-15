@@ -19,6 +19,7 @@ import {
 } from '@/src/stores/m3Store';
 import { useM1Store } from '@/src/stores/m1Store';
 import { useM2Store } from '@/src/stores/m2Store';
+import useBlueprintStore from '@/src/stores/blueprintStore';
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const NAVY      = '#1B2A4A';
@@ -257,6 +258,31 @@ export default function BudgetModeler({ userTier = 'essentials' }) {
 
   const { current, projected, m1References, m2LiabilityRefs, prePopulated, results } =
     budgetModeler;
+
+  // ─── Blueprint §7 sync (on completion) ────────────────────────────────────
+  useEffect(() => {
+    if (!budgetModeler.completed || !budgetModeler.results) return;
+    const r = budgetModeler.results;
+    const categories = (r.categoryDeltas || []).map((d) => ({
+      name: CATEGORY_LABELS?.[d.category] || d.category,
+      current: d.current || 0,
+      projected: d.projected || 0,
+      change: d.delta || 0,
+    }));
+    const monthlyIncome = r.incomeComparison?.monthlyIncome || 0;
+    const monthlyGap =
+      r.incomeComparison?.projectedSurplusShortfall != null
+        ? r.incomeComparison.projectedSurplusShortfall
+        : monthlyIncome - (r.projectedTotal || 0);
+    useBlueprintStore.getState().updateExpenseAnalysis({
+      currentTotal: r.currentTotal || 0,
+      projectedTotal: r.projectedTotal || 0,
+      categories,
+      monthlyIncome,
+      monthlyGap,
+      hasProjected: (r.projectedTotal || 0) > 0,
+    });
+  }, [budgetModeler.completed, budgetModeler.results]);
 
   // Client-side hydration guard (zustand persist)
   const [hydrated, setHydrated] = useState(false);

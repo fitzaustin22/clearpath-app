@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useM2Store } from '@/src/stores/m2Store';
+import useBlueprintStore from '@/src/stores/blueprintStore';
 
 // ─── Brand tokens ──────────────────────────────────────────────────────────────
 const NAVY = '#1B2A4A';
@@ -317,6 +318,7 @@ export default function MaritalEstateInventory({ userTier = 'essentials' }) {
   const resetMaritalEstateInventory = useM2Store((s) => s.resetMaritalEstateInventory);
   const personalPropertySummary = useM2Store((s) => s.personalPropertyInventory.summary);
   const personalPropertyStarted = useM2Store((s) => s.personalPropertyInventory.startedAt);
+  const personalPropertyRooms = useM2Store((s) => s.personalPropertyInventory.rooms);
   const checklistItems = useM2Store((s) => s.documentChecklist.items);
   const checklistProgress = useM2Store((s) => s.documentChecklist.overallProgress);
 
@@ -446,6 +448,71 @@ export default function MaritalEstateInventory({ userTier = 'essentials' }) {
   );
 
   const totalItemCount = items.length;
+
+  // ── Blueprint §3 sync (debounced 500ms) ────────────────────────────────────
+  useEffect(() => {
+    if (items.length === 0 && (!personalPropertySummary || personalPropertySummary.totalItems === 0)) return;
+    const timer = setTimeout(() => {
+      const assetsByCategory = {};
+      const liabilitiesByCategory = {};
+      for (const section of ALL_SECTIONS) {
+        const t = categoryTotals[section.key];
+        if (!t || t.total === 0) continue;
+        const count =
+          section.key === 'personalProperty'
+            ? (personalPropertySummary?.totalItems || 0)
+            : (itemsBySection[section.key]?.length || 0);
+        if (LIABILITY_KEYS.has(section.key)) {
+          liabilitiesByCategory[section.key] = { total: t.total, count };
+        } else {
+          assetsByCategory[section.key] = { total: t.total, count };
+        }
+      }
+      const divisionStatus = Object.keys(categoryTotals).reduce(
+        (acc, key) => {
+          if (LIABILITY_KEYS.has(key)) return acc;
+          const t = categoryTotals[key] || {};
+          return {
+            client: acc.client + (t.client || 0),
+            spouse: acc.spouse + (t.spouse || 0),
+            undecided: acc.undecided + (t.unallocated || 0),
+          };
+        },
+        { client: 0, spouse: 0, undecided: 0 }
+      );
+      const docsGathered = (checklistItems || []).filter(
+        (i) => i.status === 'collected' || i.status === 'located'
+      ).length;
+      const ppHasItems = personalPropertySummary && (personalPropertySummary.totalItems || 0) > 0;
+      useBlueprintStore.getState().updateAssetInventory({
+        totalAssets: adjustedSummary.totalAssets || 0,
+        totalLiabilities: summary?.totalLiabilities || 0,
+        itemCount: items.length + (personalPropertySummary?.totalItems || 0),
+        assetsByCategory,
+        liabilitiesByCategory,
+        divisionStatus,
+        documentsGathered: docsGathered,
+        documentsTotal: checklistItems?.length || 0,
+        personalProperty: ppHasItems
+          ? {
+              totalEstimatedValue: personalPropertySummary.totalValue || 0,
+              itemCount: personalPropertySummary.totalItems || 0,
+              roomCount: personalPropertyRooms?.length || 0,
+            }
+          : null,
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [
+    items,
+    adjustedSummary,
+    summary,
+    categoryTotals,
+    itemsBySection,
+    checklistItems,
+    personalPropertySummary,
+    personalPropertyRooms,
+  ]);
 
   // ── Handlers ────────────────────────────────────────────────────────────────
   const handleAddItem = (sectionKey, description = '') => {

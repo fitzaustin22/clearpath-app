@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useM1Store } from '@/src/stores/m1Store';
+import useBlueprintStore from '@/src/stores/blueprintStore';
 import {
   RadarChart,
   PolarGrid,
@@ -196,6 +197,17 @@ export default function ReadinessAssessment() {
       if (answers.length < QUESTIONS.length) return;
       const results = computeResults(answers);
       completeReadinessAssessment(results);
+
+      // Write to Blueprint (§1 Personal Profile — assessment half)
+      const currentBudgetGap = useM1Store.getState().budgetGap;
+      useBlueprintStore.getState().updatePersonalProfile({
+        assessment: { ...results, completedAt: new Date().toISOString() },
+        budgetGap:
+          currentBudgetGap?.completed && currentBudgetGap.results
+            ? currentBudgetGap.results
+            : null,
+      });
+
       setPhase('loading');
       setTimeout(() => setPhase('results'), 400);
     }

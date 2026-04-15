@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useM1Store } from '@/src/stores/m1Store';
+import useBlueprintStore from '@/src/stores/blueprintStore';
 import {
   PieChart,
   Pie,
@@ -550,6 +551,18 @@ export default function BudgetGapCalculator() {
     };
   }, [grossNum, expectedShare, payFrequency, adjustedMonthlyIncome, totalExpenses, monthlyGap, gapPercent]);
 
+  // ── Write Budget Gap results to Blueprint §1 (paired with assessment if already done) ──
+  const writeBlueprintProfile = useCallback((pipelineResults) => {
+    const assessment = useM1Store.getState().readinessAssessment;
+    useBlueprintStore.getState().updatePersonalProfile({
+      assessment:
+        assessment?.completed && assessment.results
+          ? { ...assessment.results, completedAt: assessment.results.completedAt || new Date().toISOString() }
+          : null,
+      budgetGap: pipelineResults,
+    });
+  }, []);
+
   // ── Submit form → show modal or results ──
   const handleSeeResults = useCallback(() => {
     if (!canSubmit) return;
@@ -557,7 +570,9 @@ export default function BudgetGapCalculator() {
     if (budgetGap.emailCaptured) {
       setPhase('loading');
       setTimeout(() => {
-        completeBudgetGap(buildPipelineResults());
+        const pipelineResults = buildPipelineResults();
+        completeBudgetGap(pipelineResults);
+        writeBlueprintProfile(pipelineResults);
         setPhase('results');
         setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
       }, 400);
@@ -601,7 +616,9 @@ export default function BudgetGapCalculator() {
     setShowModal(false);
     setPhase('loading');
     setTimeout(() => {
-      completeBudgetGap(buildPipelineResults());
+      const pipelineResults = buildPipelineResults();
+      completeBudgetGap(pipelineResults);
+      writeBlueprintProfile(pipelineResults);
       setPhase('results');
       setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
     }, 400);

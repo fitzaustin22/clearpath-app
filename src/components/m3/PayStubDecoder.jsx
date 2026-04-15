@@ -20,6 +20,7 @@ import {
   CATCH_UP_401K_LIMIT,
 } from '@/src/stores/m3Store';
 import { useM1Store } from '@/src/stores/m1Store';
+import useBlueprintStore from '@/src/stores/blueprintStore';
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const NAVY     = '#1B2A4A';
@@ -578,6 +579,20 @@ export default function PayStubDecoder({ userTier = 'essentials' }) {
   const m1BudgetGap = useM1Store((s) => s.budgetGap);
 
   const { inputs, results } = payStubDecoder;
+
+  // ─── Blueprint §2 sync (on completion) ────────────────────────────────────
+  useEffect(() => {
+    if (!payStubDecoder.completed || !payStubDecoder.results) return;
+    const r = payStubDecoder.results;
+    useBlueprintStore.getState().updateIncomeAnalysis({
+      grossMonthlyIncome: r.grossMonthlyIncome || 0,
+      netMonthlyIncome: r.netMonthlyIncome || 0,
+      payFrequency: payStubDecoder.inputs?.payFrequency || null,
+      grossPerPaycheck: payStubDecoder.inputs?.grossPayPerCheck || 0,
+      deductions: r.deductionBreakdown || [],
+      otherIncome: r.otherIncomeMonthly || 0,
+    });
+  }, [payStubDecoder.completed, payStubDecoder.results, payStubDecoder.inputs]);
 
   const [openSections, setOpenSections] = useState({ A: true, B: false, C: false, D: false });
   const [addingDed, setAddingDed] = useState(false);
