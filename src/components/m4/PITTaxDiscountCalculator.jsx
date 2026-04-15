@@ -600,15 +600,314 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
     );
   }
 
-  // Full component body will be filled in subsequent tasks.
+  // ─── Store hooks ────────────────────────────────────────────────────────────
+  const pitTaxDiscount     = useM4Store((s) => s.pitTaxDiscount);
+  const setPITInputs       = useM4Store((s) => s.setPITInputs);
+  const setPITResults      = useM4Store((s) => s.setPITResults);
+  const setPrePopulated    = useM4Store((s) => s.setPrePopulated);
+  const filingStatusResults = useM4Store((s) => s.filingStatusOptimizer.results);
+  const retirementItems    = useM2Store((s) => s.maritalEstateInventory.items.filter((i) => i.category === 'retirement'));
+  const updateRetirementDivision = useBlueprintStore((s) => s.updateRetirementDivision);
+
+  const inputs = isReadOnly ? SAMPLE_DATA_PIT : pitTaxDiscount.inputs;
+  const disabled = isReadOnly;
+
+  // Pre-pop banners
+  const [m2Banner, setM2Banner] = useState(null);     // { count, total } or null
+  const [tool1Banner, setTool1Banner] = useState(null); // rate number or null
+
+  // ─── Pre-population: M2 retirement accounts ─────────────────────────────────
+  const retirementTotal = useMemo(() => retirementItems.reduce((sum, i) => sum + (Number(i.currentValue) || 0), 0), [retirementItems]);
+  const retirementCount = retirementItems.length;
+
+  useEffect(() => {
+    if (!isFullAccess) return;
+    if (retirementTotal <= 0) return;
+    const alreadyPrePopped = pitTaxDiscount.prePopulated.fromM2;
+
+    if (!alreadyPrePopped) {
+      setPITInputs({ planBalance: retirementTotal });
+      setPrePopulated('pitTaxDiscount', 'fromM2');
+      setM2Banner({ count: retirementCount, total: retirementTotal });
+    } else if (pitTaxDiscount.inputs.planBalance === retirementTotal) {
+      setM2Banner({ count: retirementCount, total: retirementTotal });
+    }
+  }, [
+    isFullAccess,
+    retirementTotal,
+    retirementCount,
+    pitTaxDiscount.prePopulated.fromM2,
+    pitTaxDiscount.inputs.planBalance,
+    setPITInputs,
+    setPrePopulated,
+  ]);
+
+  // ─── Pre-population: M4 Tool 1 (Filing Status Optimizer) effective tax rate ─
+  useEffect(() => {
+    if (!isFullAccess) return;
+    if (!filingStatusResults) return;
+    const best = filingStatusResults.bestOption;
+    const rate = best && filingStatusResults.scenarios[best]?.effectiveRate;
+    if (rate == null || rate <= 0) return;
+
+    const alreadyPrePopped = pitTaxDiscount.prePopulated.fromTool1;
+    if (!alreadyPrePopped) {
+      setPITInputs({ effectiveTaxRate: rate });
+      setPrePopulated('pitTaxDiscount', 'fromTool1');
+      setTool1Banner(rate);
+    } else if (Math.abs(pitTaxDiscount.inputs.effectiveTaxRate - rate) < 0.001) {
+      setTool1Banner(rate);
+    }
+  }, [
+    isFullAccess,
+    filingStatusResults,
+    pitTaxDiscount.prePopulated.fromTool1,
+    pitTaxDiscount.inputs.effectiveTaxRate,
+    setPITInputs,
+    setPrePopulated,
+  ]);
+
+  // ─── Validation ─────────────────────────────────────────────────────────────
+  const inputsValid =
+    inputs.planBalance > 0 &&
+    inputs.currentAge >= 18 &&
+    inputs.currentAge <= 90 &&
+    inputs.withdrawalStartAge > inputs.currentAge &&
+    inputs.withdrawalEndAge > inputs.withdrawalStartAge &&
+    inputs.effectiveTaxRate >= 10 && inputs.effectiveTaxRate <= 50 &&
+    inputs.discountRate >= 0 && inputs.discountRate <= 15;
+
+  // ─── Live-computed results ──────────────────────────────────────────────────
+  const results = useMemo(() => (inputsValid ? calculatePIT(inputs) : null), [inputs, inputsValid]);
+
+  const propertyDivision = useMemo(() => {
+    if (!results || !inputs.showPropertyDivision) return null;
+    return calculatePropertyDivision(results, inputs.totalCashAssets);
+  }, [results, inputs.showPropertyDivision, inputs.totalCashAssets]);
+
+  const pensionScenario = useMemo(() => {
+    if (!results || inputs.planType !== 'pension') return null;
+    return calculatePensionScenario(inputs);
+  }, [results, inputs]);
+
+  const referenceTable = useMemo(
+    () => (inputsValid ? generateReferenceTable(inputs.discountRate) : null),
+    [inputs.discountRate, inputsValid],
+  );
+
+  // ─── Persist results + sync to blueprint ────────────────────────────────────
+  useEffect(() => {
+    if (isReadOnly) return;
+    if (!results) return;
+
+    setPITResults(results);
+    updateRetirementDivision({
+      planBalance: inputs.planBalance,
+      planType: inputs.planType,
+      taxDiscountPercent: results.tdPercent,
+      taxDiscountDollars: results.tdDollars,
+      taxAdjustedValue: results.taxAdjustedValue,
+      traditionalDiscountDollars: results.traditionalTD,
+      overage: results.overage,
+      n: results.n,
+      effectiveTaxRate: inputs.effectiveTaxRate,
+      discountRate: inputs.discountRate,
+    });
+  }, [isReadOnly, results, inputs, setPITResults, updateRetirementDivision]);
+
+  // ─── Handlers ───────────────────────────────────────────────────────────────
+  const updateInput = useCallback(
+    (patch) => {
+      if (disabled) return;
+      setPITInputs(patch);
+    },
+    [disabled, setPITInputs],
+  );
+
+  const handlePrint = useCallback(() => {
+    if (typeof window !== 'undefined') window.print();
+  }, []);
+
+  // ─── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: '32px 20px 80px', fontFamily: SOURCE, color: NAVY }}>
+    <div
+      className="pit-calc-root"
+      style={{
+        maxWidth: 900,
+        margin: '0 auto',
+        padding: '32px 20px 80px',
+        fontFamily: SOURCE,
+        color: NAVY,
+        position: 'relative',
+      }}
+    >
+      {/* Sample Data badge for Navigator tier */}
+      {isReadOnly && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 20,
+            right: 20,
+            backgroundColor: GOLD,
+            color: NAVY,
+            fontFamily: SOURCE,
+            fontWeight: 700,
+            fontSize: 12,
+            padding: '4px 10px',
+            borderRadius: 999,
+            letterSpacing: 0.3,
+          }}
+          className="pit-no-print"
+        >
+          Sample Data
+        </div>
+      )}
+
+      {/* Header */}
       <h1 style={{ fontFamily: PLAYFAIR, fontWeight: 700, fontSize: 28, margin: '0 0 8px' }}>
         Point in Time Tax Discount Calculator
       </h1>
-      <p style={{ fontFamily: SOURCE, fontSize: 16, color: `${NAVY}B3`, margin: '0 0 28px', lineHeight: 1.55 }}>
+      <p
+        style={{
+          fontFamily: SOURCE,
+          fontSize: 16,
+          color: `${NAVY}B3`,
+          margin: '0 0 28px',
+          lineHeight: 1.55,
+        }}
+      >
         Calculate the proper tax discount on a retirement plan being divided in divorce — accounting for the time value of money between division date and withdrawal.
       </p>
+
+      {/* Pre-population banners */}
+      {isFullAccess && m2Banner && m2Banner.count > 1 && (
+        <InfoBanner variant="gold">
+          You listed {m2Banner.count} retirement accounts totaling {fmtCurrency(m2Banner.total)}. This calculator works with one plan at a time — enter the plan being divided below.
+        </InfoBanner>
+      )}
+      {isFullAccess && m2Banner && m2Banner.count === 1 && (
+        <InfoBanner variant="gold">
+          Plan balance pre-filled from your Marital Estate Inventory ({fmtCurrency(m2Banner.total)}).
+        </InfoBanner>
+      )}
+      {isFullAccess && tool1Banner != null && (
+        <InfoBanner variant="gold">
+          Tax rate pre-filled from your Filing Status Optimizer results ({fmtPercent(tool1Banner, 2)}).
+        </InfoBanner>
+      )}
+      {isReadOnly && (
+        <InfoBanner variant="gold">
+          You are viewing a preview with sample data ($500,000 plan, age 45, 25% tax, 5% discount rate). Upgrade to Signature to run this tool with your own numbers.
+        </InfoBanner>
+      )}
+
+      {/* Section A — Plan Details */}
+      <SectionHeader letter="A" title="Retirement Plan Details" />
+      <CurrencyInput
+        id="pit-a1"
+        label="Plan Balance"
+        helper="The total value of the retirement plan being divided."
+        value={inputs.planBalance}
+        disabled={disabled}
+        required
+        onChange={(v) => updateInput({ planBalance: v })}
+      />
+      <ToggleGroup
+        label="Plan Type"
+        value={inputs.planType}
+        disabled={disabled}
+        options={[
+          { value: '401k',    label: '401(k) / IRA' },
+          { value: 'pension', label: 'Pension' },
+        ]}
+        onChange={(v) => updateInput({ planType: v })}
+      />
+
+      {/* Section B — Tax & Timing */}
+      <SectionHeader letter="B" title="Tax & Timing Assumptions" />
+      <IntegerInput
+        id="pit-b1"
+        label="Current age"
+        value={inputs.currentAge}
+        disabled={disabled}
+        min={18}
+        max={90}
+        onChange={(v) => updateInput({ currentAge: v })}
+      />
+      <IntegerInput
+        id="pit-b2"
+        label="Withdrawal start age"
+        helper={inputs.withdrawalStartAge <= inputs.currentAge ? 'Must be greater than current age.' : undefined}
+        value={inputs.withdrawalStartAge}
+        disabled={disabled}
+        min={inputs.currentAge + 1}
+        max={100}
+        onChange={(v) => updateInput({ withdrawalStartAge: v })}
+      />
+      <IntegerInput
+        id="pit-b3"
+        label="Withdrawal end age"
+        helper={inputs.withdrawalEndAge <= inputs.withdrawalStartAge ? 'Must be greater than start age.' : undefined}
+        value={inputs.withdrawalEndAge}
+        disabled={disabled}
+        min={inputs.withdrawalStartAge + 1}
+        max={110}
+        onChange={(v) => updateInput({ withdrawalEndAge: v })}
+      />
+      <PercentInputWithSlider
+        id="pit-b4"
+        label="Future effective tax rate"
+        helper="Your estimated tax rate when you withdraw funds. 20–30% is typical for most retirees."
+        value={inputs.effectiveTaxRate}
+        disabled={disabled}
+        min={10}
+        max={50}
+        step={0.1}
+        onChange={(v) => updateInput({ effectiveTaxRate: v })}
+      />
+      <PercentInput
+        id="pit-b5"
+        label="Discount rate"
+        helper="Typically the US Treasury bond yield matching your time horizon. A financial advisor can help determine the right rate."
+        value={inputs.discountRate}
+        disabled={disabled}
+        min={0}
+        max={15}
+        step={0.01}
+        onChange={(v) => updateInput({ discountRate: v })}
+      />
+
+      {/* Section C — Property Division Comparison toggle */}
+      <SectionHeader letter="C" title="Property Division Comparison" />
+      <CurrencyInput
+        id="pit-c1"
+        label="Total cash / other marital assets"
+        helper="Used to model a 50/50 split where one spouse takes the retirement plan and the other takes cash."
+        value={inputs.totalCashAssets}
+        disabled={disabled}
+        onChange={(v) => updateInput({ totalCashAssets: v })}
+      />
+      <ToggleGroup
+        label="Show Property Division Comparison"
+        value={inputs.showPropertyDivision ? 'on' : 'off'}
+        disabled={disabled}
+        options={[
+          { value: 'on',  label: 'On' },
+          { value: 'off', label: 'Off' },
+        ]}
+        onChange={(v) => updateInput({ showPropertyDivision: v === 'on' })}
+      />
+
+      {/* Results panels — filled in Tasks 5–9 */}
+      <div style={{ marginTop: 32 }}>
+        {/* PANEL-1 */}
+        {/* PANEL-2 */}
+        {/* PANEL-3 */}
+        {/* PANEL-4 */}
+        {/* PANEL-5 */}
+      </div>
+
+      {/* Print button + disclaimer + print stylesheet — filled in Task 10 */}
     </div>
   );
 }
