@@ -60,7 +60,185 @@ function parseCurrency(str) {
   return isNaN(val) ? 0 : val;
 }
 
-// Calc engine helpers will go here in Task 2.
+// ─── Calculation engine (pure functions) ──────────────────────────────────────
+
+// Core PIT calculation. Returns all derived values plus traditional-method comparison.
+function calculatePIT(inputs) {
+  const {
+    planBalance,
+    currentAge,
+    withdrawalStartAge,
+    withdrawalEndAge,
+    effectiveTaxRate,
+    discountRate,
+  } = inputs;
+
+  const PB = planBalance;
+  const TR = effectiveTaxRate / 100;
+  const i  = discountRate / 100;
+  const n  = ((withdrawalStartAge - currentAge) + (withdrawalEndAge - currentAge)) / 2;
+
+  let tdPercent;
+  let tdDollars;
+  if (i === 0 || n === 0) {
+    tdPercent = TR;
+    tdDollars = PB * TR;
+  } else {
+    const denominator = (Math.pow(1 + i, n) - 1) * (1 - TR) + 1;
+    tdPercent = TR / denominator;
+    tdDollars = (PB * TR) / denominator;
+  }
+
+  const taxAdjustedValue        = PB - tdDollars;                          // TA
+  const tdGrowth                = tdDollars * (Math.pow(1 + i, n) - 1);    // TDg
+  const taxDiscountAtWithdrawal = tdDollars + tdGrowth;                    // TD + TDg
+  const taxableDistribution     = taxAdjustedValue + taxDiscountAtWithdrawal; // = PB + TDg
+  const taxes                   = taxableDistribution * TR;
+  const afterTaxDistribution    = taxableDistribution - taxes;
+
+  const traditionalTD = PB * TR;
+  const overage       = traditionalTD - tdDollars;
+
+  const verified = Math.abs(afterTaxDistribution - taxAdjustedValue) < 0.01;
+
+  return {
+    n,
+    tdPercent: tdPercent * 100, // display percent
+    tdDollars,
+    taxAdjustedValue,
+    tdGrowth,
+    taxDiscountAtWithdrawal,
+    taxableDistribution,
+    taxes,
+    afterTaxDistribution,
+    traditionalTD,
+    overage,
+    verified,
+    PB,
+    TR: TR * 100,
+    i: i * 100,
+  };
+}
+
+// Property-division comparison: husband takes retirement, wife takes cash.
+// Each half equals halfEstate; wife's difference = overage / 2.
+function calculatePropertyDivision(pitResults, totalCashAssets) {
+  const { PB, taxAdjustedValue, traditionalTD, overage } = pitResults;
+  const totalEstate = PB + totalCashAssets;
+  const halfEstate  = totalEstate / 2;
+
+  const tradRetirementAfterDiscount = PB - traditionalTD;
+  const tradHusbandCash             = halfEstate - tradRetirementAfterDiscount;
+  const tradWifeCash                = totalEstate - tradRetirementAfterDiscount - tradHusbandCash;
+
+  const pitRetirementAfterDiscount  = taxAdjustedValue;
+  const pitHusbandCash              = halfEstate - pitRetirementAfterDiscount;
+  const pitWifeCash                 = totalEstate - pitRetirementAfterDiscount - pitHusbandCash;
+
+  const wifeDifference = overage / 2;
+
+  return {
+    totalEstate,
+    halfEstate,
+    traditional: {
+      husbandRetirement: tradRetirementAfterDiscount,
+      husbandCash:       tradHusbandCash,
+      wifeCash:          tradWifeCash,
+      total:             halfEstate,
+    },
+    pit: {
+      husbandRetirement: pitRetirementAfterDiscount,
+      husbandCash:       pitHusbandCash,
+      wifeCash:          pitWifeCash,
+      total:             halfEstate,
+    },
+    wifeDifference,
+  };
+}
+
+// Pension scenario method — weighted average of per-year TD% across payout years.
+function calculatePensionScenario(inputs) {
+  const {
+    planBalance,
+    currentAge,
+    withdrawalStartAge,
+    withdrawalEndAge,
+    effectiveTaxRate,
+    discountRate,
+  } = inputs;
+
+  const TR = effectiveTaxRate / 100;
+  const i  = discountRate / 100;
+  const totalPaymentYears = withdrawalEndAge - withdrawalStartAge;
+
+  const yearRows = [];
+  let weightedTDSum = 0;
+
+  for (let age = withdrawalStartAge; age < withdrawalEndAge; age++) {
+    const yearNum  = age - withdrawalStartAge + 1;
+    const nForYear = age - currentAge;
+
+    let tdPercentForYear;
+    if (i === 0 || nForYear <= 0) {
+      tdPercentForYear = TR;
+    } else {
+      const denom = (Math.pow(1 + i, nForYear) - 1) * (1 - TR) + 1;
+      tdPercentForYear = TR / denom;
+    }
+
+    const allocation  = totalPaymentYears > 0 ? 1 / totalPaymentYears : 0;
+    const weightedTD  = tdPercentForYear * allocation;
+    weightedTDSum    += weightedTD;
+
+    yearRows.push({
+      yearNum,
+      age,
+      n: nForYear,
+      tdPercent: tdPercentForYear * 100,
+      allocation: allocation * 100, // display percent
+      weightedTD: weightedTD * 100,
+    });
+  }
+
+  const scenarioTDPercent = weightedTDSum * 100;
+  const scenarioTDDollars = planBalance * weightedTDSum;
+
+  return { yearRows, scenarioTDPercent, scenarioTDDollars };
+}
+
+// Reference table: TD% matrix by age, tax rate, and retirement start.
+// Uses the user's current discount rate, end age fixed at 85.
+function generateReferenceTable(discountRate) {
+  const ages      = [35, 45, 55, 65];
+  const taxRates  = [20, 25, 30, 35, 40];
+  const retirementStarts = [
+    { label: 'Early (55)',    startAge: 55 },
+    { label: 'Normal (65)',   startAge: 65 },
+    { label: 'Deferred (75)', startAge: 75 },
+  ];
+  const endAge = 85;
+  const i = discountRate / 100;
+
+  return ages.map((currentAge) => ({
+    age: currentAge,
+    rates: taxRates.map((rate) => ({
+      rate,
+      scenarios: retirementStarts.map(({ label, startAge }) => {
+        const actualStart = Math.max(startAge, currentAge);
+        const n = ((actualStart - currentAge) + (endAge - currentAge)) / 2;
+        const TR = rate / 100;
+        let tdPercent;
+        if (i === 0 || n <= 0) {
+          tdPercent = rate;
+        } else {
+          const denom = (Math.pow(1 + i, n) - 1) * (1 - TR) + 1;
+          tdPercent = (TR / denom) * 100;
+        }
+        return { label, tdPercent, n };
+      }),
+    })),
+  }));
+}
 
 // Shared UI primitives will go here in Task 3.
 
