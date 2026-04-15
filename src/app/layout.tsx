@@ -1,4 +1,5 @@
 import { ClerkProvider, UserButton } from "@clerk/nextjs";
+import BlueprintBarWrapper from "@/src/components/blueprint/BlueprintBarWrapper";
 import "./globals.css";
 
 export const metadata = { title: "ClearPath for Women", description: "Divorce financial education and planning" };
@@ -18,7 +19,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <a href="/signup" style={{ backgroundColor: "#C8A96E", color: "#1B2A4A", padding: "8px 20px", borderRadius: "4px", textDecoration: "none", fontWeight: 700, fontSize: "0.9rem" }}>Sign Up Free</a>
             </div>
           </header>
-          {children}
+          <BlueprintBarWrapper>{children}</BlueprintBarWrapper>
           <footer style={{ backgroundColor: "#1B2A4A", color: "rgba(255,255,255,0.5)", textAlign: "center", padding: "24px", fontSize: "0.8rem" }}>
             ClearPath Divorce Financial LLC is not a law firm and does not provide legal advice.
           </footer>
