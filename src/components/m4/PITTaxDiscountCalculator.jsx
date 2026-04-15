@@ -240,7 +240,321 @@ function generateReferenceTable(discountRate) {
   }));
 }
 
-// Shared UI primitives will go here in Task 3.
+// ─── Shared UI primitives ─────────────────────────────────────────────────────
+
+function SectionHeader({ letter, title }) {
+  return (
+    <div style={{ marginTop: 28, marginBottom: 12 }}>
+      <h2 style={{ fontFamily: PLAYFAIR, fontWeight: 700, fontSize: 20, color: NAVY, margin: 0 }}>
+        <span style={{ color: GOLD, marginRight: 8 }}>{letter}.</span>
+        {title}
+      </h2>
+    </div>
+  );
+}
+
+function InfoBanner({ children, variant = 'gold' }) {
+  const bg          = variant === 'gold' ? '#FBF4E3' : '#F0F4FA';
+  const borderColor = variant === 'gold' ? GOLD : NAVY;
+  return (
+    <div
+      style={{
+        borderLeft: `4px solid ${borderColor}`,
+        backgroundColor: bg,
+        padding: '12px 16px',
+        marginBottom: 20,
+        fontFamily: SOURCE,
+        fontSize: 14,
+        color: NAVY,
+        borderRadius: 4,
+        lineHeight: 1.5,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function CurrencyInput({ id, label, helper, value, onChange, disabled, required, min = 0 }) {
+  const [display, setDisplay] = useState(value > 0 ? String(value) : '');
+  useEffect(() => {
+    setDisplay(value > 0 ? String(value) : '');
+  }, [value]);
+
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <label
+        htmlFor={id}
+        style={{ display: 'block', fontFamily: SOURCE, fontSize: 14, fontWeight: 600, color: NAVY, marginBottom: 6 }}
+      >
+        {label} {required && <span style={{ color: RED }}>*</span>}
+      </label>
+      <div style={{ position: 'relative' }}>
+        <span
+          style={{
+            position: 'absolute',
+            left: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            fontFamily: SOURCE,
+            color: disabled ? MUTED : NAVY,
+            fontSize: 16,
+            pointerEvents: 'none',
+          }}
+        >
+          $
+        </span>
+        <input
+          id={id}
+          type="text"
+          inputMode="numeric"
+          value={display}
+          disabled={disabled}
+          onChange={(e) => {
+            const cleaned = e.target.value.replace(/[^0-9.]/g, '');
+            setDisplay(cleaned);
+            const v = parseCurrency(cleaned);
+            onChange(v < min ? min : v);
+          }}
+          style={{
+            width: '100%',
+            padding: '10px 12px 10px 24px',
+            fontFamily: SOURCE,
+            fontSize: 16,
+            color: NAVY,
+            border: `1px solid ${disabled ? '#D1D5DB' : '#CBD5E1'}`,
+            borderRadius: 6,
+            backgroundColor: disabled ? '#F3F4F6' : WHITE,
+            outline: 'none',
+            boxSizing: 'border-box',
+          }}
+        />
+      </div>
+      {helper && (
+        <p style={{ fontFamily: SOURCE, fontSize: 13, color: MUTED, margin: '6px 0 0' }}>{helper}</p>
+      )}
+    </div>
+  );
+}
+
+function IntegerInput({ id, label, helper, value, onChange, disabled, min = 0, max = 120 }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <label
+        htmlFor={id}
+        style={{ display: 'block', fontFamily: SOURCE, fontSize: 14, fontWeight: 600, color: NAVY, marginBottom: 6 }}
+      >
+        {label}
+      </label>
+      <input
+        id={id}
+        type="number"
+        value={value}
+        min={min}
+        max={max}
+        disabled={disabled}
+        onChange={(e) => {
+          const n = parseInt(e.target.value, 10);
+          if (isNaN(n)) return;
+          const clamped = Math.max(min, Math.min(max, n));
+          onChange(clamped);
+        }}
+        style={{
+          width: 160,
+          padding: '10px 12px',
+          fontFamily: SOURCE,
+          fontSize: 16,
+          color: NAVY,
+          border: `1px solid ${disabled ? '#D1D5DB' : '#CBD5E1'}`,
+          borderRadius: 6,
+          backgroundColor: disabled ? '#F3F4F6' : WHITE,
+          outline: 'none',
+          boxSizing: 'border-box',
+        }}
+      />
+      {helper && (
+        <p style={{ fontFamily: SOURCE, fontSize: 13, color: MUTED, margin: '6px 0 0' }}>{helper}</p>
+      )}
+    </div>
+  );
+}
+
+function PercentInputWithSlider({ id, label, helper, value, onChange, disabled, min = 0, max = 100, step = 0.1 }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <label
+        htmlFor={id}
+        style={{ display: 'block', fontFamily: SOURCE, fontSize: 14, fontWeight: 600, color: NAVY, marginBottom: 6 }}
+      >
+        {label}
+      </label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <input
+          id={id}
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          disabled={disabled}
+          onChange={(e) => onChange(parseFloat(e.target.value))}
+          style={{ flex: 1, accentColor: NAVY, cursor: disabled ? 'not-allowed' : 'pointer' }}
+        />
+        <div style={{ position: 'relative', width: 110 }}>
+          <input
+            type="number"
+            value={value}
+            min={min}
+            max={max}
+            step={step}
+            disabled={disabled}
+            onChange={(e) => {
+              const n = parseFloat(e.target.value);
+              if (isNaN(n)) return;
+              onChange(Math.max(min, Math.min(max, n)));
+            }}
+            style={{
+              width: '100%',
+              padding: '10px 28px 10px 12px',
+              fontFamily: SOURCE,
+              fontSize: 16,
+              color: NAVY,
+              border: `1px solid ${disabled ? '#D1D5DB' : '#CBD5E1'}`,
+              borderRadius: 6,
+              backgroundColor: disabled ? '#F3F4F6' : WHITE,
+              outline: 'none',
+              boxSizing: 'border-box',
+            }}
+          />
+          <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: MUTED, fontSize: 14 }}>%</span>
+        </div>
+      </div>
+      {helper && (
+        <p style={{ fontFamily: SOURCE, fontSize: 13, color: MUTED, margin: '6px 0 0' }}>{helper}</p>
+      )}
+    </div>
+  );
+}
+
+function PercentInput({ id, label, helper, value, onChange, disabled, min = 0, max = 100, step = 0.01 }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <label
+        htmlFor={id}
+        style={{ display: 'block', fontFamily: SOURCE, fontSize: 14, fontWeight: 600, color: NAVY, marginBottom: 6 }}
+      >
+        {label}
+      </label>
+      <div style={{ position: 'relative', width: 160 }}>
+        <input
+          id={id}
+          type="number"
+          value={value}
+          min={min}
+          max={max}
+          step={step}
+          disabled={disabled}
+          onChange={(e) => {
+            const n = parseFloat(e.target.value);
+            if (isNaN(n)) return;
+            onChange(Math.max(min, Math.min(max, n)));
+          }}
+          style={{
+            width: '100%',
+            padding: '10px 28px 10px 12px',
+            fontFamily: SOURCE,
+            fontSize: 16,
+            color: NAVY,
+            border: `1px solid ${disabled ? '#D1D5DB' : '#CBD5E1'}`,
+            borderRadius: 6,
+            backgroundColor: disabled ? '#F3F4F6' : WHITE,
+            outline: 'none',
+            boxSizing: 'border-box',
+          }}
+        />
+        <span style={{ position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)', color: MUTED, fontSize: 14 }}>%</span>
+      </div>
+      {helper && (
+        <p style={{ fontFamily: SOURCE, fontSize: 13, color: MUTED, margin: '6px 0 0' }}>{helper}</p>
+      )}
+    </div>
+  );
+}
+
+function ToggleGroup({ label, options, value, onChange, disabled }) {
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <div style={{ fontFamily: SOURCE, fontSize: 14, fontWeight: 600, color: NAVY, marginBottom: 8 }}>
+        {label}
+      </div>
+      <div style={{ display: 'inline-flex', border: '1px solid #CBD5E1', borderRadius: 6, overflow: 'hidden' }}>
+        {options.map((opt, idx) => (
+          <button
+            key={opt.value}
+            type="button"
+            disabled={disabled}
+            onClick={() => onChange(opt.value)}
+            style={{
+              padding: '10px 20px',
+              backgroundColor: value === opt.value ? NAVY : WHITE,
+              color: value === opt.value ? PARCHMENT : NAVY,
+              border: 'none',
+              fontFamily: SOURCE,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: disabled ? 'not-allowed' : 'pointer',
+              borderLeft: idx === 0 ? 'none' : '1px solid #CBD5E1',
+              opacity: disabled ? 0.6 : 1,
+            }}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CollapsiblePanel({ title, defaultOpen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <div
+      style={{
+        border: '1px solid #E5E7EB',
+        borderRadius: 8,
+        marginBottom: 20,
+        overflow: 'hidden',
+        backgroundColor: WHITE,
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          width: '100%',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '14px 18px',
+          backgroundColor: PARCHMENT,
+          border: 'none',
+          borderBottom: open ? '1px solid #E5E7EB' : 'none',
+          cursor: 'pointer',
+          fontFamily: SOURCE,
+          fontSize: 15,
+          fontWeight: 700,
+          color: NAVY,
+          textAlign: 'left',
+        }}
+        aria-expanded={open}
+      >
+        <span>{title}</span>
+        {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+      </button>
+      {open && <div style={{ padding: '18px 20px' }}>{children}</div>}
+    </div>
+  );
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
