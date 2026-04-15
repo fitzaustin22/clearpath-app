@@ -562,44 +562,6 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
   const isFullAccess = userTier === 'signature';
   const lockedOut    = userTier !== 'navigator' && userTier !== 'signature';
 
-  // Upgrade gate
-  if (lockedOut) {
-    return (
-      <div
-        style={{
-          maxWidth: 800,
-          margin: '0 auto',
-          padding: '48px 20px',
-          fontFamily: SOURCE,
-          color: NAVY,
-        }}
-      >
-        <h1 style={{ fontFamily: PLAYFAIR, fontWeight: 700, fontSize: 28, margin: '0 0 12px' }}>
-          Point in Time Tax Discount Calculator
-        </h1>
-        <p style={{ fontSize: 16, color: `${NAVY}B3`, margin: '0 0 24px' }}>
-          This tool is available to Navigator and Signature tier members.
-        </p>
-        <Link
-          href="/pricing"
-          style={{
-            display: 'inline-block',
-            backgroundColor: GOLD,
-            color: NAVY,
-            fontFamily: SOURCE,
-            fontWeight: 700,
-            fontSize: 15,
-            padding: '12px 28px',
-            borderRadius: 8,
-            textDecoration: 'none',
-          }}
-        >
-          Upgrade to Access
-        </Link>
-      </div>
-    );
-  }
-
   // ─── Store hooks ────────────────────────────────────────────────────────────
   const pitTaxDiscount     = useM4Store((s) => s.pitTaxDiscount);
   const setPITInputs       = useM4Store((s) => s.setPITInputs);
@@ -631,6 +593,8 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
       setM2Banner({ count: retirementCount, total: retirementTotal });
     } else if (pitTaxDiscount.inputs.planBalance === retirementTotal) {
       setM2Banner({ count: retirementCount, total: retirementTotal });
+    } else {
+      setM2Banner(null);
     }
   }, [
     isFullAccess,
@@ -657,6 +621,8 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
       setTool1Banner(rate);
     } else if (Math.abs(pitTaxDiscount.inputs.effectiveTaxRate - rate) < 0.001) {
       setTool1Banner(rate);
+    } else {
+      setTool1Banner(null);
     }
   }, [
     isFullAccess,
@@ -727,6 +693,44 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
   const handlePrint = useCallback(() => {
     if (typeof window !== 'undefined') window.print();
   }, []);
+
+  // Upgrade gate
+  if (lockedOut) {
+    return (
+      <div
+        style={{
+          maxWidth: 800,
+          margin: '0 auto',
+          padding: '48px 20px',
+          fontFamily: SOURCE,
+          color: NAVY,
+        }}
+      >
+        <h1 style={{ fontFamily: PLAYFAIR, fontWeight: 700, fontSize: 28, margin: '0 0 12px' }}>
+          Point in Time Tax Discount Calculator
+        </h1>
+        <p style={{ fontSize: 16, color: `${NAVY}B3`, margin: '0 0 24px' }}>
+          This tool is available to Navigator and Signature tier members.
+        </p>
+        <Link
+          href="/pricing"
+          style={{
+            display: 'inline-block',
+            backgroundColor: GOLD,
+            color: NAVY,
+            fontFamily: SOURCE,
+            fontWeight: 700,
+            fontSize: 15,
+            padding: '12px 28px',
+            borderRadius: 8,
+            textDecoration: 'none',
+          }}
+        >
+          Upgrade to Access
+        </Link>
+      </div>
+    );
+  }
 
   // ─── Render ─────────────────────────────────────────────────────────────────
   return (
