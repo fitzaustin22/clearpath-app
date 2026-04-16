@@ -570,7 +570,8 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
   const setPITResults      = useM4Store((s) => s.setPITResults);
   const setPrePopulated    = useM4Store((s) => s.setPrePopulated);
   const filingStatusResults = useM4Store((s) => s.filingStatusOptimizer.results);
-  const retirementItems    = useM2Store((s) => s.maritalEstateInventory.items.filter((i) => i.category === 'retirement'));
+  const allM2Items         = useM2Store((s) => s.maritalEstateInventory?.items) || [];
+  const retirementItems    = useMemo(() => allM2Items.filter((i) => i.category === 'retirement'), [allM2Items]);
   const updateRetirementDivision = useBlueprintStore((s) => s.updateRetirementDivision);
 
   const inputs = isReadOnly ? SAMPLE_DATA_PIT : pitTaxDiscount.inputs;
