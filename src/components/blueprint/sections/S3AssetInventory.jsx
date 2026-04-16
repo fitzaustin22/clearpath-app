@@ -1,10 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+// Store import needed for cross-section cost basis toggle (shared with S5)
+import useBlueprintStore from '@/src/stores/blueprintStore';
+import CostBasisEntryPanel from './CostBasisEntryPanel';
 
 const NAVY = '#1B2A4A';
 const GOLD = '#C8A96E';
 const RED = '#C0392B';
+const GREEN = '#2D8A4E';
+const MUTED = '#6B7280';
 const SANS = "var(--font-source-sans), 'Source Sans 3', sans-serif";
 
 const CATEGORY_LABELS = {
@@ -93,7 +98,7 @@ const linkStyle = {
   fontSize: 16,
 };
 
-function CategoryRow({ name, total, count, parenthesize }) {
+function CategoryRow({ name, total, count, parenthesize, taxAdj }) {
   return (
     <div
       style={{
@@ -101,6 +106,8 @@ function CategoryRow({ name, total, count, parenthesize }) {
         justifyContent: 'space-between',
         alignItems: 'baseline',
         padding: '6px 0',
+        flexWrap: 'wrap',
+        gap: '0 8px',
       }}
     >
       <div style={bodyStyle}>
@@ -112,8 +119,29 @@ function CategoryRow({ name, total, count, parenthesize }) {
           </span>
         ) : null}
       </div>
-      <div style={{ ...bodyStyle, color: parenthesize ? RED : 'rgba(27,42,74,0.8)' }}>
-        {parenthesize ? `(${currency(total)})` : currency(total)}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+        <span style={{ ...bodyStyle, color: parenthesize ? RED : 'rgba(27,42,74,0.8)' }}>
+          {parenthesize ? `(${currency(total)})` : currency(total)}
+        </span>
+        {taxAdj && (
+          <>
+            <span style={{ ...bodyStyle, color: NAVY, fontWeight: 400 }}>→</span>
+            <span style={{ ...bodyStyle, color: NAVY, fontWeight: 600 }}>
+              {currency(taxAdj.taxAdjustedValue)}
+            </span>
+            <span
+              style={{
+                fontFamily: SANS,
+                fontSize: 13,
+                color: taxAdj.estimatedTax > 0 ? RED : taxAdj.estimatedTax < 0 ? GREEN : 'rgba(27,42,74,0.5)',
+                fontWeight: 400,
+              }}
+            >
+              ({taxAdj.estimatedTax >= 0 ? '−' : '+'}
+              {currency(Math.abs(taxAdj.estimatedTax))} hidden tax)
+            </span>
+          </>
+        )}
       </div>
     </div>
   );
@@ -123,6 +151,30 @@ export default function S3AssetInventory({ data, status }) {
   const [showAssets, setShowAssets] = useState(false);
   const [showLiabilities, setShowLiabilities] = useState(false);
   const [showPersonal, setShowPersonal] = useState(false);
+
+  // Cost basis toggle (shared with S5)
+  const costBasisViewEnabled = useBlueprintStore((s) => s.costBasisViewEnabled);
+  const costBasisEntries = useBlueprintStore((s) => s.costBasisEntries);
+  const toggleCostBasisView = useBlueprintStore((s) => s.toggleCostBasisView);
+
+  // Tax adjustments grouped by category
+  const taxByCat = useMemo(() => {
+    const map = {};
+    costBasisEntries.forEach((e) => {
+      if (!map[e.category]) map[e.category] = { estimatedTax: 0, taxAdjustedValue: 0, fmv: 0 };
+      map[e.category].estimatedTax += e.estimatedTax;
+      map[e.category].taxAdjustedValue += e.taxAdjustedValue;
+      map[e.category].fmv += e.fmv;
+    });
+    return map;
+  }, [costBasisEntries]);
+
+  const totalEstimatedTax = useMemo(
+    () => costBasisEntries.reduce((sum, e) => sum + e.estimatedTax, 0),
+    [costBasisEntries]
+  );
+
+  const showTaxAdjusted = costBasisViewEnabled && costBasisEntries.length > 0;
 
   if (!data) return null;
 
@@ -140,6 +192,61 @@ export default function S3AssetInventory({ data, status }) {
 
   return (
     <div>
+      {/* Cost basis view toggle */}
+      {data && (status === 'partial' || status === 'complete') && (
+        <div
+          style={{
+            fontFamily: SANS,
+            fontSize: 14,
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+          className="clearpath-blueprint-interactive"
+        >
+          <span style={{ color: 'rgba(27,42,74,0.5)', fontWeight: 400 }}>View:</span>
+          <button
+            type="button"
+            onClick={costBasisViewEnabled ? toggleCostBasisView : undefined}
+            style={{
+              fontFamily: SANS,
+              fontSize: 14,
+              background: 'none',
+              border: 'none',
+              padding: '2px 4px',
+              cursor: costBasisViewEnabled ? 'pointer' : 'default',
+              color: !costBasisViewEnabled ? GOLD : NAVY,
+              opacity: !costBasisViewEnabled ? 1 : 0.5,
+              fontWeight: !costBasisViewEnabled ? 600 : 400,
+            }}
+          >
+            Face Value
+          </button>
+          <span style={{ color: 'rgba(27,42,74,0.3)' }}>|</span>
+          <button
+            type="button"
+            onClick={!costBasisViewEnabled ? toggleCostBasisView : undefined}
+            style={{
+              fontFamily: SANS,
+              fontSize: 14,
+              background: 'none',
+              border: 'none',
+              padding: '2px 4px',
+              cursor: !costBasisViewEnabled ? 'pointer' : 'default',
+              color: costBasisViewEnabled ? GOLD : NAVY,
+              opacity: costBasisViewEnabled ? 1 : 0.5,
+              fontWeight: costBasisViewEnabled ? 600 : 400,
+            }}
+          >
+            Tax-Adjusted
+          </button>
+        </div>
+      )}
+
+      {/* Cost basis entry panel — shown when toggled to Tax-Adjusted and items need basis */}
+      {costBasisViewEnabled && <CostBasisEntryPanel />}
+
       <section
         style={{
           display: 'flex',
@@ -161,9 +268,17 @@ export default function S3AssetInventory({ data, status }) {
           </div>
         </div>
         <div style={{ flex: '1 1 160px', minWidth: 140 }}>
-          <div style={labelStyle}>NET WORTH</div>
-          <div style={{ ...keyFigureStyle(GOLD), marginTop: 4 }}>
-            {currency(data.netWorth)}
+          <div style={labelStyle}>NET WORTH{showTaxAdjusted ? ' (TAX-ADJ.)' : ''}</div>
+          <div
+            style={{
+              ...keyFigureStyle(GOLD),
+              marginTop: 4,
+              transition: 'opacity 0.4s ease-out',
+            }}
+          >
+            {showTaxAdjusted
+              ? currency(data.netWorth - totalEstimatedTax)
+              : currency(data.netWorth)}
           </div>
         </div>
       </section>
@@ -191,6 +306,7 @@ export default function S3AssetInventory({ data, status }) {
                   name={CATEGORY_LABELS[key] || titleize(key)}
                   total={cat.total}
                   count={cat.count}
+                  taxAdj={showTaxAdjusted && taxByCat[key] ? taxByCat[key] : null}
                 />
               ))}
             </div>
