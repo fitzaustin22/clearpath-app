@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useM2Store } from '@/src/stores/m2Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';
@@ -150,6 +150,23 @@ export default function CostBasisEntryPanel() {
     });
     return init;
   });
+
+  // Sync basisValues when itemsNeedingBasis changes (e.g., new M2 items added after mount)
+  useEffect(() => {
+    setBasisValues((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      itemsNeedingBasis.forEach((item) => {
+        if (!(item.id in next)) {
+          next[item.id] = item.costBasis !== null && item.costBasis !== undefined
+            ? String(item.costBasis)
+            : '';
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [itemsNeedingBasis]);
 
   const handleBasisChange = (id, raw) => {
     setBasisValues((prev) => ({ ...prev, [id]: raw }));

@@ -6,6 +6,7 @@ import useBlueprintStore from '@/src/stores/blueprintStore';
 const NAVY = '#1B2A4A';
 const GOLD = '#C8A96E';
 const RED = '#C0392B';
+const GREEN = '#2D8A4E';
 const SANS = "var(--font-source-sans), 'Source Sans 3', sans-serif";
 const MUTED = '#6B7280';
 
@@ -127,8 +128,8 @@ export default function S5PropertyDivision({ data, status }) {
       {showTaxView ? (
         <>
           <div style={noteStyle}>
-            Based on the allocations from your Asset Inventory (§3). Toggle to Tax-Adjusted
-            view to reveal hidden taxes.
+            Based on the allocations from your Asset Inventory (§3). Hidden taxes estimated at
+            15% long-term capital gains rate.
           </div>
 
           <div style={{ overflowX: 'auto', marginTop: 16 }}>
@@ -238,13 +239,14 @@ function TaxRow({ label, face, adj, hid, bold }) {
     fontWeight: bold ? 600 : 400,
     borderTop: bold ? '1px solid rgba(27,42,74,0.2)' : 'none',
   };
-  const redStyle = { ...numStyle, color: RED };
+  const hidColor = (hid || 0) >= 0 ? RED : GREEN;
+  const hidStyle = { ...numStyle, color: hidColor };
   return (
     <tr>
       <td style={labelStyle}>{label}</td>
       <td style={numStyle}>{currency(face)}</td>
       <td style={numStyle}>{currency(adj)}</td>
-      <td style={redStyle}>({currency(Math.abs(hid || 0))})</td>
+      <td style={hidStyle}>({currency(Math.abs(hid || 0))})</td>
     </tr>
   );
 }
