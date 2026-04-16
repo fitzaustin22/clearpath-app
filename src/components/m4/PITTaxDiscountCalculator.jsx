@@ -707,7 +707,9 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
   }, []);
 
   const handlePrint = useCallback(() => {
-    if (typeof window !== 'undefined') window.print();
+    if (typeof window === 'undefined') return;
+    setIsPrinting(true);
+    requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
   }, []);
 
   // Upgrade gate
@@ -973,7 +975,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
       </div>
 
       {/* Print stylesheet — makes the calculator render cleanly in print/PDF */}
-      <style jsx global>{`
+      <style>{`
         @media print {
           @page {
             size: letter;
@@ -1074,7 +1076,7 @@ function Panel1TaxDiscount({ results, inputs }) {
         </div>
         <div>
           <div style={{ fontFamily: SOURCE, fontSize: 13, color: MUTED }}>Years to withdrawal midpoint</div>
-          <div style={{ fontFamily: SOURCE, fontSize: 20, fontWeight: 600, color: NAVY }}>{results.n}</div>
+          <div style={{ fontFamily: SOURCE, fontSize: 20, fontWeight: 600, color: NAVY }}>{results.n % 1 === 0 ? results.n : results.n.toFixed(1)}</div>
         </div>
       </div>
 
@@ -1132,7 +1134,7 @@ function Panel2MathVerification({ results, isPrinting }) {
 
   const rows = [
     { label: 'Tax Discount (TD)',                          value: fmtCurrency(results.tdDollars) },
-    { label: `TD Growth over ${results.n} years (TDg)`,    value: fmtCurrency(results.tdGrowth) },
+    { label: `TD Growth over ${results.n % 1 === 0 ? results.n : results.n.toFixed(1)} years (TDg)`,    value: fmtCurrency(results.tdGrowth) },
     { label: 'Tax Discount at Withdrawal (TD + TDg)',      value: fmtCurrency(results.taxDiscountAtWithdrawal) },
     { label: 'Tax-Adjusted Award (TA)',                    value: fmtCurrency(results.taxAdjustedValue) },
     { label: 'Taxable Distribution (TA + TD + TDg)',       value: fmtCurrency(results.taxableDistribution) },
