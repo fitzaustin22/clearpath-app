@@ -907,7 +907,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
         <Panel1TaxDiscount results={results} inputs={inputs} />
         <Panel2MathVerification results={results} />
         {inputs.showPropertyDivision && <Panel3PropertyDivision propertyDivision={propertyDivision} />}
-        {/* PANEL-4 */}
+        <Panel4ReferenceTable referenceTable={referenceTable} inputs={inputs} />
         {/* PANEL-5 */}
       </div>
 
@@ -1151,6 +1151,98 @@ function Panel3PropertyDivision({ propertyDivision }) {
         }}
       >
         Wife receives {fmtCurrency(propertyDivision.wifeDifference)} more under Point in Time method.
+      </div>
+    </CollapsiblePanel>
+  );
+}
+
+// ─── Panel 4 — Reference Table ────────────────────────────────────────────────────
+function Panel4ReferenceTable({ referenceTable, inputs }) {
+  if (!referenceTable) return null;
+
+  // Highlight rule: match on user's current age (closest of 35/45/55/65) and nearest bracket tax rate.
+  const closestAge = [35, 45, 55, 65].reduce((best, a) => (
+    Math.abs(a - inputs.currentAge) < Math.abs(best - inputs.currentAge) ? a : best
+  ), 35);
+  const closestRate = [20, 25, 30, 35, 40].reduce((best, r) => (
+    Math.abs(r - inputs.effectiveTaxRate) < Math.abs(best - inputs.effectiveTaxRate) ? r : best
+  ), 25);
+
+  return (
+    <CollapsiblePanel title="Quick Reference: Tax Discounts by Age & Rate">
+      <p style={{ fontFamily: SOURCE, fontSize: 13, color: MUTED, margin: '0 0 12px' }}>
+        TD% at your discount rate ({fmtPercent(inputs.discountRate, 2)}), end age 85. Highlighted cell is closest to your inputs (age {closestAge}, tax rate {closestRate}%).
+      </p>
+      <div style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: 6 }}>
+        <table style={{ width: '100%', minWidth: 720, borderCollapse: 'collapse', fontFamily: SOURCE, fontSize: 13, color: NAVY }}>
+          <thead>
+            <tr>
+              <th rowSpan={2} style={{ padding: '8px 10px', backgroundColor: NAVY, color: PARCHMENT, textAlign: 'left', verticalAlign: 'middle' }}>
+                Age
+              </th>
+              {[20, 25, 30, 35, 40].map((rate) => (
+                <th
+                  key={rate}
+                  colSpan={3}
+                  style={{ padding: '8px 10px', backgroundColor: NAVY, color: PARCHMENT, textAlign: 'center', borderLeft: '1px solid rgba(255,255,255,0.2)' }}
+                >
+                  {rate}%
+                </th>
+              ))}
+            </tr>
+            <tr>
+              {[20, 25, 30, 35, 40].flatMap((rate) =>
+                ['Early (55)', 'Normal (65)', 'Deferred (75)'].map((scn, j) => (
+                  <th
+                    key={`${rate}-${scn}`}
+                    style={{
+                      padding: '6px 8px',
+                      backgroundColor: '#2A3A5B',
+                      color: PARCHMENT,
+                      fontWeight: 500,
+                      fontSize: 11,
+                      textAlign: 'center',
+                      borderLeft: j === 0 ? '1px solid rgba(255,255,255,0.2)' : 'none',
+                    }}
+                  >
+                    {scn.split(' ')[0]}
+                  </th>
+                ))
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {referenceTable.map((row, rIdx) => (
+              <tr key={row.age} style={{ backgroundColor: rIdx % 2 === 0 ? WHITE : '#FAFAFA' }}>
+                <td style={{ padding: '8px 10px', borderTop: '1px solid #E5E7EB', fontWeight: 700 }}>{row.age}</td>
+                {row.rates.flatMap((rateCell) =>
+                  rateCell.scenarios.map((scn, sIdx) => {
+                    const isHighlight = row.age === closestAge && rateCell.rate === closestRate;
+                    return (
+                      <td
+                        key={`${row.age}-${rateCell.rate}-${scn.label}`}
+                        style={{
+                          padding: '8px 8px',
+                          borderTop: '1px solid #E5E7EB',
+                          borderLeft: sIdx === 0 ? '1px solid #E5E7EB' : 'none',
+                          textAlign: 'center',
+                          fontVariantNumeric: 'tabular-nums',
+                          backgroundColor: isHighlight ? '#FBF4E3' : 'transparent',
+                          fontWeight: isHighlight ? 700 : 400,
+                          color: isHighlight ? NAVY : NAVY,
+                          outline: isHighlight ? `2px solid ${GOLD}` : 'none',
+                          outlineOffset: -2,
+                        }}
+                      >
+                        {fmtPercent(scn.tdPercent, 1)}
+                      </td>
+                    );
+                  })
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </CollapsiblePanel>
   );
