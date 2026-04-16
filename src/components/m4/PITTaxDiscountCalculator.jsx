@@ -169,12 +169,14 @@ function calculatePensionScenario(inputs) {
 
   const TR = effectiveTaxRate / 100;
   const i  = discountRate / 100;
-  const totalPaymentYears = withdrawalEndAge - withdrawalStartAge;
+  // Inclusive of both endpoints — withdrawalEndAge is the LAST withdrawal year
+  // (e.g. start 65, end 84 ⇒ ages 65..84 = 20 payment years).
+  const totalPaymentYears = withdrawalEndAge - withdrawalStartAge + 1;
 
   const yearRows = [];
   let weightedTDSum = 0;
 
-  for (let age = withdrawalStartAge; age < withdrawalEndAge; age++) {
+  for (let age = withdrawalStartAge; age <= withdrawalEndAge; age++) {
     const yearNum  = age - withdrawalStartAge + 1;
     const nForYear = age - currentAge;
 
