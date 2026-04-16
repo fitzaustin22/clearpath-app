@@ -1,4 +1,4 @@
-import { ClerkProvider, SignedIn, SignedOut, UserButton } from "@clerk/nextjs";
+import { ClerkProvider, Show, UserButton } from "@clerk/nextjs";
 import { Playfair_Display, Source_Sans_3 } from "next/font/google";
 import BlueprintBarWrapper from "@/src/components/blueprint/BlueprintBarWrapper";
 import "./globals.css";
@@ -30,13 +30,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           >
             <a href="/" style={{ color: "#C8A96E", fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: "1.4rem", textDecoration: "none", fontWeight: 700 }}>ClearPath</a>
             <div className="flex gap-3 items-center flex-wrap">
-              <SignedOut>
+              <Show when="signed-out">
                 <a href="/login" style={{ border: "1px solid #C8A96E", color: "#C8A96E", padding: "8px 20px", borderRadius: "4px", textDecoration: "none", fontSize: "0.9rem" }}>Sign In</a>
                 <a href="/signup" style={{ backgroundColor: "#C8A96E", color: "#1B2A4A", padding: "8px 20px", borderRadius: "4px", textDecoration: "none", fontWeight: 700, fontSize: "0.9rem" }}>Sign Up Free</a>
-              </SignedOut>
-              <SignedIn>
+              </Show>
+              <Show when="signed-in">
                 <UserButton afterSignOutUrl="/" />
-              </SignedIn>
+              </Show>
             </div>
           </header>
           <BlueprintBarWrapper>{children}</BlueprintBarWrapper>
