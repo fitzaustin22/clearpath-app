@@ -1,9 +1,13 @@
 'use client';
 
+// Store import needed for cross-section cost basis toggle (shared with S3)
+import useBlueprintStore from '@/src/stores/blueprintStore';
+
 const NAVY = '#1B2A4A';
 const GOLD = '#C8A96E';
 const RED = '#C0392B';
 const SANS = "var(--font-source-sans), 'Source Sans 3', sans-serif";
+const MUTED = '#6B7280';
 
 const currency = (n) =>
   (n || 0).toLocaleString('en-US', {
@@ -49,6 +53,10 @@ const headCellBase = {
 };
 
 export default function S5PropertyDivision({ data, status }) {
+  // Cost basis toggle (shared with S3)
+  const costBasisViewEnabled = useBlueprintStore((s) => s.costBasisViewEnabled);
+  const toggleCostBasisView = useBlueprintStore((s) => s.toggleCostBasisView);
+
   if (!data || !data.faceValue) return null;
 
   const { faceValue, taxAdjusted, hiddenTax, totalMaritalEstate, hasCostBasis } = data;
@@ -58,116 +66,159 @@ export default function S5PropertyDivision({ data, status }) {
 
   const pct = (n) => (total > 0 ? Math.round((n / total) * 100) : 0);
 
-  if (hasCostBasis && taxAdjusted && hiddenTax) {
-    const adjustedTotal =
-      (taxAdjusted.client || 0) +
-      (taxAdjusted.spouse || 0) +
-      (taxAdjusted.undecided || 0);
-    const hiddenTotal =
-      (hiddenTax.client || 0) + (hiddenTax.spouse || 0) + (hiddenTax.undecided || 0);
-    const clientPercent = total > 0 ? Math.round((faceValue.client / total) * 100) : 0;
-    const adjustedPercent =
-      adjustedTotal > 0
-        ? Math.round((taxAdjusted.client / adjustedTotal) * 1000) / 10
-        : 0;
-    const clientHiddenTax = Math.abs(hiddenTax.client || 0);
-
-    return (
-      <div>
-        <div style={noteStyle}>
-          Based on the allocations from your Asset Inventory (§3). Toggle to Tax-Adjusted
-          view to reveal hidden taxes.
-        </div>
-
-        <div style={{ overflowX: 'auto', marginTop: 16 }}>
-          <table
-            style={{
-              width: '100%',
-              borderCollapse: 'collapse',
-              fontFamily: SANS,
-            }}
-          >
-            <thead>
-              <tr>
-                <th style={{ ...headCellBase, textAlign: 'left' }}></th>
-                <th style={headCellBase}>Face Value</th>
-                <th style={headCellBase}>Tax-Adjusted</th>
-                <th style={headCellBase}>Hidden Tax</th>
-              </tr>
-            </thead>
-            <tbody>
-              <TaxRow
-                label="Your Assets"
-                face={faceValue.client}
-                adj={taxAdjusted.client}
-                hid={hiddenTax.client}
-              />
-              <TaxRow
-                label="Spouse's Assets"
-                face={faceValue.spouse}
-                adj={taxAdjusted.spouse}
-                hid={hiddenTax.spouse}
-              />
-              <TaxRow
-                label="Undecided"
-                face={faceValue.undecided}
-                adj={taxAdjusted.undecided}
-                hid={hiddenTax.undecided}
-              />
-              <TaxRow
-                label="Total"
-                face={faceTotal}
-                adj={adjustedTotal}
-                hid={hiddenTotal}
-                bold
-              />
-            </tbody>
-          </table>
-        </div>
-
-        <p style={{ ...bodyStyle, marginTop: 24, lineHeight: 1.55 }}>
-          The face-value division appears to give you <strong>{clientPercent}%</strong> of
-          marital assets. After accounting for hidden taxes, you receive{' '}
-          <strong>{adjustedPercent}%</strong> — a difference of{' '}
-          <strong style={{ color: RED }}>{currency(clientHiddenTax)}</strong> in built-in
-          tax liability.
-        </p>
-      </div>
-    );
-  }
+  // Determine which view to show
+  const showTaxView = costBasisViewEnabled && hasCostBasis && taxAdjusted && hiddenTax;
+  const showNudge = costBasisViewEnabled && !hasCostBasis;
 
   return (
     <div>
-      <div style={{ overflowX: 'auto' }}>
-        <table
-          style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SANS }}
+      {/* Cost basis view toggle */}
+      {data.faceValue && (
+        <div
+          style={{
+            fontFamily: SANS,
+            fontSize: 14,
+            marginBottom: 16,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+          }}
+          className="clearpath-blueprint-interactive"
         >
-          <thead>
-            <tr>
-              <th style={{ ...headCellBase, textAlign: 'left' }}></th>
-              <th style={headCellBase}>Face Value</th>
-              <th style={{ ...headCellBase, width: 80 }}></th>
-            </tr>
-          </thead>
-          <tbody>
-            <FaceRow label="Your Assets" value={faceValue.client} pct={pct(faceValue.client)} />
-            <FaceRow
-              label="Spouse's Assets"
-              value={faceValue.spouse}
-              pct={pct(faceValue.spouse)}
-            />
-            <FaceRow
-              label="Undecided"
-              value={faceValue.undecided}
-              pct={pct(faceValue.undecided)}
-            />
-            <FaceRow label="Total" value={faceTotal} pct={100} bold />
-          </tbody>
-        </table>
-      </div>
-      <div style={{ ...noteStyle, marginTop: 16 }}>
-        Tax-adjusted values add with Module 4 — revealing hidden taxes in transferred assets.
-      </div>
+          <span style={{ color: 'rgba(27,42,74,0.5)', fontWeight: 400 }}>View:</span>
+          <button
+            type="button"
+            onClick={costBasisViewEnabled ? toggleCostBasisView : undefined}
+            style={{
+              fontFamily: SANS,
+              fontSize: 14,
+              background: 'none',
+              border: 'none',
+              padding: '2px 4px',
+              cursor: costBasisViewEnabled ? 'pointer' : 'default',
+              color: !costBasisViewEnabled ? GOLD : NAVY,
+              opacity: !costBasisViewEnabled ? 1 : 0.5,
+              fontWeight: !costBasisViewEnabled ? 600 : 400,
+            }}
+          >
+            Face Value
+          </button>
+          <span style={{ color: 'rgba(27,42,74,0.3)' }}>|</span>
+          <button
+            type="button"
+            onClick={!costBasisViewEnabled ? toggleCostBasisView : undefined}
+            style={{
+              fontFamily: SANS,
+              fontSize: 14,
+              background: 'none',
+              border: 'none',
+              padding: '2px 4px',
+              cursor: !costBasisViewEnabled ? 'pointer' : 'default',
+              color: costBasisViewEnabled ? GOLD : NAVY,
+              opacity: costBasisViewEnabled ? 1 : 0.5,
+              fontWeight: costBasisViewEnabled ? 600 : 400,
+            }}
+          >
+            Tax-Adjusted
+          </button>
+        </div>
+      )}
+
+      {showTaxView ? (
+        <>
+          <div style={noteStyle}>
+            Based on the allocations from your Asset Inventory (§3). Toggle to Tax-Adjusted
+            view to reveal hidden taxes.
+          </div>
+
+          <div style={{ overflowX: 'auto', marginTop: 16 }}>
+            <table
+              style={{
+                width: '100%',
+                borderCollapse: 'collapse',
+                fontFamily: SANS,
+              }}
+            >
+              <thead>
+                <tr>
+                  <th style={{ ...headCellBase, textAlign: 'left' }}></th>
+                  <th style={headCellBase}>Face Value</th>
+                  <th style={headCellBase}>Tax-Adjusted</th>
+                  <th style={headCellBase}>Hidden Tax</th>
+                </tr>
+              </thead>
+              <tbody>
+                <TaxRow label="Your Assets" face={faceValue.client} adj={taxAdjusted.client} hid={hiddenTax.client} />
+                <TaxRow label="Spouse's Assets" face={faceValue.spouse} adj={taxAdjusted.spouse} hid={hiddenTax.spouse} />
+                <TaxRow label="Undecided" face={faceValue.undecided} adj={taxAdjusted.undecided} hid={hiddenTax.undecided} />
+                <TaxRow
+                  label="Total"
+                  face={faceTotal}
+                  adj={(taxAdjusted.client || 0) + (taxAdjusted.spouse || 0) + (taxAdjusted.undecided || 0)}
+                  hid={(hiddenTax.client || 0) + (hiddenTax.spouse || 0) + (hiddenTax.undecided || 0)}
+                  bold
+                />
+              </tbody>
+            </table>
+          </div>
+
+          <p style={{ ...bodyStyle, marginTop: 24, lineHeight: 1.55 }}>
+            The face-value division appears to give you{' '}
+            <strong>{total > 0 ? Math.round((faceValue.client / total) * 100) : 0}%</strong> of
+            marital assets. After accounting for hidden taxes, you receive{' '}
+            <strong>
+              {(() => {
+                const adjTotal =
+                  (taxAdjusted.client || 0) + (taxAdjusted.spouse || 0) + (taxAdjusted.undecided || 0);
+                return adjTotal > 0
+                  ? Math.round((taxAdjusted.client / adjTotal) * 1000) / 10
+                  : 0;
+              })()}%
+            </strong>{' '}
+            — a difference of{' '}
+            <strong style={{ color: RED }}>{currency(Math.abs(hiddenTax.client || 0))}</strong> in
+            built-in tax liability.
+          </p>
+        </>
+      ) : (
+        <>
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SANS }}>
+              <thead>
+                <tr>
+                  <th style={{ ...headCellBase, textAlign: 'left' }}></th>
+                  <th style={headCellBase}>Face Value</th>
+                  <th style={{ ...headCellBase, width: 80 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                <FaceRow label="Your Assets" value={faceValue.client} pct={pct(faceValue.client)} />
+                <FaceRow label="Spouse's Assets" value={faceValue.spouse} pct={pct(faceValue.spouse)} />
+                <FaceRow label="Undecided" value={faceValue.undecided} pct={pct(faceValue.undecided)} />
+                <FaceRow label="Total" value={faceTotal} pct={100} bold />
+              </tbody>
+            </table>
+          </div>
+          {showNudge ? (
+            <div
+              style={{
+                fontFamily: SANS,
+                fontWeight: 400,
+                fontSize: 13,
+                color: MUTED,
+                fontStyle: 'italic',
+                marginTop: 12,
+              }}
+            >
+              Enter cost basis in Section 3 above to see tax-adjusted values.
+            </div>
+          ) : (
+            <div style={{ ...noteStyle, marginTop: 16 }}>
+              Tax-adjusted values add with Module 4 — revealing hidden taxes in transferred assets.
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }
