@@ -515,8 +515,9 @@ function ToggleGroup({ label, options, value, onChange, disabled }) {
   );
 }
 
-function CollapsiblePanel({ title, defaultOpen = false, children }) {
+function CollapsiblePanel({ title, defaultOpen = false, forceOpen = false, children }) {
   const [open, setOpen] = useState(defaultOpen);
+  const effectiveOpen = forceOpen || open;
   return (
     <div
       style={{
@@ -530,6 +531,7 @@ function CollapsiblePanel({ title, defaultOpen = false, children }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
+        disabled={forceOpen}
         style={{
           width: '100%',
           display: 'flex',
@@ -538,20 +540,20 @@ function CollapsiblePanel({ title, defaultOpen = false, children }) {
           padding: '14px 18px',
           backgroundColor: PARCHMENT,
           border: 'none',
-          borderBottom: open ? '1px solid #E5E7EB' : 'none',
-          cursor: 'pointer',
+          borderBottom: effectiveOpen ? '1px solid #E5E7EB' : 'none',
+          cursor: forceOpen ? 'default' : 'pointer',
           fontFamily: SOURCE,
           fontSize: 15,
           fontWeight: 700,
           color: NAVY,
           textAlign: 'left',
         }}
-        aria-expanded={open}
+        aria-expanded={effectiveOpen}
       >
         <span>{title}</span>
-        {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+        {effectiveOpen ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
       </button>
-      {open && <div style={{ padding: '18px 20px' }}>{children}</div>}
+      {effectiveOpen && <div style={{ padding: '18px 20px' }}>{children}</div>}
     </div>
   );
 }
@@ -689,6 +691,20 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
     },
     [disabled, setPITInputs],
   );
+
+  const [isPrinting, setIsPrinting] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const before = () => setIsPrinting(true);
+    const after  = () => setIsPrinting(false);
+    window.addEventListener('beforeprint', before);
+    window.addEventListener('afterprint',  after);
+    return () => {
+      window.removeEventListener('beforeprint', before);
+      window.removeEventListener('afterprint',  after);
+    };
+  }, []);
 
   const handlePrint = useCallback(() => {
     if (typeof window !== 'undefined') window.print();
@@ -905,15 +921,95 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
       {/* Results panels — filled in Tasks 5–9 */}
       <div style={{ marginTop: 32 }}>
         <Panel1TaxDiscount results={results} inputs={inputs} />
-        <Panel2MathVerification results={results} />
-        {inputs.showPropertyDivision && <Panel3PropertyDivision propertyDivision={propertyDivision} />}
-        <Panel4ReferenceTable referenceTable={referenceTable} inputs={inputs} />
+        <Panel2MathVerification results={results} isPrinting={isPrinting} />
+        {inputs.showPropertyDivision && <Panel3PropertyDivision propertyDivision={propertyDivision} isPrinting={isPrinting} />}
+        <Panel4ReferenceTable referenceTable={referenceTable} inputs={inputs} isPrinting={isPrinting} />
         {inputs.planType === 'pension' && (
-          <Panel5PensionScenario pensionScenario={pensionScenario} results={results} />
+          <Panel5PensionScenario pensionScenario={pensionScenario} results={results} isPrinting={isPrinting} />
         )}
       </div>
 
-      {/* Print button + disclaimer + print stylesheet — filled in Task 10 */}
+      {/* Print button (Signature tier only) */}
+      {isFullAccess && results && (
+        <div style={{ marginTop: 24, marginBottom: 8 }} className="pit-no-print">
+          <button
+            type="button"
+            onClick={handlePrint}
+            style={{
+              backgroundColor: NAVY,
+              color: WHITE,
+              fontFamily: SOURCE,
+              fontWeight: 700,
+              fontSize: 15,
+              padding: '12px 24px',
+              borderRadius: 8,
+              border: 'none',
+              cursor: 'pointer',
+              letterSpacing: 0.3,
+            }}
+          >
+            Generate PDF Report
+          </button>
+          <p style={{ fontFamily: SOURCE, fontSize: 12, color: MUTED, margin: '6px 0 0' }}>
+            Opens your browser's print dialog. Choose "Save as PDF" to export.
+          </p>
+        </div>
+      )}
+
+      {/* Disclaimer */}
+      <div
+        style={{
+          marginTop: 32,
+          padding: '16px 18px',
+          backgroundColor: '#F3F4F6',
+          borderRadius: 6,
+          fontFamily: SOURCE,
+          fontSize: 13,
+          color: MUTED,
+          lineHeight: 1.55,
+        }}
+      >
+        This calculator implements the "Point in Time" methodology as described by Steven E. Sutherland, CPA, CFP®, CFE, CDFA®. Results are for educational purposes only. Actual tax discounts depend on individual circumstances including tax law changes, actual withdrawal patterns, and investment returns. Consult a Certified Divorce Financial Analyst® for case-specific analysis.
+      </div>
+
+      {/* Print stylesheet — makes the calculator render cleanly in print/PDF */}
+      <style jsx global>{`
+        @media print {
+          @page {
+            size: letter;
+            margin: 0.5in;
+          }
+          body {
+            background-color: ${WHITE} !important;
+          }
+          .pit-no-print {
+            display: none !important;
+          }
+          .pit-calc-root {
+            max-width: none !important;
+            padding: 0 !important;
+          }
+          /* Force every collapsible panel open for print */
+          .pit-calc-root button[aria-expanded] + div {
+            display: block !important;
+          }
+          /* Remove interactive affordances */
+          .pit-calc-root button,
+          .pit-calc-root input,
+          .pit-calc-root select {
+            color: ${NAVY} !important;
+          }
+          .pit-calc-root h1,
+          .pit-calc-root h2,
+          .pit-calc-root h3,
+          .pit-calc-root h4 {
+            page-break-after: avoid;
+          }
+          .pit-calc-root table {
+            page-break-inside: avoid;
+          }
+        }
+      `}</style>
     </div>
   );
 }
@@ -1031,7 +1127,7 @@ function Panel1TaxDiscount({ results, inputs }) {
 }
 
 // ─── Panel 2 — Math Verification ──────────────────────────────────────────────
-function Panel2MathVerification({ results }) {
+function Panel2MathVerification({ results, isPrinting }) {
   if (!results) return null;
 
   const rows = [
@@ -1045,7 +1141,7 @@ function Panel2MathVerification({ results }) {
   ];
 
   return (
-    <CollapsiblePanel title="Proof / Math Check">
+    <CollapsiblePanel title="Proof / Math Check" forceOpen={isPrinting}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SOURCE, fontSize: 14, color: NAVY }}>
         <tbody>
           {rows.map((r, idx) => (
@@ -1127,11 +1223,11 @@ function DivisionTable({ title, data }) {
   );
 }
 
-function Panel3PropertyDivision({ propertyDivision }) {
+function Panel3PropertyDivision({ propertyDivision, isPrinting }) {
   if (!propertyDivision) return null;
 
   return (
-    <CollapsiblePanel title="Property Division Impact">
+    <CollapsiblePanel title="Property Division Impact" forceOpen={isPrinting}>
       <div style={{ marginBottom: 10, fontFamily: SOURCE, fontSize: 13, color: MUTED }}>
         Total marital estate: <strong>{fmtCurrency(propertyDivision.totalEstate)}</strong> · Each spouse's 50% share: <strong>{fmtCurrency(propertyDivision.halfEstate)}</strong>
       </div>
@@ -1159,7 +1255,7 @@ function Panel3PropertyDivision({ propertyDivision }) {
 }
 
 // ─── Panel 4 — Reference Table ────────────────────────────────────────────────────
-function Panel4ReferenceTable({ referenceTable, inputs }) {
+function Panel4ReferenceTable({ referenceTable, inputs, isPrinting }) {
   if (!referenceTable) return null;
 
   // Highlight rule: match on user's current age (closest of 35/45/55/65) and nearest bracket tax rate.
@@ -1171,7 +1267,7 @@ function Panel4ReferenceTable({ referenceTable, inputs }) {
   ), 25);
 
   return (
-    <CollapsiblePanel title="Quick Reference: Tax Discounts by Age & Rate">
+    <CollapsiblePanel title="Quick Reference: Tax Discounts by Age & Rate" forceOpen={isPrinting}>
       <p style={{ fontFamily: SOURCE, fontSize: 13, color: MUTED, margin: '0 0 12px' }}>
         TD% at your discount rate ({fmtPercent(inputs.discountRate, 2)}), end age 85. Highlighted cell is closest to your inputs (age {closestAge}, tax rate {closestRate}%).
       </p>
@@ -1251,14 +1347,14 @@ function Panel4ReferenceTable({ referenceTable, inputs }) {
 }
 
 // ─── Panel 5 — Pension Scenario Method ────────────────────────────────────────
-function Panel5PensionScenario({ pensionScenario, results }) {
+function Panel5PensionScenario({ pensionScenario, results, isPrinting }) {
   if (!pensionScenario || !results) return null;
 
   const singlePointTD = results.tdPercent;
   const diff          = pensionScenario.scenarioTDPercent - singlePointTD;
 
   return (
-    <CollapsiblePanel title="Pension Scenario Method">
+    <CollapsiblePanel title="Pension Scenario Method" forceOpen={isPrinting}>
       <p style={{ fontFamily: SOURCE, fontSize: 14, color: NAVY, lineHeight: 1.55, margin: '0 0 14px' }}>
         Pensions pay out over many years. The Scenario Method calculates a weighted average across each payment year — more precise than a single-point estimate.
       </p>
