@@ -905,7 +905,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
       {/* Results panels — filled in Tasks 5–9 */}
       <div style={{ marginTop: 32 }}>
         <Panel1TaxDiscount results={results} inputs={inputs} />
-        {/* PANEL-2 */}
+        <Panel2MathVerification results={results} />
         {/* PANEL-3 */}
         {/* PANEL-4 */}
         {/* PANEL-5 */}
@@ -1025,5 +1025,65 @@ function Panel1TaxDiscount({ results, inputs }) {
         </ResponsiveContainer>
       </div>
     </div>
+  );
+}
+
+// ─── Panel 2 — Math Verification ──────────────────────────────────────────────
+function Panel2MathVerification({ results }) {
+  if (!results) return null;
+
+  const rows = [
+    { label: 'Tax Discount (TD)',                          value: fmtCurrency(results.tdDollars) },
+    { label: `TD Growth over ${results.n} years (TDg)`,    value: fmtCurrency(results.tdGrowth) },
+    { label: 'Tax Discount at Withdrawal (TD + TDg)',      value: fmtCurrency(results.taxDiscountAtWithdrawal) },
+    { label: 'Tax-Adjusted Award (TA)',                    value: fmtCurrency(results.taxAdjustedValue) },
+    { label: 'Taxable Distribution (TA + TD + TDg)',       value: fmtCurrency(results.taxableDistribution) },
+    { label: 'Taxes (Distribution × TR)',                  value: fmtCurrency(results.taxes) },
+    { label: 'After-Tax Distribution',                     value: fmtCurrency(results.afterTaxDistribution) },
+  ];
+
+  return (
+    <CollapsiblePanel title="Proof / Math Check">
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SOURCE, fontSize: 14, color: NAVY }}>
+        <tbody>
+          {rows.map((r, idx) => (
+            <tr key={r.label} style={{ backgroundColor: idx % 2 === 0 ? WHITE : '#FAFAFA' }}>
+              <td style={{ padding: '8px 10px', borderTop: '1px solid #E5E7EB' }}>{r.label}</td>
+              <td style={{ padding: '8px 10px', borderTop: '1px solid #E5E7EB', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}>
+                {r.value}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      <div
+        style={{
+          marginTop: 14,
+          padding: '10px 14px',
+          backgroundColor: results.verified ? '#E7F5EC' : '#FDECEC',
+          borderLeft: `4px solid ${results.verified ? GREEN : RED}`,
+          borderRadius: 4,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 10,
+          fontFamily: SOURCE,
+          fontSize: 14,
+          color: NAVY,
+        }}
+      >
+        {results.verified ? (
+          <>
+            <CheckCircle size={18} color={GREEN} />
+            <span>Verified: After-tax distribution equals Tax Adjusted Award.</span>
+          </>
+        ) : (
+          <>
+            <XCircle size={18} color={RED} />
+            <span>Math check failed — please report this to support.</span>
+          </>
+        )}
+      </div>
+    </CollapsiblePanel>
   );
 }
