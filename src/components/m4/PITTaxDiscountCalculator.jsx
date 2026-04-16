@@ -906,7 +906,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
       <div style={{ marginTop: 32 }}>
         <Panel1TaxDiscount results={results} inputs={inputs} />
         <Panel2MathVerification results={results} />
-        {/* PANEL-3 */}
+        {inputs.showPropertyDivision && <Panel3PropertyDivision propertyDivision={propertyDivision} />}
         {/* PANEL-4 */}
         {/* PANEL-5 */}
       </div>
@@ -1083,6 +1083,74 @@ function Panel2MathVerification({ results }) {
             <span>Math check failed — please report this to support.</span>
           </>
         )}
+      </div>
+    </CollapsiblePanel>
+  );
+}
+
+// ─── Panel 3 — Property Division Comparison ──────────────────────────────────
+function DivisionTable({ title, data }) {
+  return (
+    <div style={{ flex: 1, minWidth: 260 }}>
+      <h4 style={{ fontFamily: SOURCE, fontWeight: 700, fontSize: 15, color: NAVY, margin: '0 0 8px' }}>
+        {title}
+      </h4>
+      <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: SOURCE, fontSize: 13, color: NAVY }}>
+        <thead>
+          <tr style={{ backgroundColor: NAVY, color: PARCHMENT }}>
+            <th style={{ textAlign: 'left',  padding: '8px 10px', fontWeight: 600 }}></th>
+            <th style={{ textAlign: 'right', padding: '8px 10px', fontWeight: 600 }}>Husband</th>
+            <th style={{ textAlign: 'right', padding: '8px 10px', fontWeight: 600 }}>Wife</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={{ padding: '8px 10px', borderTop: '1px solid #E5E7EB' }}>Retirement Plan (disc.)</td>
+            <td style={{ padding: '8px 10px', borderTop: '1px solid #E5E7EB', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtCurrency(data.husbandRetirement)}</td>
+            <td style={{ padding: '8px 10px', borderTop: '1px solid #E5E7EB', textAlign: 'right' }}>—</td>
+          </tr>
+          <tr style={{ backgroundColor: '#FAFAFA' }}>
+            <td style={{ padding: '8px 10px', borderTop: '1px solid #E5E7EB' }}>Cash Assets</td>
+            <td style={{ padding: '8px 10px', borderTop: '1px solid #E5E7EB', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtCurrency(data.husbandCash)}</td>
+            <td style={{ padding: '8px 10px', borderTop: '1px solid #E5E7EB', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtCurrency(data.wifeCash)}</td>
+          </tr>
+          <tr>
+            <td style={{ padding: '8px 10px', borderTop: `2px solid ${NAVY}`, fontWeight: 700 }}>Total</td>
+            <td style={{ padding: '8px 10px', borderTop: `2px solid ${NAVY}`, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{fmtCurrency(data.total)}</td>
+            <td style={{ padding: '8px 10px', borderTop: `2px solid ${NAVY}`, textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}>{fmtCurrency(data.total)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function Panel3PropertyDivision({ propertyDivision }) {
+  if (!propertyDivision) return null;
+
+  return (
+    <CollapsiblePanel title="Property Division Impact">
+      <div style={{ marginBottom: 10, fontFamily: SOURCE, fontSize: 13, color: MUTED }}>
+        Total marital estate: <strong>{fmtCurrency(propertyDivision.totalEstate)}</strong> · Each spouse's 50% share: <strong>{fmtCurrency(propertyDivision.halfEstate)}</strong>
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24 }}>
+        <DivisionTable title="Traditional Division" data={propertyDivision.traditional} />
+        <DivisionTable title="Point in Time Division" data={propertyDivision.pit} />
+      </div>
+      <div
+        style={{
+          marginTop: 18,
+          padding: '12px 16px',
+          backgroundColor: '#FBF4E3',
+          borderLeft: `4px solid ${GOLD}`,
+          borderRadius: 4,
+          fontFamily: SOURCE,
+          fontSize: 14,
+          color: NAVY,
+          fontWeight: 600,
+        }}
+      >
+        Wife receives {fmtCurrency(propertyDivision.wifeDifference)} more under Point in Time method.
       </div>
     </CollapsiblePanel>
   );
