@@ -4,6 +4,14 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { useM2Store } from '@/src/stores/m2Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';
+import {
+  ASSET_SECTIONS,
+  LIABILITY_SECTIONS,
+  ALL_SECTIONS,
+  LIABILITY_KEYS,
+  computeCategoryTotals,
+} from '@/src/lib/m2Sections';
+import { buildAssetInventoryPayload } from '@/src/lib/blueprintM2Payload';
 
 // ─── Brand tokens ──────────────────────────────────────────────────────────────
 const NAVY = '#1B2A4A';
@@ -14,103 +22,9 @@ const GREEN = '#2D8A4E';
 const RED = '#C0392B';
 const AMBER = '#D4A574';
 
-// ─── Section definitions ──────────────────────────────────────────────────────
-// 9 asset categories + 3 liability categories = 12 sections
-const ASSET_SECTIONS = [
-  {
-    key: 'realEstate',
-    label: 'Real Estate',
-    subcategories: ['Primary Residence', 'Other Real Estate (1)', 'Other Real Estate (2)'],
-  },
-  {
-    key: 'workingCapital',
-    label: 'Working Capital',
-    subcategories: [
-      'Cash',
-      'Checking Account',
-      'Savings Account',
-      'Money Market Account',
-      'Certificate of Deposit',
-      'Treasury Bill / Savings Bond',
-      'Mutual Fund',
-      'Individual Stock',
-      'Individual Bond',
-    ],
-  },
-  {
-    key: 'retirement',
-    label: 'Retirement Accounts',
-    subcategories: ['IRA / Roth IRA', '401(k) / 403(b) / 457 Plan', 'Thrift Savings Plan'],
-  },
-  {
-    key: 'pensions',
-    label: 'Pension Plans',
-    subcategories: ['Pension Plan (Present Value)'],
-    helperText:
-      "Pensions are valued differently than other retirement accounts. The 'present value' is what the future pension payments are worth today. If you don't know this number, leave it blank — a CDFA can calculate it.",
-  },
-  {
-    key: 'stockOptions',
-    label: 'Stock Options',
-    subcategories: ['Stock Options'],
-    helperText:
-      'Unvested stock options may still be marital property. Include them with a note about the vesting date and exercise price. A CDFA or attorney can determine the marital portion using the coverture fraction.',
-  },
-  {
-    key: 'corporateIncentives',
-    label: 'Corporate Incentive Programs',
-    subcategories: [
-      'Restricted Stock Units (RSUs)',
-      'Employee Stock Purchase Plan (ESPP)',
-      'Deferred Compensation',
-      'Other Incentive Program',
-    ],
-    helperText:
-      'RSUs, ESPP shares, and deferred compensation are separate from stock options and have different tax treatment. Include the grant date, vesting schedule, and current value for each.',
-  },
-  {
-    key: 'businessInterests',
-    label: 'Business Interests',
-    subcategories: ['Business Interest'],
-    helperText:
-      "If either spouse owns a business — even a small one — it needs to be valued. The value listed here is your best estimate. If there's any significant value at stake, an independent business appraiser is strongly recommended.",
-  },
-  {
-    key: 'otherAssets',
-    label: 'Other Assets',
-    subcategories: ['Cash Value of Life Insurance', 'Annuity', 'Other'],
-  },
-  {
-    key: 'personalProperty',
-    label: 'Personal Property',
-    isPersonalProperty: true,
-  },
-];
-
-const LIABILITY_SECTIONS = [
-  {
-    key: 'loans',
-    label: 'Loans',
-    subcategories: ['Personal Loan', 'Educational Loan', 'Promissory Note', 'Line of Credit'],
-    isLiability: true,
-    helperText:
-      'Do not include loans or mortgages already deducted against assets in the Asset sections.',
-  },
-  {
-    key: 'creditCards',
-    label: 'Credit Cards',
-    subcategories: ['Credit Card'],
-    isLiability: true,
-  },
-  {
-    key: 'otherDebt',
-    label: 'Other Debt',
-    subcategories: ['Back Taxes', 'Professional Debt', 'Business Liability', 'Other'],
-    isLiability: true,
-  },
-];
-
-const ALL_SECTIONS = [...ASSET_SECTIONS, ...LIABILITY_SECTIONS];
+// Section definitions, LIABILITY_KEYS, and computeCategoryTotals live in
+// src/lib/m2Sections.js (imported above) — shared with PersonalPropertyInventory
+// so §3 retrofits from both components agree on shape.
 
 // Tool 2 inventory category → Tool 1 checklist document IDs
 // Used by cross-tool document warnings (Integration 1)
@@ -139,8 +53,6 @@ const CHECKLIST_CATEGORY_LABELS = {
   debtAndLiabilities: 'Debt and Liabilities',
   legalAndInsurance: 'Legal and Insurance',
 };
-
-const LIABILITY_KEYS = new Set(['loans', 'creditCards', 'otherDebt']);
 
 // Summary table row order
 const SUMMARY_ASSET_ROWS = [
@@ -252,37 +164,6 @@ function showAppreciationWarning(item, marriageDate) {
   const cb = Number(item.costBasis);
   if (!Number.isFinite(cv) || !Number.isFinite(cb)) return false;
   return cv > cb;
-}
-
-function computeCategoryTotals(items) {
-  // Returns { [categoryKey]: { total, client, spouse, unallocated } }
-  const totals = {};
-  for (const section of ALL_SECTIONS) {
-    totals[section.key] = { total: 0, client: 0, spouse: 0, unallocated: 0 };
-  }
-  for (const item of items) {
-    const t = totals[item.category];
-    if (!t) continue;
-    const isLiab = LIABILITY_KEYS.has(item.category);
-    const cv = Number(item.currentValue) || 0;
-    const ob = Number(item.outstandingBalance) || 0;
-    const net = isLiab ? cv : cv - ob;
-    if (net === 0) continue;
-    t.total += net;
-    if (item.classification === 'disputed' || item.classification === 'unknown') {
-      t.unallocated += net;
-      continue;
-    }
-    if (item.titleholder === 'self') t.client += net;
-    else if (item.titleholder === 'spouse') t.spouse += net;
-    else if (item.titleholder === 'joint') {
-      t.client += net / 2;
-      t.spouse += net / 2;
-    } else {
-      t.unallocated += net;
-    }
-  }
-  return totals;
 }
 
 // ─── Small inline icons ───────────────────────────────────────────────────────
@@ -453,54 +334,19 @@ export default function MaritalEstateInventory({ userTier = 'essentials' }) {
   useEffect(() => {
     if (items.length === 0 && (!personalPropertySummary || personalPropertySummary.totalItems === 0)) return;
     const timer = setTimeout(() => {
-      const assetsByCategory = {};
-      const liabilitiesByCategory = {};
-      for (const section of ALL_SECTIONS) {
-        const t = categoryTotals[section.key];
-        if (!t || t.total === 0) continue;
-        const count =
-          section.key === 'personalProperty'
-            ? (personalPropertySummary?.totalItems || 0)
-            : (itemsBySection[section.key]?.length || 0);
-        if (LIABILITY_KEYS.has(section.key)) {
-          liabilitiesByCategory[section.key] = { total: t.total, count };
-        } else {
-          assetsByCategory[section.key] = { total: t.total, count };
-        }
-      }
-      const divisionStatus = Object.keys(categoryTotals).reduce(
-        (acc, key) => {
-          if (LIABILITY_KEYS.has(key)) return acc;
-          const t = categoryTotals[key] || {};
-          return {
-            client: acc.client + (t.client || 0),
-            spouse: acc.spouse + (t.spouse || 0),
-            undecided: acc.undecided + (t.unallocated || 0),
-          };
-        },
-        { client: 0, spouse: 0, undecided: 0 }
-      );
-      const docsGathered = (checklistItems || []).filter(
-        (i) => i.status === 'collected' || i.status === 'located'
-      ).length;
-      const ppHasItems = personalPropertySummary && (personalPropertySummary.totalItems || 0) > 0;
-      useBlueprintStore.getState().updateAssetInventory({
-        totalAssets: adjustedSummary.totalAssets || 0,
-        totalLiabilities: summary?.totalLiabilities || 0,
-        itemCount: items.length + (personalPropertySummary?.totalItems || 0),
-        assetsByCategory,
-        liabilitiesByCategory,
-        divisionStatus,
-        documentsGathered: docsGathered,
-        documentsTotal: checklistItems?.length || 0,
-        personalProperty: ppHasItems
-          ? {
-              totalEstimatedValue: personalPropertySummary.totalValue || 0,
-              itemCount: personalPropertySummary.totalItems || 0,
-              roomCount: personalPropertyRooms?.length || 0,
-            }
-          : null,
+      const payload = buildAssetInventoryPayload({
+        items,
+        summary,
+        categoryTotals,
+        itemsBySection,
+        adjustedSummary,
+        checklistItems,
+        personalPropertySummary,
+        personalPropertyRooms,
+        ALL_SECTIONS,
+        LIABILITY_KEYS,
       });
+      useBlueprintStore.getState().updateAssetInventory(payload);
     }, 500);
     return () => clearTimeout(timer);
   }, [

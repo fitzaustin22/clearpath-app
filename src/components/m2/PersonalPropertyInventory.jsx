@@ -3,6 +3,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { useM2Store } from '@/src/stores/m2Store';
+import useBlueprintStore from '@/src/stores/blueprintStore';
+import {
+  ALL_SECTIONS,
+  LIABILITY_KEYS,
+  computeCategoryTotals,
+} from '@/src/lib/m2Sections';
+import { buildAssetInventoryPayload } from '@/src/lib/blueprintM2Payload';
 import {
   BarChart,
   Bar,
@@ -98,6 +105,9 @@ function useViewportWidth() {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function PersonalPropertyInventory() {
   const ppi = useM2Store((s) => s.personalPropertyInventory);
+  const meiItems = useM2Store((s) => s.maritalEstateInventory.items);
+  const meiSummary = useM2Store((s) => s.maritalEstateInventory.summary);
+  const checklistItems = useM2Store((s) => s.documentChecklist.items);
   const initPersonalProperty = useM2Store((s) => s.initPersonalProperty);
   const addRoom = useM2Store((s) => s.addRoom);
   const removeRoom = useM2Store((s) => s.removeRoom);
@@ -148,6 +158,74 @@ export default function PersonalPropertyInventory() {
       setFocusItemId(null);
     }
   }, [focusItemId]);
+
+  // ── Blueprint §3 sync (debounced 500ms) ────────────────────────────────────
+  // Mirror of MEI's sync so §3 stays fresh even when only PP is mounted.
+  useEffect(() => {
+    if (meiItems.length === 0 && (summary?.totalItems || 0) === 0) return;
+    const timer = setTimeout(() => {
+      const itemsBySection = {};
+      for (const section of ALL_SECTIONS) itemsBySection[section.key] = [];
+      for (const item of meiItems) {
+        if (itemsBySection[item.category]) itemsBySection[item.category].push(item);
+      }
+
+      const categoryTotals = computeCategoryTotals(meiItems);
+      const pp = summary || {};
+      const ppTotal = Number(pp.totalValue) || 0;
+      const ppClient = Number(pp.clientValue) || 0;
+      const ppSpouse = Number(pp.spouseValue) || 0;
+      const ppUnallocated =
+        (Number(pp.disputedValue) || 0) + (Number(pp.undecidedValue) || 0);
+      categoryTotals['personalProperty'] = {
+        total: ppTotal,
+        client: ppClient,
+        spouse: ppSpouse,
+        unallocated: ppUnallocated,
+      };
+
+      const s = meiSummary || {};
+      const totalAssets = (s.totalAssets || 0) + ppTotal;
+      const clientAssets = (s.clientAssets || 0) + ppClient;
+      const spouseAssets = (s.spouseAssets || 0) + ppSpouse;
+      const unallocatedAssets = (s.unallocatedAssets || 0) + ppUnallocated;
+      const clientNetEstate = clientAssets - (s.clientLiabilities || 0);
+      const spouseNetEstate = spouseAssets - (s.spouseLiabilities || 0);
+      const netMaritalEstate = totalAssets - (s.totalLiabilities || 0);
+      const allocatedTotal = clientNetEstate + spouseNetEstate;
+      const clientPercentage =
+        allocatedTotal !== 0 ? (clientNetEstate / allocatedTotal) * 100 : 0;
+      const spousePercentage =
+        allocatedTotal !== 0 ? (spouseNetEstate / allocatedTotal) * 100 : 0;
+      const adjustedSummary = {
+        ...s,
+        totalAssets,
+        clientAssets,
+        spouseAssets,
+        unallocatedAssets,
+        clientNetEstate,
+        spouseNetEstate,
+        netMaritalEstate,
+        clientPercentage,
+        spousePercentage,
+      };
+
+      const payload = buildAssetInventoryPayload({
+        items: meiItems,
+        summary: meiSummary,
+        categoryTotals,
+        itemsBySection,
+        adjustedSummary,
+        checklistItems,
+        personalPropertySummary: summary,
+        personalPropertyRooms: rooms,
+        ALL_SECTIONS,
+        LIABILITY_KEYS,
+      });
+      useBlueprintStore.getState().updateAssetInventory(payload);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [meiItems, meiSummary, summary, rooms, checklistItems]);
 
   // ─── Handlers ───────────────────────────────────────────────────────────────
   const handleAddRoom = useCallback(() => {
