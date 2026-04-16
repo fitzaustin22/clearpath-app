@@ -135,12 +135,14 @@ export default function S6RetirementDivision({ data, status }) {
             onClick={() => setShowComparison((v) => !v)}
             style={toggleStyle}
             className="clearpath-blueprint-interactive"
+            aria-expanded={showComparison}
+            aria-controls="s6-traditional-method-comparison"
           >
             {showComparison ? 'Hide comparison ▴' : 'Show comparison ▾'}
           </button>
         </div>
         {showComparison && (
-          <div style={{ marginTop: 12 }}>
+          <div id="s6-traditional-method-comparison" style={{ marginTop: 12 }}>
             <Row
               label="Traditional Tax Discount"
               value={`${traditionalPercent} (${currency(data.traditionalDiscountDollars)})`}

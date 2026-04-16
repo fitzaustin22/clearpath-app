@@ -140,12 +140,14 @@ export default function S4TaxAnalysis({ data, status }) {
               onClick={() => setShowComparison((v) => !v)}
               style={toggleStyle}
               className="clearpath-blueprint-interactive"
+              aria-expanded={showComparison}
+              aria-controls="s4-filing-status-comparison"
             >
               {showComparison ? 'Hide comparison ▴' : 'Show comparison ▾'}
             </button>
           </div>
           {showComparison && (
-            <div style={{ marginTop: 12 }}>
+            <div id="s4-filing-status-comparison" style={{ marginTop: 12 }}>
               {ranked.map(([key, scenario], idx) => {
                 const isBest = idx === 0;
                 const delta = scenario.netTax - bestTax;
