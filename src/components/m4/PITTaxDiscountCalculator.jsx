@@ -908,7 +908,9 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
         <Panel2MathVerification results={results} />
         {inputs.showPropertyDivision && <Panel3PropertyDivision propertyDivision={propertyDivision} />}
         <Panel4ReferenceTable referenceTable={referenceTable} inputs={inputs} />
-        {/* PANEL-5 */}
+        {inputs.planType === 'pension' && (
+          <Panel5PensionScenario pensionScenario={pensionScenario} results={results} />
+        )}
       </div>
 
       {/* Print button + disclaimer + print stylesheet — filled in Task 10 */}
@@ -1244,6 +1246,57 @@ function Panel4ReferenceTable({ referenceTable, inputs }) {
           </tbody>
         </table>
       </div>
+    </CollapsiblePanel>
+  );
+}
+
+// ─── Panel 5 — Pension Scenario Method ────────────────────────────────────────
+function Panel5PensionScenario({ pensionScenario, results }) {
+  if (!pensionScenario || !results) return null;
+
+  const singlePointTD = results.tdPercent;
+  const diff          = pensionScenario.scenarioTDPercent - singlePointTD;
+
+  return (
+    <CollapsiblePanel title="Pension Scenario Method">
+      <p style={{ fontFamily: SOURCE, fontSize: 14, color: NAVY, lineHeight: 1.55, margin: '0 0 14px' }}>
+        Pensions pay out over many years. The Scenario Method calculates a weighted average across each payment year — more precise than a single-point estimate.
+      </p>
+      <div style={{ overflowX: 'auto', border: '1px solid #E5E7EB', borderRadius: 6 }}>
+        <table style={{ width: '100%', minWidth: 520, borderCollapse: 'collapse', fontFamily: SOURCE, fontSize: 13, color: NAVY }}>
+          <thead>
+            <tr style={{ backgroundColor: NAVY, color: PARCHMENT }}>
+              <th style={{ padding: '8px 10px', textAlign: 'left' }}>Year</th>
+              <th style={{ padding: '8px 10px', textAlign: 'left' }}>Age</th>
+              <th style={{ padding: '8px 10px', textAlign: 'right' }}>n</th>
+              <th style={{ padding: '8px 10px', textAlign: 'right' }}>TD%</th>
+              <th style={{ padding: '8px 10px', textAlign: 'right' }}>Allocation</th>
+              <th style={{ padding: '8px 10px', textAlign: 'right' }}>Weighted TD%</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pensionScenario.yearRows.map((row, idx) => (
+              <tr key={row.yearNum} style={{ backgroundColor: idx % 2 === 0 ? WHITE : '#FAFAFA' }}>
+                <td style={{ padding: '6px 10px', borderTop: '1px solid #E5E7EB' }}>{row.yearNum}</td>
+                <td style={{ padding: '6px 10px', borderTop: '1px solid #E5E7EB' }}>{row.age}</td>
+                <td style={{ padding: '6px 10px', borderTop: '1px solid #E5E7EB', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{row.n}</td>
+                <td style={{ padding: '6px 10px', borderTop: '1px solid #E5E7EB', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtPercent(row.tdPercent, 2)}</td>
+                <td style={{ padding: '6px 10px', borderTop: '1px solid #E5E7EB', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtPercent(row.allocation, 2)}</td>
+                <td style={{ padding: '6px 10px', borderTop: '1px solid #E5E7EB', textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{fmtPercent(row.weightedTD, 3)}</td>
+              </tr>
+            ))}
+            <tr style={{ backgroundColor: PARCHMENT }}>
+              <td colSpan={5} style={{ padding: '10px', borderTop: `2px solid ${NAVY}`, fontWeight: 700 }}>
+                Scenario TD%: <span style={{ color: GOLD }}>{fmtPercent(pensionScenario.scenarioTDPercent, 2)}</span> &nbsp;·&nbsp; TD$: <span style={{ color: GOLD }}>{fmtCurrency(pensionScenario.scenarioTDDollars)}</span>
+              </td>
+              <td style={{ borderTop: `2px solid ${NAVY}` }} />
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p style={{ fontFamily: SOURCE, fontSize: 13, color: MUTED, margin: '12px 0 0' }}>
+        Scenario Method TD: <strong style={{ color: NAVY }}>{fmtPercent(pensionScenario.scenarioTDPercent, 2)}</strong> vs. Single-Point PIT TD: <strong style={{ color: NAVY }}>{fmtPercent(singlePointTD, 2)}</strong>. Difference: <strong style={{ color: NAVY }}>{fmtPercent(diff, 2)}</strong>.
+      </p>
     </CollapsiblePanel>
   );
 }
