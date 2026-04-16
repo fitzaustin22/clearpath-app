@@ -196,6 +196,10 @@ export default function CostBasisEntryPanel() {
     allEntries.forEach((entry) => {
       // Look up original item to get titleholder
       const original = items.find((i) => i.id === entry.assetId);
+      if (!original) {
+        // Orphaned entry — item removed from m2Store after basis was entered (harmless per spec)
+        console.warn(`CostBasisEntryPanel: asset ${entry.assetId} not found in inventory, defaulting to undecided`);
+      }
       const holder = original?.titleholder;
       let bucket;
       if (holder === 'self') bucket = 'client';
@@ -278,6 +282,7 @@ export default function CostBasisEntryPanel() {
                       type="text"
                       inputMode="numeric"
                       placeholder="$0"
+                      aria-label={`Cost basis for ${item.description || item.category}`}
                       value={basisValues[item.id] || ''}
                       onChange={(e) => handleBasisChange(item.id, e.target.value)}
                       onBlur={() => {
