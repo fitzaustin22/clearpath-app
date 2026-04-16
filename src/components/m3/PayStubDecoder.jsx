@@ -586,7 +586,7 @@ export default function PayStubDecoder({ userTier = 'essentials' }) {
     const r = payStubDecoder.results;
     useBlueprintStore.getState().updateIncomeAnalysis({
       grossMonthlyIncome: r.grossMonthlyIncome || 0,
-      netMonthlyIncome: r.netMonthlyIncome || 0,
+      netMonthlyIncome: r.takeHomePay || 0,
       payFrequency: payStubDecoder.inputs?.payFrequency || null,
       grossPerPaycheck: payStubDecoder.inputs?.grossPayPerCheck || 0,
       deductions: r.deductionBreakdown || [],

@@ -104,7 +104,7 @@ export default function S2IncomeAnalysis({ data, status }) {
   const hasNet = typeof data.netMonthlyIncome === 'number';
   const paychecks = PAYCHECKS_PER_YEAR[data.payFrequency] || null;
   const deductionTotal = Array.isArray(data.deductions)
-    ? data.deductions.reduce((sum, d) => sum + (d.amount || 0), 0)
+    ? data.deductions.reduce((sum, d) => sum + (d.monthly || 0), 0)
     : 0;
   const totalMonthlyIncome = (data.netMonthlyIncome || 0) + (data.otherIncome || 0);
 
@@ -150,7 +150,7 @@ export default function S2IncomeAnalysis({ data, status }) {
           {showDeductions && (
             <div style={{ marginTop: 12 }}>
               {data.deductions.map((d, i) => (
-                <Row key={i} label={d.name} value={currency2(d.amount)} />
+                <Row key={i} label={d.label} value={currency2(d.monthly)} />
               ))}
             </div>
           )}
