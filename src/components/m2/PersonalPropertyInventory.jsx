@@ -102,6 +102,102 @@ function useViewportWidth() {
   return width;
 }
 
+// ─── Inline ConfirmModal (replaces window.confirm; D7) ────────────────────────
+// Local to this component for now. Extract to src/components/shared/ if more
+// consumers need it.
+function ConfirmModal({ message, confirmLabel = 'Remove', onConfirm, onCancel }) {
+  const messageId = 'pp-confirm-msg';
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === 'Escape') onCancel();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onCancel]);
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby={messageId}
+      onClick={onCancel}
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: 'rgba(27, 42, 74, 0.55)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        fontFamily: SOURCE,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: PARCHMENT,
+          border: `2px solid ${NAVY}`,
+          borderRadius: 6,
+          padding: '24px 28px',
+          minWidth: 300,
+          maxWidth: 440,
+          boxShadow: '0 10px 30px rgba(0,0,0,0.25)',
+        }}
+      >
+        <p
+          id={messageId}
+          style={{
+            margin: 0,
+            marginBottom: 20,
+            color: NAVY,
+            fontSize: 16,
+            lineHeight: 1.5,
+          }}
+        >
+          {message}
+        </p>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+          <button
+            type="button"
+            onClick={onCancel}
+            style={{
+              padding: '8px 16px',
+              fontFamily: SOURCE,
+              fontSize: 14,
+              color: NAVY,
+              background: 'transparent',
+              border: `1px solid ${NAVY}`,
+              borderRadius: 4,
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            autoFocus
+            onClick={onConfirm}
+            style={{
+              padding: '8px 16px',
+              fontFamily: SOURCE,
+              fontSize: 14,
+              color: WHITE,
+              background: NAVY,
+              border: `1px solid ${NAVY}`,
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 600,
+            }}
+          >
+            {confirmLabel}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function PersonalPropertyInventory() {
   const ppi = useM2Store((s) => s.personalPropertyInventory);
@@ -138,6 +234,9 @@ export default function PersonalPropertyInventory() {
   const [showTooltip, setShowTooltip] = useState(false);
   const [focusItemId, setFocusItemId] = useState(null);
   const descriptionRefs = useRef({});
+  // Confirmation modal state — replaces native window.confirm (D7)
+  const [confirmDialog, setConfirmDialog] = useState(null);
+  const closeConfirm = useCallback(() => setConfirmDialog(null), []);
 
   // Initialize default rooms on mount
   useEffect(() => {
@@ -248,9 +347,14 @@ export default function PersonalPropertyInventory() {
     (idx) => {
       const room = rooms[idx];
       if (!room) return;
-      if (window.confirm(`Remove "${room.name}" and all its items?`)) {
-        removeRoom(idx);
-      }
+      setConfirmDialog({
+        message: `Remove "${room.name}" and all its items?`,
+        confirmLabel: 'Remove',
+        onConfirm: () => {
+          removeRoom(idx);
+          setConfirmDialog(null);
+        },
+      });
     },
     [rooms, removeRoom]
   );
@@ -275,9 +379,14 @@ export default function PersonalPropertyInventory() {
   const handleRemoveItem = useCallback(
     (item, isHighValue) => {
       const label = item.description ? item.description : 'this item';
-      if (window.confirm(`Remove ${label}?`)) {
-        removePersonalPropertyItem(item.id, isHighValue);
-      }
+      setConfirmDialog({
+        message: `Remove ${label}?`,
+        confirmLabel: 'Remove',
+        onConfirm: () => {
+          removePersonalPropertyItem(item.id, isHighValue);
+          setConfirmDialog(null);
+        },
+      });
     },
     [removePersonalPropertyItem]
   );
@@ -299,14 +408,19 @@ export default function PersonalPropertyInventory() {
   const handleReset = useCallback(() => {
     const msg =
       'This will clear all entries in the Personal Property Inventory. You will start with a blank inventory. Are you sure?';
-    if (window.confirm(msg)) {
-      resetPersonalPropertyInventory();
-      initPersonalProperty();
-      setExpandedItems({});
-      setExpandedCategories({});
-      setReminderShown({});
-      setSelectedRoomIndex(0);
-    }
+    setConfirmDialog({
+      message: msg,
+      confirmLabel: 'Start over',
+      onConfirm: () => {
+        resetPersonalPropertyInventory();
+        initPersonalProperty();
+        setExpandedItems({});
+        setExpandedCategories({});
+        setReminderShown({});
+        setSelectedRoomIndex(0);
+        setConfirmDialog(null);
+      },
+    });
   }, [resetPersonalPropertyInventory, initPersonalProperty]);
 
   const handleValueKeyDown = useCallback(
@@ -2000,6 +2114,15 @@ export default function PersonalPropertyInventory() {
         advice. For guidance specific to your situation, consult a Certified
         Divorce Financial Analyst® or attorney.
       </p>
+
+      {confirmDialog && (
+        <ConfirmModal
+          message={confirmDialog.message}
+          confirmLabel={confirmDialog.confirmLabel}
+          onConfirm={confirmDialog.onConfirm}
+          onCancel={closeConfirm}
+        />
+      )}
     </div>
   );
 }
