@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 // TODO: For authenticated users (Essentials+), swap storage engine from
-// sessionStorage to a Supabase-backed custom storage adapter so state
+// localStorage to a Supabase-backed custom storage adapter so state
 // survives across sessions and devices. The store shape stays identical;
 // only the `storage` option in the persist config changes. Gate the swap
 // on Clerk's `useUser().isSignedIn` (or server-side session) before
@@ -81,12 +81,12 @@ export const useM1Store = create(
     }),
     {
       name: 'm1-store',
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         readinessAssessment: state.readinessAssessment,
         budgetGap: state.budgetGap,
       }),
-      // Guard against stale/partial sessionStorage payloads that are missing
+      // Guard against stale/partial localStorage payloads that are missing
       // keys added after the first write (e.g. `answers`). The default shallow
       // merge would replace `readinessAssessment` wholesale and leave
       // `answers` undefined, crashing any `.map`/`.find` call on mount.

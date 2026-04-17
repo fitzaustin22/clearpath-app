@@ -3,7 +3,7 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { useM1Store } from './m1Store';
 import { useM2Store } from './m2Store';
 
-// TODO: Swap sessionStorage for Supabase persistence for authenticated Essentials+ users
+// TODO: Swap localStorage for Supabase persistence for authenticated Essentials+ users
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -1030,7 +1030,7 @@ export const useM3Store = create(
     }),
     {
       name: 'clearpath-m3-store',
-      storage: createJSONStorage(() => sessionStorage)
+      storage: createJSONStorage(() => localStorage)
     }
   )
 );

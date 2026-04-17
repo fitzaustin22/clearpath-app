@@ -1,6 +1,6 @@
 // src/stores/blueprintStore.js
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 const useBlueprintStore = create(
   persist(
@@ -263,8 +263,13 @@ const useBlueprintStore = create(
     }),
     {
       name: 'clearpath-blueprint',
-      // Persists to sessionStorage for anonymous users.
-      // Authenticated users will sync to Supabase in a future iteration.
+      // Persists to localStorage so the blueprint survives across tabs and
+      // browser sessions. All M1–M4 stores use the same engine; mismatched
+      // storage previously let PP retrofit clobber §3 when m2Store (then
+      // sessionStorage) emptied while blueprint (localStorage) retained
+      // stale MEI categories. Authenticated users will sync to Supabase
+      // in a future iteration on top of this local cache.
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );

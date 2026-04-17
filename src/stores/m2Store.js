@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 // TODO: For authenticated users (Essentials+), swap storage engine from
-// sessionStorage to a Supabase-backed custom storage adapter so state
+// localStorage to a Supabase-backed custom storage adapter so state
 // survives across sessions and devices. The store shape stays identical;
 // only the `storage` option in the persist config changes.
 
@@ -824,7 +824,7 @@ export const useM2Store = create(
     }),
     {
       name: 'm2-store',
-      storage: createJSONStorage(() => sessionStorage),
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
         documentChecklist: state.documentChecklist,
         maritalEstateInventory: state.maritalEstateInventory,

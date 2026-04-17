@@ -163,6 +163,17 @@ export default function PersonalPropertyInventory() {
   // Mirror of MEI's sync so §3 stays fresh even when only PP is mounted.
   useEffect(() => {
     if (meiItems.length === 0 && (summary?.totalItems || 0) === 0) return;
+    // Defensive: if MEI items haven't hydrated yet but blueprint §3 already
+    // holds non-PP asset categories (i.e. MEI wrote them on a prior run),
+    // skip. Otherwise we would overwrite §3 with a PP-only payload and
+    // drop MEI's assets. This is the D6 failure mode.
+    if (meiItems.length === 0) {
+      const currentS3 = useBlueprintStore.getState().sections.s3?.data;
+      const hasExistingNonPpCategories = Object.keys(
+        currentS3?.assetsByCategory || {}
+      ).some((k) => k !== 'personalProperty');
+      if (hasExistingNonPpCategories) return;
+    }
     const timer = setTimeout(() => {
       const itemsBySection = {};
       for (const section of ALL_SECTIONS) itemsBySection[section.key] = [];

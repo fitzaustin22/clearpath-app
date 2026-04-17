@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
 const initialFilingStatusOptimizer = {
   inputs: {
@@ -94,7 +94,10 @@ export const useM4Store = create(
           },
         }),
     }),
-    { name: 'clearpath-m4' }
+    {
+      name: 'clearpath-m4',
+      storage: createJSONStorage(() => localStorage),
+    }
   )
 );
 
