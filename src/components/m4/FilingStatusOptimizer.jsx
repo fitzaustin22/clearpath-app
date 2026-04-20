@@ -463,9 +463,36 @@ export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
 
   const [prePopBanner, setPrePopBanner] = useState(null);
 
+  // Wait for Zustand persist to finish hydrating both stores before pre-pop.
+  // Without this, the effect below can run with default (unhydrated) state and
+  // skip the pre-population, or worse, race with blueprintStore's rehydration.
+  const [storesHydrated, setStoresHydrated] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return (
+      (useM3Store.persist?.hasHydrated?.() ?? true) &&
+      (useM4Store.persist?.hasHydrated?.() ?? true)
+    );
+  });
+  useEffect(() => {
+    if (storesHydrated) return;
+    const check = () => {
+      const m3Ok = useM3Store.persist?.hasHydrated?.() ?? true;
+      const m4Ok = useM4Store.persist?.hasHydrated?.() ?? true;
+      if (m3Ok && m4Ok) setStoresHydrated(true);
+    };
+    check();
+    const unsub3 = useM3Store.persist?.onFinishHydration?.(check);
+    const unsub4 = useM4Store.persist?.onFinishHydration?.(check);
+    return () => {
+      unsub3?.();
+      unsub4?.();
+    };
+  }, [storesHydrated]);
+
   // Pre-populate from M3 on mount (navigator/signature only)
   useEffect(() => {
     if (lockedOut) return;
+    if (!storesHydrated) return;
     if (!payStubResults?.grossMonthlyIncome) return;
     const annual = Math.round(payStubResults.grossMonthlyIncome * 12);
     if (annual <= 0) return;
@@ -483,6 +510,7 @@ export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
     }
   }, [
     lockedOut,
+    storesHydrated,
     payStubResults,
     filingStatusOptimizer.prePopulated.fromM3,
     filingStatusOptimizer.inputs.grossAnnualIncome,

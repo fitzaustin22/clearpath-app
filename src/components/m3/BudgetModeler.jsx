@@ -259,36 +259,86 @@ export default function BudgetModeler({ userTier = 'essentials' }) {
   const { current, projected, m1References, m2LiabilityRefs, prePopulated, results } =
     budgetModeler;
 
-  // ─── Blueprint §7 sync (on completion) ────────────────────────────────────
+  // Wait for Zustand persist to rehydrate both m3 and blueprint stores before
+  // running the retrofit. Otherwise blueprint's rehydration would merge over
+  // the write we just made, losing §7 data we just sent.
+  const [hydrated, setHydrated] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return (
+      (useM3Store.persist?.hasHydrated?.() ?? true) &&
+      (useBlueprintStore.persist?.hasHydrated?.() ?? true)
+    );
+  });
   useEffect(() => {
-    if (!budgetModeler.completed || !budgetModeler.results) return;
-    const r = budgetModeler.results;
-    const categories = (r.categoryDeltas || []).map((d) => ({
-      name: CATEGORY_LABELS?.[d.category] || d.category,
-      current: d.current || 0,
-      projected: d.projected || 0,
-      change: d.delta || 0,
-    }));
-    const monthlyIncome = r.incomeComparison?.monthlyIncome || 0;
-    const monthlyGap =
-      r.incomeComparison?.projectedSurplusShortfall != null
-        ? r.incomeComparison.projectedSurplusShortfall
-        : monthlyIncome - (r.projectedTotal || 0);
-    useBlueprintStore.getState().updateExpenseAnalysis({
-      currentTotal: r.currentTotal || 0,
-      projectedTotal: r.projectedTotal || 0,
-      categories,
-      monthlyIncome,
-      monthlyGap,
-      hasProjected: (r.projectedTotal || 0) > 0,
-    });
-  }, [budgetModeler.completed, budgetModeler.results]);
+    if (hydrated) return;
+    const check = () => {
+      const m3Ok = useM3Store.persist?.hasHydrated?.() ?? true;
+      const bpOk = useBlueprintStore.persist?.hasHydrated?.() ?? true;
+      if (m3Ok && bpOk) setHydrated(true);
+    };
+    check();
+    const unsub3 = useM3Store.persist?.onFinishHydration?.(check);
+    const unsubBp = useBlueprintStore.persist?.onFinishHydration?.(check);
+    return () => {
+      unsub3?.();
+      unsubBp?.();
+    };
+  }, [hydrated]);
 
-  // Client-side hydration guard (zustand persist)
-  const [hydrated, setHydrated] = useState(false);
+  // ─── Blueprint §7 sync ────────────────────────────────────────────────────
+  // Fires on completion OR whenever current expenses exist (partial write).
+  // Partial state lets §7 show "current-only" data before the user runs
+  // projections, matching the spec's 'partial' status contract.
   useEffect(() => {
-    setHydrated(true);
-  }, []);
+    if (!hydrated) return;
+    const r = budgetModeler.results;
+
+    if (budgetModeler.completed && r) {
+      const categories = (r.categoryDeltas || []).map((d) => ({
+        name: CATEGORY_LABELS?.[d.category] || d.category,
+        current: d.current || 0,
+        projected: d.projected || 0,
+        change: d.delta || 0,
+      }));
+      const monthlyIncome = r.incomeComparison?.monthlyIncome || 0;
+      const monthlyGap =
+        r.incomeComparison?.projectedSurplusShortfall != null
+          ? r.incomeComparison.projectedSurplusShortfall
+          : monthlyIncome - (r.projectedTotal || 0);
+      useBlueprintStore.getState().updateExpenseAnalysis({
+        currentTotal: r.currentTotal || 0,
+        projectedTotal: r.projectedTotal || 0,
+        categories,
+        monthlyIncome,
+        monthlyGap,
+        hasProjected: (r.projectedTotal || 0) > 0,
+      });
+      return;
+    }
+
+    // No completed results yet — compute a partial snapshot directly from
+    // the `current` column so §7 isn't empty while the user is still editing.
+    const { current: cur } = budgetModeler;
+    if (!cur) return;
+    const sum = (obj) =>
+      Object.values(obj || {}).reduce((s, v) => s + (Number(v) || 0), 0);
+    const categoriesPartial = BUDGET_CATEGORIES.map((cat) => ({
+      name: CATEGORY_LABELS?.[cat] || cat,
+      current: sum(cur[cat]),
+      projected: 0,
+      change: 0,
+    }));
+    const currentTotal = categoriesPartial.reduce((s, c) => s + c.current, 0);
+    if (currentTotal <= 0) return;
+    useBlueprintStore.getState().updateExpenseAnalysis({
+      currentTotal,
+      projectedTotal: 0,
+      categories: categoriesPartial.filter((c) => c.current > 0),
+      monthlyIncome: 0,
+      monthlyGap: 0,
+      hasProjected: false,
+    });
+  }, [hydrated, budgetModeler.completed, budgetModeler.results, budgetModeler.current]);
 
   // ─── Pre-population effect (runs once per trigger) ──────────────────────────
   useEffect(() => {
