@@ -2188,7 +2188,7 @@ export default function AffidavitBuilder({ userTier = 'essentials' }) {
                   lineHeight: 1.55,
                 }}
               >
-                Get AI-guided analysis of your financial data with ClearPath Navigator.
+                Get AI-guided analysis of your financial data with Full Access.
               </p>
               <Link
                 href="/pricing"
@@ -2204,51 +2204,7 @@ export default function AffidavitBuilder({ userTier = 'essentials' }) {
                   textDecoration: 'none',
                 }}
               >
-                Upgrade to ClearPath Navigator
-              </Link>
-            </>
-          )}
-          {userTier === 'navigator' && (
-            <>
-              <h3
-                style={{
-                  fontFamily: PLAYFAIR,
-                  fontWeight: 700,
-                  fontSize: 20,
-                  color: PARCHMENT,
-                  margin: '0 0 8px',
-                }}
-              >
-                Ready for professional analysis?
-              </h3>
-              <p
-                style={{
-                  fontFamily: SOURCE,
-                  fontSize: 14,
-                  color: PARCHMENT,
-                  opacity: 0.85,
-                  margin: '0 0 18px',
-                  lineHeight: 1.55,
-                }}
-              >
-                A ClearPath Signature engagement turns this data into a complete
-                financial strategy.
-              </p>
-              <Link
-                href="/contact"
-                style={{
-                  display: 'inline-block',
-                  backgroundColor: GOLD,
-                  color: NAVY,
-                  fontFamily: SOURCE,
-                  fontWeight: 700,
-                  fontSize: 15,
-                  padding: '12px 28px',
-                  borderRadius: 8,
-                  textDecoration: 'none',
-                }}
-              >
-                Schedule Clarity Call
+                Unlock Full Access
               </Link>
             </>
           )}

@@ -4,7 +4,7 @@ import { useState } from "react";
 
 const TIERS = [
   { name: "ClearPath Essentials", price: "$97", billing: "one-time", priceId: process.env.NEXT_PUBLIC_STRIPE_ESSENTIALS_PRICE_ID!, mode: "payment" as const, features: ["Full Module 1 ungated", "Module 2 asset worksheets", "Module 3 expense worksheets", "Document checklist", "Attorney meeting prep guide"] },
-  { name: "ClearPath Navigator", price: "$247", billing: "every 3 months", priceId: process.env.NEXT_PUBLIC_STRIPE_NAVIGATOR_PRICE_ID!, mode: "subscription" as const, features: ["Everything in Essentials", "Full curriculum Modules 1-6", "Proprietary AI knowledge base", "Unlimited AI sessions 24/7", "Advanced financial tools"], featured: true },
+  { name: "ClearPath Full Access", price: "$247", billing: "every 3 months", priceId: process.env.NEXT_PUBLIC_STRIPE_NAVIGATOR_PRICE_ID!, mode: "subscription" as const, features: ["Everything in Essentials", "Full curriculum Modules 1-6", "Proprietary AI knowledge base", "Unlimited AI sessions 24/7", "Advanced financial tools"], featured: true },
 ]
 
 export default function UpgradePage() {

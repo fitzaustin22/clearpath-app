@@ -948,7 +948,7 @@ export default function DocumentationChecklist({ userTier = 'essentials' }) {
                                 color: `${NAVY}80`,
                               }}
                             >
-                              ClearPath Navigator AI — Coming soon
+                              Full Access AI — Coming soon
                             </span>
                           </>
                         ) : (
@@ -962,7 +962,7 @@ export default function DocumentationChecklist({ userTier = 'essentials' }) {
                                 lineHeight: 1.6,
                               }}
                             >
-                              Want to understand what these documents reveal? ClearPath Navigator gives you AI-guided education on every aspect of your financial picture.
+                              Want to understand what these documents reveal? Full Access gives you AI-guided education on every aspect of your financial picture.
                             </p>
                             <Link
                               href="/upgrade"
@@ -974,7 +974,7 @@ export default function DocumentationChecklist({ userTier = 'essentials' }) {
                                 textDecoration: 'none',
                               }}
                             >
-                              Upgrade to Navigator →
+                              Unlock with Full Access →
                             </Link>
                           </>
                         )}

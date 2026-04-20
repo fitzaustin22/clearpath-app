@@ -6,7 +6,7 @@ export const TIER_LEVEL: Record<UserTier, number> = {
   free: 0,
   essentials: 1,
   navigator: 2,
-  signature: 3,
+  signature: 2,
 }
 
 export function hasAccess(userTier: UserTier, requiredTier: UserTier): boolean {
@@ -51,7 +51,7 @@ export const PLANS: Plan[] = [
     features: [
       'Everything in Essentials',
       'Modules 1–6',
-      'ClearPath Navigator AI assistant',
+      'ClearPath Full Access AI assistant',
       'Advanced calculators & tools',
       'Settlement Offer Evaluator',
       'Priority support',

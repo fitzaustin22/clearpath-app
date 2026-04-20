@@ -29,19 +29,6 @@ const MUTED     = '#6B7280';
 const SOURCE    = '"Source Sans Pro", -apple-system, system-ui, sans-serif';
 const PLAYFAIR  = '"Playfair Display", Georgia, serif';
 
-// ─── Sample data for Navigator tier (read-only) ───────────────────────────────
-const SAMPLE_DATA_PIT = {
-  planBalance: 500000,
-  planType: '401k',
-  currentAge: 45,
-  withdrawalStartAge: 65,
-  withdrawalEndAge: 85,
-  effectiveTaxRate: 25,
-  discountRate: 5.0,
-  totalCashAssets: 500000,
-  showPropertyDivision: true,
-};
-
 // ─── Formatters ───────────────────────────────────────────────────────────────
 function fmtCurrency(n) {
   if (n == null || isNaN(n)) return '$0';
@@ -562,8 +549,6 @@ function CollapsiblePanel({ title, defaultOpen = false, forceOpen = false, child
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
-  const isReadOnly   = userTier === 'navigator';
-  const isFullAccess = userTier === 'signature';
   const lockedOut    = userTier !== 'navigator' && userTier !== 'signature';
 
   // ─── Store hooks ────────────────────────────────────────────────────────────
@@ -576,8 +561,8 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
   const retirementItems    = useMemo(() => allM2Items.filter((i) => i.category === 'retirement'), [allM2Items]);
   const updateRetirementDivision = useBlueprintStore((s) => s.updateRetirementDivision);
 
-  const inputs = isReadOnly ? SAMPLE_DATA_PIT : pitTaxDiscount.inputs;
-  const disabled = isReadOnly;
+  const inputs = pitTaxDiscount.inputs;
+  const disabled = false;
 
   // Pre-pop banners
   const [m2Banner, setM2Banner] = useState(null);     // { count, total } or null
@@ -588,7 +573,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
   const retirementCount = retirementItems.length;
 
   useEffect(() => {
-    if (!isFullAccess) return;
+    if (lockedOut) return;
     if (retirementTotal <= 0) return;
     const alreadyPrePopped = pitTaxDiscount.prePopulated.fromM2;
 
@@ -602,7 +587,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
       setM2Banner(null);
     }
   }, [
-    isFullAccess,
+    lockedOut,
     retirementTotal,
     retirementCount,
     pitTaxDiscount.prePopulated.fromM2,
@@ -613,7 +598,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
 
   // ─── Pre-population: M4 Tool 1 (Filing Status Optimizer) effective tax rate ─
   useEffect(() => {
-    if (!isFullAccess) return;
+    if (lockedOut) return;
     if (!filingStatusResults) return;
     const best = filingStatusResults.bestOption;
     const rate = best && filingStatusResults.scenarios[best]?.effectiveRate;
@@ -630,7 +615,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
       setTool1Banner(null);
     }
   }, [
-    isFullAccess,
+    lockedOut,
     filingStatusResults,
     pitTaxDiscount.prePopulated.fromTool1,
     pitTaxDiscount.inputs.effectiveTaxRate,
@@ -668,7 +653,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
 
   // ─── Persist results + sync to blueprint ────────────────────────────────────
   useEffect(() => {
-    if (isReadOnly) return;
+    if (lockedOut) return;
     if (!results) return;
 
     setPITResults(results);
@@ -684,7 +669,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
       effectiveTaxRate: inputs.effectiveTaxRate,
       discountRate: inputs.discountRate,
     });
-  }, [isReadOnly, results, inputs, setPITResults, updateRetirementDivision]);
+  }, [lockedOut, results, inputs, setPITResults, updateRetirementDivision]);
 
   // ─── Handlers ───────────────────────────────────────────────────────────────
   const updateInput = useCallback(
@@ -731,7 +716,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
           Point in Time Tax Discount Calculator
         </h1>
         <p style={{ fontSize: 16, color: `${NAVY}B3`, margin: '0 0 24px' }}>
-          This tool is available to Navigator and Signature tier members.
+          This tool is available to Full Access members.
         </p>
         <Link
           href="/pricing"
@@ -766,28 +751,6 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
         position: 'relative',
       }}
     >
-      {/* Sample Data badge for Navigator tier */}
-      {isReadOnly && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 20,
-            right: 20,
-            backgroundColor: GOLD,
-            color: NAVY,
-            fontFamily: SOURCE,
-            fontWeight: 700,
-            fontSize: 12,
-            padding: '4px 10px',
-            borderRadius: 999,
-            letterSpacing: 0.3,
-          }}
-          className="pit-no-print"
-        >
-          Sample Data
-        </div>
-      )}
-
       {/* Header */}
       <h1 style={{ fontFamily: PLAYFAIR, fontWeight: 700, fontSize: 28, margin: '0 0 8px' }}>
         Point in Time Tax Discount Calculator
@@ -805,24 +768,19 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
       </p>
 
       {/* Pre-population banners */}
-      {isFullAccess && m2Banner && m2Banner.count > 1 && (
+      {m2Banner && m2Banner.count > 1 && (
         <InfoBanner variant="gold">
           You listed {m2Banner.count} retirement accounts totaling {fmtCurrency(m2Banner.total)}. This calculator works with one plan at a time — enter the plan being divided below.
         </InfoBanner>
       )}
-      {isFullAccess && m2Banner && m2Banner.count === 1 && (
+      {m2Banner && m2Banner.count === 1 && (
         <InfoBanner variant="gold">
           Plan balance pre-filled from your Marital Estate Inventory ({fmtCurrency(m2Banner.total)}).
         </InfoBanner>
       )}
-      {isFullAccess && tool1Banner != null && (
+      {tool1Banner != null && (
         <InfoBanner variant="gold">
           Tax rate pre-filled from your Filing Status Optimizer results ({fmtPercent(tool1Banner, 2)}).
-        </InfoBanner>
-      )}
-      {isReadOnly && (
-        <InfoBanner variant="gold">
-          You are viewing a preview with sample data ($500,000 plan, age 45, 25% tax, 5% discount rate). Upgrade to Signature to run this tool with your own numbers.
         </InfoBanner>
       )}
 
@@ -934,8 +892,8 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
         )}
       </div>
 
-      {/* Print button (Signature tier only) */}
-      {isFullAccess && results && (
+      {/* Print button */}
+      {!lockedOut && results && (
         <div style={{ marginTop: 24, marginBottom: 8 }} className="pit-no-print">
           <button
             type="button"

@@ -17,12 +17,9 @@ const PLAYFAIR = '"Playfair Display", Georgia, serif';
 
 // ─── Tier helpers ────────────────────────────────────────────────────────────
 const LOCKED_TIERS = ['free', 'essentials'];
-const CONCEPTUAL_TIERS = ['navigator'];
-// 'signature' = full access
 
 function getTierState(userTier) {
   if (LOCKED_TIERS.includes(userTier)) return 'locked';
-  if (CONCEPTUAL_TIERS.includes(userTier)) return 'conceptual';
   return 'full';
 }
 
@@ -246,9 +243,7 @@ export default function M4ModulePage({ userTier = 'essentials' }) {
   function getToolBadge(toolId) {
     if (tierState === 'locked') return { label: '', variant: 'notstarted' };
 
-    if (tierState === 'conceptual') return { label: 'Preview', variant: 'preview' };
-
-    // Full (Signature)
+    // Full access
     switch (toolId) {
       case 'filing-status':
         return filingStatusCompletedAt
@@ -428,7 +423,7 @@ export default function M4ModulePage({ userTier = 'essentials' }) {
                 lineHeight: 1.5,
               }}
             >
-              Unlock with Navigator — full curriculum access for $247/3 months
+              Unlock with Full Access — full curriculum access for $247/3 months
               <div style={{ marginTop: 12 }}>
                 <Link
                   href="/upgrade"
@@ -444,44 +439,7 @@ export default function M4ModulePage({ userTier = 'essentials' }) {
                     textDecoration: 'none',
                   }}
                 >
-                  Upgrade to Navigator →
-                </Link>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {tierState === 'conceptual' && (
-          <section style={{ marginTop: 32 }}>
-            <div
-              style={{
-                backgroundColor: `${NAVY}08`,
-                border: `1px solid ${NAVY}18`,
-                borderRadius: 8,
-                padding: '16px 20px',
-                fontFamily: SOURCE,
-                fontSize: 14,
-                color: NAVY,
-                lineHeight: 1.5,
-              }}
-            >
-              Unlock interactive tools + attorney-ready PDF export
-              <div style={{ marginTop: 12 }}>
-                <Link
-                  href="/upgrade"
-                  style={{
-                    display: 'inline-block',
-                    backgroundColor: NAVY,
-                    color: WHITE,
-                    fontFamily: SOURCE,
-                    fontWeight: 700,
-                    fontSize: 14,
-                    padding: '10px 20px',
-                    borderRadius: 8,
-                    textDecoration: 'none',
-                  }}
-                >
-                  Upgrade to Signature →
+                  Unlock with Full Access →
                 </Link>
               </div>
             </div>

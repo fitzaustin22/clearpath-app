@@ -784,13 +784,13 @@ export default function MaritalEstateInventory({ userTier = 'essentials' }) {
                 lineHeight: 1.5,
               }}
             >
-              Want to increase your completeness score? ClearPath Navigator automatically
+              Want to increase your completeness score? Full Access automatically
               classifies your assets and helps you fill in the details.{' '}
               <a
                 href="/upgrade"
                 style={{ color: NAVY, fontWeight: 600, textDecoration: 'underline' }}
               >
-                Upgrade to Navigator →
+                Unlock with Full Access →
               </a>
             </p>
           )}
@@ -1666,13 +1666,13 @@ export default function MaritalEstateInventory({ userTier = 'essentials' }) {
                   lineHeight: 1.4,
                 }}
               >
-                Not sure if this is marital or separate property? ClearPath Navigator explains
+                Not sure if this is marital or separate property? Full Access explains
                 the rules and helps you classify each asset.{' '}
                 <a
                   href="/upgrade"
                   style={{ color: NAVY, fontWeight: 600, textDecoration: 'underline' }}
                 >
-                  Upgrade to Navigator →
+                  Unlock with Full Access →
                 </a>
               </p>
             )}

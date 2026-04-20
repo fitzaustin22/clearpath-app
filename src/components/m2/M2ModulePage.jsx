@@ -184,7 +184,7 @@ function TierIndicator({ userTier }) {
   if (userTier === 'essentials') {
     content = (
       <>
-        You have access to all three worksheets. Upgrade to Navigator for AI-guided
+        You have access to all three worksheets. Upgrade to Full Access for AI-guided
         classification and education.{' '}
         <a
           href="/pricing"
@@ -194,7 +194,7 @@ function TierIndicator({ userTier }) {
             fontWeight: 600,
           }}
         >
-          Learn about Navigator →
+          Learn about Full Access →
         </a>
       </>
     );

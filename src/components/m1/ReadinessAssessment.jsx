@@ -426,7 +426,7 @@ export default function ReadinessAssessment() {
                   textAlign: 'center',
                 }}
               >
-                You&rsquo;re well-positioned. ClearPath Navigator gives you
+                You&rsquo;re well-positioned. Full Access gives you
                 AI-guided access to the full curriculum &mdash; from budgeting
                 to settlement strategy.
               </p>
@@ -544,7 +544,7 @@ export default function ReadinessAssessment() {
                     marginBottom: 12,
                   }}
                 >
-                  Explore ClearPath Navigator
+                  Explore Full Access
                 </a>
                 <br />
                 <a
