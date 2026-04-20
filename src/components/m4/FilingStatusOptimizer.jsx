@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   BarChart,
@@ -116,16 +116,6 @@ const INELIGIBLE_REASONS = {
   hoh:    'Requires qualifying child and paying >50% of household costs',
 };
 
-const SAMPLE_DATA_FILING_STATUS = {
-  grossAnnualIncome: 150000,
-  spouseGrossAnnualIncome: 45000,
-  otherIncome: 0,
-  dependents: 2,
-  hasQualifyingChild: true,
-  paidMoreThanHalfHouseholdCosts: true,
-  separatedLastSixMonths: true,
-  divorceTimeline: 'notSure',
-};
 
 // ─── Calculation logic ────────────────────────────────────────────────────────
 function calculateProgressiveTax(taxableIncome, brackets) {
@@ -457,8 +447,6 @@ function SectionHeader({ letter, title }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
-  const isReadOnly = userTier === 'navigator';
-  const isFullAccess = userTier === 'signature';
   const lockedOut = userTier !== 'navigator' && userTier !== 'signature';
 
   const filingStatusOptimizer = useM4Store((s) => s.filingStatusOptimizer);
@@ -470,15 +458,14 @@ export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
 
   const updateTaxAnalysis = useBlueprintStore((s) => s.updateTaxAnalysis);
 
-  const inputs = isReadOnly ? SAMPLE_DATA_FILING_STATUS : filingStatusOptimizer.inputs;
+  const inputs = filingStatusOptimizer.inputs;
   const storedResults = filingStatusOptimizer.results;
 
-  const [showNavigatorModal, setShowNavigatorModal] = useState(false);
   const [prePopBanner, setPrePopBanner] = useState(null);
 
-  // Pre-populate from M3 on mount (full-access only)
+  // Pre-populate from M3 on mount (navigator/signature only)
   useEffect(() => {
-    if (!isFullAccess) return;
+    if (lockedOut) return;
     if (!payStubResults?.grossMonthlyIncome) return;
     const annual = Math.round(payStubResults.grossMonthlyIncome * 12);
     if (annual <= 0) return;
@@ -495,7 +482,7 @@ export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
       setPrePopBanner(annual);
     }
   }, [
-    isFullAccess,
+    lockedOut,
     payStubResults,
     filingStatusOptimizer.prePopulated.fromM3,
     filingStatusOptimizer.inputs.grossAnnualIncome,
@@ -503,20 +490,14 @@ export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
     setPrePopulated,
   ]);
 
-  // Pre-compute results for read-only (navigator) mode
-  const readOnlyResults = useMemo(() => {
-    if (!isReadOnly) return null;
-    return calculateAllScenarios(SAMPLE_DATA_FILING_STATUS);
-  }, [isReadOnly]);
-
-  const results = isReadOnly ? readOnlyResults : storedResults;
+  const results = storedResults;
 
   const canCalculate =
     inputs.grossAnnualIncome > 0 &&
     inputs.divorceTimeline != null;
 
   const handleCalculate = useCallback(() => {
-    if (isReadOnly || lockedOut) return;
+    if (lockedOut) return;
     const out = calculateAllScenarios(filingStatusOptimizer.inputs);
     setFilingStatusResults(out);
     updateTaxAnalysis({
@@ -525,7 +506,7 @@ export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
       maxSavings: out.maxSavings,
       divorceTimeline: filingStatusOptimizer.inputs.divorceTimeline,
     });
-  }, [isReadOnly, lockedOut, filingStatusOptimizer.inputs, setFilingStatusResults, updateTaxAnalysis]);
+  }, [lockedOut, filingStatusOptimizer.inputs, setFilingStatusResults, updateTaxAnalysis]);
 
   // If locked out (free/essentials), redirect-esque UX
   if (lockedOut) {
@@ -543,7 +524,7 @@ export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
           Filing Status Optimizer
         </h1>
         <p style={{ fontSize: 16, color: `${NAVY}B3`, margin: '0 0 24px' }}>
-          This tool is available to Navigator and Signature tier members.
+          This tool is available to Full Access members.
         </p>
         <Link
           href="/pricing"
@@ -565,7 +546,7 @@ export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
     );
   }
 
-  const disabled = isReadOnly;
+  const disabled = false;
 
   // Divorce timeline callout text
   let timelineCallout = null;
@@ -594,27 +575,6 @@ export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
         position: 'relative',
       }}
     >
-      {/* Sample Data badge for Navigator tier */}
-      {isReadOnly && (
-        <div
-          style={{
-            position: 'absolute',
-            top: 20,
-            right: 20,
-            backgroundColor: GOLD,
-            color: NAVY,
-            fontFamily: SOURCE,
-            fontWeight: 700,
-            fontSize: 12,
-            padding: '4px 10px',
-            borderRadius: 999,
-            letterSpacing: 0.3,
-          }}
-        >
-          Sample Data
-        </div>
-      )}
-
       {/* Header */}
       <h1
         style={{
@@ -640,14 +600,9 @@ export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
       </p>
 
       {/* Pre-population banner */}
-      {isFullAccess && prePopBanner != null && (
+      {prePopBanner != null && (
         <InfoBanner variant="gold">
           Income pre-filled from your Pay Stub Decoder results ({fmtCurrency(prePopBanner)}/year).
-        </InfoBanner>
-      )}
-      {isReadOnly && (
-        <InfoBanner variant="gold">
-          You are viewing a preview with sample data (David &amp; Mary). Upgrade to Signature to run this tool with your own numbers.
         </InfoBanner>
       )}
 
@@ -802,7 +757,7 @@ export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
       </div>
 
       {/* Results */}
-      {results && <ResultsBlock results={results} isReadOnly={isReadOnly} onAskNavigator={() => setShowNavigatorModal(true)} abandonedSpouseTriggered={abandonedSpouseTriggered} userTier={userTier} />}
+      {results && <ResultsBlock results={results} abandonedSpouseTriggered={abandonedSpouseTriggered} userTier={userTier} />}
 
       {/* Disclaimer */}
       <div
@@ -820,67 +775,12 @@ export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
         This tool provides simplified federal tax estimates for educational purposes only. It does not account for state taxes, itemized deductions, AMT, phase-outs, or other factors that affect your actual tax liability. Tax Year: {TAX_YEAR} (federal only). For filing decisions, consult a CPA or tax attorney.
       </div>
 
-      {/* Navigator upsell modal */}
-      {showNavigatorModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          onClick={() => setShowNavigatorModal(false)}
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(27,42,74,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: 20,
-            zIndex: 50,
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              backgroundColor: WHITE,
-              padding: '28px 32px',
-              borderRadius: 12,
-              maxWidth: 480,
-              width: '100%',
-              fontFamily: SOURCE,
-              color: NAVY,
-            }}
-          >
-            <h3 style={{ fontFamily: PLAYFAIR, fontWeight: 700, fontSize: 22, margin: '0 0 12px' }}>
-              Ask the Navigator
-            </h3>
-            <p style={{ fontSize: 15, lineHeight: 1.55, margin: '0 0 20px' }}>
-              AI-powered personalized guidance is coming soon to your Navigator membership. In the meantime, the sample analysis on this page shows how filing status affects a household with similar income.
-            </p>
-            <button
-              type="button"
-              onClick={() => setShowNavigatorModal(false)}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: NAVY,
-                color: PARCHMENT,
-                border: 'none',
-                borderRadius: 6,
-                fontFamily: SOURCE,
-                fontWeight: 600,
-                fontSize: 14,
-                cursor: 'pointer',
-              }}
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 // ─── Results block ────────────────────────────────────────────────────────────
-function ResultsBlock({ results, isReadOnly, onAskNavigator, abandonedSpouseTriggered, userTier }) {
+function ResultsBlock({ results, abandonedSpouseTriggered, userTier }) {
   const { scenarios, eligible, bestOption, maxSavings } = results;
   const worstEligible = Object.entries(scenarios)
     .filter(([s]) => eligible[s])
@@ -1204,78 +1104,6 @@ function ResultsBlock({ results, isReadOnly, onAskNavigator, abandonedSpouseTrig
         </ResponsiveContainer>
       </div>
 
-      {/* Navigator read-only upsell */}
-      {isReadOnly && (
-        <div
-          style={{
-            backgroundColor: NAVY,
-            padding: '24px 28px',
-            borderRadius: 12,
-            textAlign: 'center',
-            marginBottom: 24,
-          }}
-        >
-          <h3
-            style={{
-              fontFamily: PLAYFAIR,
-              fontWeight: 700,
-              fontSize: 20,
-              color: PARCHMENT,
-              margin: '0 0 8px',
-            }}
-          >
-            Want to run this with your own numbers?
-          </h3>
-          <p
-            style={{
-              fontFamily: SOURCE,
-              fontSize: 14,
-              color: PARCHMENT,
-              opacity: 0.85,
-              margin: '0 0 18px',
-              lineHeight: 1.55,
-            }}
-          >
-            A ClearPath Signature engagement unlocks this tool and personalized CDFA® review.
-          </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={onAskNavigator}
-              style={{
-                display: 'inline-block',
-                backgroundColor: 'transparent',
-                color: PARCHMENT,
-                fontFamily: SOURCE,
-                fontWeight: 600,
-                fontSize: 14,
-                padding: '10px 20px',
-                borderRadius: 8,
-                border: `1px solid ${PARCHMENT}`,
-                cursor: 'pointer',
-              }}
-            >
-              Ask the Navigator
-            </button>
-            <Link
-              href="/contact"
-              style={{
-                display: 'inline-block',
-                backgroundColor: GOLD,
-                color: NAVY,
-                fontFamily: SOURCE,
-                fontWeight: 700,
-                fontSize: 14,
-                padding: '10px 20px',
-                borderRadius: 8,
-                textDecoration: 'none',
-              }}
-            >
-              Learn About Signature
-            </Link>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
