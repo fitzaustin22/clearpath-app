@@ -520,7 +520,7 @@ export const useM3Store = create(
           // Match the default Medical Insurance row, plus any deduction whose label
           // signals medical coverage (health, medical, HSA). Dental/vision alone
           // do NOT count — they do not imply medical coverage.
-          const HEALTH_LABEL_RE = /\b(health|medical|hsa)\b/i;
+          const HEALTH_LABEL_RE = /\b(health|medical|med|hlth|hsa)\b/i;
           const hasHealthInsurance = inputs.deductions.some((d) => {
             if (!(d.perPaycheck > 0)) return false;
             if (d.id === 'medical') return true;
