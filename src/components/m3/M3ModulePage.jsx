@@ -417,7 +417,7 @@ export default function M3ModulePage({ userTier = 'essentials' }) {
   );
 
   // Gap message dismiss state
-  const [budgetAwarenessDismissed, setBudgetAwarenessDismissed] = useState(false);
+  const [incomeAwarenessDismissed, setIncomeAwarenessDismissed] = useState(false);
   const [debtAwarenessDismissed, setDebtAwarenessDismissed] = useState(false);
 
   if (!hydrated) {
@@ -615,12 +615,12 @@ export default function M3ModulePage({ userTier = 'essentials' }) {
         {/* Section 5 — M1 domain score gap messages */}
         {m1DomainScores && (
           <section style={{ marginTop: 16 }}>
-            {m1DomainScores.budgetAwareness != null &&
-              m1DomainScores.budgetAwareness <= 3 &&
-              !budgetAwarenessDismissed && (
+            {m1DomainScores.incomeAwareness != null &&
+              m1DomainScores.incomeAwareness <= 3 &&
+              !incomeAwarenessDismissed && (
                 <DismissableCallout
-                  text="Your budget awareness score suggests this module will be especially valuable. Many women discover expenses they didn't know about."
-                  onDismiss={() => setBudgetAwarenessDismissed(true)}
+                  text="Your Readiness Assessment flagged income awareness as an area to strengthen. These tools will help you build that picture — many women discover income and spending details they didn't fully track before."
+                  onDismiss={() => setIncomeAwarenessDismissed(true)}
                 />
               )}
             {m1DomainScores.debtAwareness != null &&
