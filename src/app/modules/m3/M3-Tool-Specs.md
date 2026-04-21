@@ -1021,6 +1021,8 @@ Write to `curriculum-data.schema.v2.json` at `modules.m3.affidavitBuilder`:
     "netWorth": 365000,
     "monthlyGap": 300
   },
+  // Display convention: Budget Gap (monthlyGap) stores 2-decimal precision,
+  // displays whole dollars in UI, preserves 2 decimals in exports.
   "sectionsCompleted": 3,
   "sectionsTotal": 4
 }

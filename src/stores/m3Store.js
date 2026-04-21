@@ -952,6 +952,11 @@ export const useM3Store = create(
           );
           liabilities.summary.totalLiabilities = totalLiabilities;
 
+          // Display vs storage convention:
+          // Budget Gap is stored at 2-decimal precision and rounded to whole
+          // dollars only at display time in the UI. PDFs and exports preserve
+          // 2 decimals so monthly amounts sum correctly to annual figures.
+          // This is intentional — do not round at storage.
           updated.summary.monthlyGap = round2(
             (updated.sections.income.netMonthlyIncomeAllSources || 0) -
             (updated.sections.expenses.totalMonthlyExpenses || 0)
