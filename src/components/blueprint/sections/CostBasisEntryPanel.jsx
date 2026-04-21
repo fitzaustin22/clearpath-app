@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useM2Store } from '@/src/stores/m2Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';
+import { useM4Store } from '@/src/stores/m4Store';
 
 // ─── Brand tokens ────────────────────────────────────────────────────────────
 const NAVY = '#1B2A4A';
@@ -42,6 +43,9 @@ const SECTION_121_TEXT =
 
 const HIGH_GAIN_TEXT =
   'This asset has significant built-in gain — more than half its value is unrealized appreciation.';
+
+const SECTION_121_ASSUMPTIONS_TEXT =
+  "§121 assumptions: This calculation assumes you've owned the home AND lived in it as your primary residence for at least 2 of the last 5 years, and haven't claimed this exclusion on another home in the last 2 years. In a divorce, IRC §1041 lets you count time your spouse owned or used the home toward these tests. If any of this doesn't describe your situation, the exclusion may not fully apply — consult your CDFA or CPA.";
 
 // ─── Styles ──────────────────────────────────────────────────────────────────
 const panelStyle = {
@@ -113,6 +117,50 @@ const inlineEduStyle = {
   padding: '4px 10px 8px',
 };
 
+const segmentedLabelStyle = {
+  fontFamily: SANS,
+  fontWeight: 400,
+  fontSize: 13,
+  color: 'rgba(27,42,74,0.5)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  marginBottom: 6,
+};
+
+const segmentedGroupStyle = {
+  display: 'inline-flex',
+  border: `1px solid ${GOLD}`,
+  borderRadius: 6,
+  overflow: 'hidden',
+  marginBottom: 16,
+};
+
+const segmentedButtonStyle = (active) => ({
+  fontFamily: SANS,
+  fontSize: 14,
+  fontWeight: active ? 700 : 400,
+  color: active ? WHITE : NAVY,
+  backgroundColor: active ? GOLD : 'transparent',
+  border: 'none',
+  padding: '8px 14px',
+  cursor: active ? 'default' : 'pointer',
+  transition: 'background-color 0.15s ease-out',
+});
+
+const infoBarStyle = {
+  fontFamily: SANS,
+  fontSize: 13,
+  color: NAVY,
+  lineHeight: 1.5,
+  padding: '12px 16px',
+  marginTop: 16,
+  marginBottom: 0,
+  border: `1px solid ${GOLD}`,
+  borderLeft: `3px solid ${GOLD}`,
+  borderRadius: 6,
+  backgroundColor: 'rgba(200, 169, 110, 0.08)',
+};
+
 // ─── Component ───────────────────────────────────────────────────────────────
 export default function CostBasisEntryPanel() {
   // Store reads
@@ -122,6 +170,8 @@ export default function CostBasisEntryPanel() {
   const updatePropertyDivisionTaxAdjusted = useBlueprintStore(
     (s) => s.updatePropertyDivisionTaxAdjusted
   );
+  const costBasisFilingStatus = useBlueprintStore((s) => s.costBasisFilingStatus);
+  const setCostBasisFilingStatus = useBlueprintStore((s) => s.setCostBasisFilingStatus);
 
   // Filter to applicable categories
   const applicableItems = useMemo(
@@ -151,6 +201,15 @@ export default function CostBasisEntryPanel() {
     return init;
   });
 
+  // DEF-7: Local state for per-item "Primary residence" checkbox, keyed by item id.
+  // Defaults to false for every applicable item; persisted onto the cost basis
+  // entry record on Calculate.
+  const [primaryResidenceValues, setPrimaryResidenceValues] = useState({});
+
+  const handlePrimaryResidenceChange = (id, checked) => {
+    setPrimaryResidenceValues((prev) => ({ ...prev, [id]: checked }));
+  };
+
   // Sync basisValues when itemsNeedingBasis changes (e.g., new M2 items added after mount)
   useEffect(() => {
     setBasisValues((prev) => {
@@ -168,6 +227,20 @@ export default function CostBasisEntryPanel() {
     });
   }, [itemsNeedingBasis]);
 
+  // DEF-7: One-shot pre-pop of filing status from M4 Filing Status Optimizer.
+  // Runs exactly once on mount; never re-runs. Uses getState() to read the
+  // latest store values at effect-execution time so empty deps is correct.
+  useEffect(() => {
+    const blueprintState = useBlueprintStore.getState();
+    if (blueprintState.costBasisFilingStatus != null) return; // already set — user or prior pre-pop wins
+    const blueprintTimeline = blueprintState.sections?.s4?.data?.divorceTimeline;
+    const m4Timeline = useM4Store.getState().filingStatusOptimizer?.inputs?.divorceTimeline;
+    const timeline = blueprintTimeline ?? m4Timeline ?? null;
+    // Only 'afterJan1' maps to MFJ; 'beforeDec31', 'notSure', null all default to 'single' (conservative).
+    const defaultValue = timeline === 'afterJan1' ? 'mfj' : 'single';
+    blueprintState.setCostBasisFilingStatus(defaultValue);
+  }, []);
+
   const handleBasisChange = (id, raw) => {
     setBasisValues((prev) => ({ ...prev, [id]: raw }));
   };
@@ -177,6 +250,9 @@ export default function CostBasisEntryPanel() {
     const parsed = parseCurrency(v);
     return parsed !== null;
   });
+
+  // DEF-7: Controls whether the §121 assumptions prompt renders below the table.
+  const hasAnyPrimaryResidenceMarked = Object.values(primaryResidenceValues).some(Boolean);
 
   const handleCalculate = () => {
     // Build entries for ALL applicable items (items already in store + new ones being entered)
@@ -188,8 +264,21 @@ export default function CostBasisEntryPanel() {
       if (parsed === null) return; // skip items without entered basis
 
       const fmv = Number(item.currentValue) || 0;
-      const builtInGain = fmv - parsed;
-      const estimatedTax = builtInGain * LTCG_RATE;
+      const isPrimaryResidence = item.category === 'realEstate' && !!primaryResidenceValues[item.id];
+
+      // DEF-7: §121 branch. For marked primary residences, exclude up to the
+      // filing-status limit ($250K single / $500K MFJ). Non-primary and
+      // non-real-estate assets fall through to the prior behavior (LTCG on
+      // the full built-in gain, floored at 0).
+      const builtInGain = Math.max(0, fmv - parsed);
+      let taxableGain;
+      if (isPrimaryResidence) {
+        const exclusionLimit = costBasisFilingStatus === 'mfj' ? 500000 : 250000;
+        taxableGain = Math.max(0, builtInGain - exclusionLimit);
+      } else {
+        taxableGain = builtInGain;
+      }
+      const estimatedTax = taxableGain * LTCG_RATE;
       const taxAdjustedValue = fmv - estimatedTax;
 
       newEntries.push({
@@ -201,6 +290,7 @@ export default function CostBasisEntryPanel() {
         builtInGain,
         estimatedTax,
         taxAdjustedValue,
+        isPrimaryResidence,
       });
     });
 
@@ -271,12 +361,45 @@ export default function CostBasisEntryPanel() {
       <div style={headingStyle}>Enter Cost Basis to Reveal Hidden Taxes</div>
       <p style={eduStyle}>{IRC_1041_TEXT}</p>
 
+      <div>
+        <div style={segmentedLabelStyle}>Filing status at time of sale</div>
+        <div style={segmentedGroupStyle} role="group" aria-label="Filing status at time of sale">
+          <button
+            type="button"
+            onClick={() => setCostBasisFilingStatus('single')}
+            style={segmentedButtonStyle(costBasisFilingStatus !== 'mfj')}
+            aria-pressed={costBasisFilingStatus !== 'mfj'}
+          >
+            Single ($250K exclusion)
+          </button>
+          <button
+            type="button"
+            onClick={() => setCostBasisFilingStatus('mfj')}
+            style={segmentedButtonStyle(costBasisFilingStatus === 'mfj')}
+            aria-pressed={costBasisFilingStatus === 'mfj'}
+          >
+            MFJ ($500K exclusion)
+          </button>
+        </div>
+      </div>
+
       <table style={{ width: '100%', borderCollapse: 'collapse' }}>
         <thead>
           <tr>
             <th style={thStyle}>Asset</th>
             <th style={{ ...thStyle, textAlign: 'right' }}>FMV</th>
             <th style={{ ...thStyle, textAlign: 'right' }}>Cost Basis</th>
+            <th
+              style={{
+                ...thStyle,
+                textAlign: 'center',
+                textTransform: 'none',
+                fontWeight: 400,
+                letterSpacing: 'normal',
+              }}
+            >
+              Primary residence (qualifies for §121)
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -309,15 +432,28 @@ export default function CostBasisEntryPanel() {
                       style={inputStyle}
                     />
                   </td>
+                  <td style={{ ...tdStyle, textAlign: 'center' }}>
+                    {isRealEstate ? (
+                      <input
+                        type="checkbox"
+                        checked={!!primaryResidenceValues[item.id]}
+                        onChange={(e) => handlePrimaryResidenceChange(item.id, e.target.checked)}
+                        aria-label={`Primary residence (qualifies for §121) — ${item.description || item.category}`}
+                        style={{ cursor: 'pointer', width: 18, height: 18 }}
+                      />
+                    ) : (
+                      <span style={{ color: 'rgba(27,42,74,0.35)' }}>—</span>
+                    )}
+                  </td>
                 </tr>
                 {isRealEstate && (
                   <tr>
-                    <td colSpan={3} style={inlineEduStyle}>{SECTION_121_TEXT}</td>
+                    <td colSpan={4} style={inlineEduStyle}>{SECTION_121_TEXT}</td>
                   </tr>
                 )}
                 {isHighGain && (
                   <tr>
-                    <td colSpan={3} style={inlineEduStyle}>{HIGH_GAIN_TEXT}</td>
+                    <td colSpan={4} style={inlineEduStyle}>{HIGH_GAIN_TEXT}</td>
                   </tr>
                 )}
               </React.Fragment>
@@ -325,6 +461,10 @@ export default function CostBasisEntryPanel() {
           })}
         </tbody>
       </table>
+
+      {hasAnyPrimaryResidenceMarked && (
+        <div style={infoBarStyle}>{SECTION_121_ASSUMPTIONS_TEXT}</div>
+      )}
 
       <p style={{ ...eduStyle, marginTop: 12, marginBottom: 0, fontStyle: 'normal', fontSize: 13 }}>
         Cost basis is what was originally paid for the asset. If unsure, your CDFA or CPA can help determine this.

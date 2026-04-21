@@ -27,8 +27,9 @@ const useBlueprintStore = create(
       },
 
       // Cost basis data (lives here, not in m4Store, because it modifies §3 and §5)
-      costBasisEntries: [],   // Array of { assetId, description, fmv, costBasis, builtInGain, estimatedTax, taxAdjustedValue }
+      costBasisEntries: [],   // Array of { assetId, description, fmv, costBasis, builtInGain, estimatedTax, taxAdjustedValue, isPrimaryResidence }
       costBasisViewEnabled: false,
+      costBasisFilingStatus: null,   // 'single' | 'mfj' | null — null on first mount triggers one-shot pre-pop from FSO divorceTimeline
 
       // Computed — these are functions, NOT Zustand getters
       getCompletedCount: () => Object.values(get().sections).filter(s => s.status === 'complete').length,
@@ -238,6 +239,7 @@ const useBlueprintStore = create(
       // Cost basis actions
       setCostBasisEntries: (entries) => set({ costBasisEntries: entries, lastUpdated: new Date().toISOString() }),
       toggleCostBasisView: () => set(state => ({ costBasisViewEnabled: !state.costBasisViewEnabled })),
+      setCostBasisFilingStatus: (status) => set({ costBasisFilingStatus: status, lastUpdated: new Date().toISOString() }),
 
       // Reset — clears all section data, preserves labels and sourceModule
       resetBlueprint: () => set({
@@ -258,6 +260,7 @@ const useBlueprintStore = create(
         },
         costBasisEntries: [],
         costBasisViewEnabled: false,
+        costBasisFilingStatus: null,
         lastUpdated: null,
       }),
     }),
