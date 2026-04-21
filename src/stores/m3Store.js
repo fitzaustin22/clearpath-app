@@ -516,13 +516,23 @@ export const useM3Store = create(
               ' if 50+).'
             );
           }
-          const hasMedical = inputs.deductions.some(
-            (d) => (d.id === 'medical' || d.id === 'dental') && d.perPaycheck > 0
-          );
-          if (!hasMedical) {
+          // Health insurance detection:
+          // Match the default Medical Insurance row, plus any deduction whose label
+          // signals medical coverage (health, medical, HSA). Dental/vision alone
+          // do NOT count — they do not imply medical coverage.
+          const HEALTH_LABEL_RE = /\b(health|medical|hsa)\b/i;
+          const hasHealthInsurance = inputs.deductions.some((d) => {
+            if (!(d.perPaycheck > 0)) return false;
+            if (d.id === 'medical') return true;
+            return HEALTH_LABEL_RE.test(d.label || '');
+          });
+          if (!hasHealthInsurance) {
             warnings.push(
-              "No health insurance deduction found. If you're on your spouse's plan, budget " +
-              '$400\u2013$700/month for individual coverage post-divorce.'
+              "We didn't see a health insurance deduction on this paycheck. If you're " +
+              "covered through your spouse's employer plan, you'll need to plan for COBRA " +
+              'or replacement coverage when your divorce finalizes. If you\u2019re covered ' +
+              "another way (Medicaid, marketplace, parent's plan if under 26), you can " +
+              'ignore this note.'
             );
           }
 
