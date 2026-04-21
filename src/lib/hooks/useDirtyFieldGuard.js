@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 
 /**
  * useDirtyFieldGuard
@@ -45,30 +45,29 @@ export function useDirtyFieldGuard({ storageKey }) {
   }
 
   const dirtyRef = useRef(null);
-  const [hydrated, setHydrated] = useState(false);
-
   if (dirtyRef.current === null) {
-    dirtyRef.current = new Set();
+    // Lazy-initialize from sessionStorage on first render. Safe because
+    // this hook is 'use client' and runs only in the browser; guard against
+    // SSR just in case a consumer imports it from a server boundary.
+    let initial = new Set();
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = window.sessionStorage.getItem(storageKey);
+        if (raw) {
+          const arr = JSON.parse(raw);
+          if (Array.isArray(arr)) initial = new Set(arr);
+        }
+      } catch {
+        // sessionStorage unavailable or JSON malformed — start clean
+      }
+    }
+    dirtyRef.current = initial;
   }
 
-  useEffect(() => {
-    try {
-      const raw = sessionStorage.getItem(storageKey);
-      if (raw) {
-        const arr = JSON.parse(raw);
-        if (Array.isArray(arr)) {
-          dirtyRef.current = new Set(arr);
-        }
-      }
-    } catch {
-      // sessionStorage unavailable or JSON malformed — start clean
-    }
-    setHydrated(true);
-  }, [storageKey]);
-
   const persist = useCallback(() => {
+    if (typeof window === 'undefined') return;
     try {
-      sessionStorage.setItem(
+      window.sessionStorage.setItem(
         storageKey,
         JSON.stringify(Array.from(dirtyRef.current))
       );
@@ -99,5 +98,5 @@ export function useDirtyFieldGuard({ storageKey }) {
     []
   );
 
-  return { isDirty, markDirty, prePopulateIfClean, hydrated };
+  return { isDirty, markDirty, prePopulateIfClean };
 }
