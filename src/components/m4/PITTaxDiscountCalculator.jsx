@@ -77,20 +77,22 @@ function calculatePIT(inputs) {
   const TR = effectiveTaxRate / 100;
   const i  = discountRate / 100;
   const n  = ((withdrawalStartAge - currentAge) + (withdrawalEndAge - currentAge)) / 2;
+  // TC-3: when withdrawals start immediately, the discounting period is 0 regardless of midpoint
+  const nCalc = withdrawalStartAge <= currentAge ? 0 : n;
 
   let tdPercent;
   let tdDollars;
-  if (i === 0 || n === 0) {
+  if (i === 0 || nCalc === 0) {
     tdPercent = TR;
     tdDollars = PB * TR;
   } else {
-    const denominator = (Math.pow(1 + i, n) - 1) * (1 - TR) + 1;
+    const denominator = (Math.pow(1 + i, nCalc) - 1) * (1 - TR) + 1;
     tdPercent = TR / denominator;
     tdDollars = (PB * TR) / denominator;
   }
 
-  const taxAdjustedValue        = PB - tdDollars;                          // TA
-  const tdGrowth                = tdDollars * (Math.pow(1 + i, n) - 1);    // TDg
+  const taxAdjustedValue        = PB - tdDollars;                               // TA
+  const tdGrowth                = tdDollars * (Math.pow(1 + i, nCalc) - 1);    // TDg
   const taxDiscountAtWithdrawal = tdDollars + tdGrowth;                    // TD + TDg
   const taxableDistribution     = taxAdjustedValue + taxDiscountAtWithdrawal; // = PB + TDg
   const taxes                   = taxableDistribution * TR;
@@ -643,7 +645,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
     inputs.planBalance > 0 &&
     inputs.currentAge >= 18 &&
     inputs.currentAge <= 90 &&
-    inputs.withdrawalStartAge > inputs.currentAge &&
+    inputs.withdrawalStartAge >= inputs.currentAge &&
     inputs.withdrawalEndAge > inputs.withdrawalStartAge &&
     inputs.effectiveTaxRate >= 10 && inputs.effectiveTaxRate <= 50 &&
     inputs.discountRate >= 0 && inputs.discountRate <= 15;
@@ -862,10 +864,10 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
       <IntegerInput
         id="pit-b2"
         label="Withdrawal start age"
-        helper={inputs.withdrawalStartAge <= inputs.currentAge ? 'Must be greater than current age.' : undefined}
+        helper={inputs.withdrawalStartAge < inputs.currentAge ? 'Cannot be less than current age.' : undefined}
         value={inputs.withdrawalStartAge}
         disabled={disabled}
-        min={inputs.currentAge + 1}
+        min={inputs.currentAge}
         max={100}
         onChange={(v) => updateInput({ withdrawalStartAge: v })}
       />
