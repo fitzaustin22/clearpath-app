@@ -1,6 +1,7 @@
 import { ClerkProvider, Show, UserButton } from "@clerk/nextjs";
 import { Playfair_Display, Source_Sans_3 } from "next/font/google";
 import BlueprintBarWrapper from "@/src/components/blueprint/BlueprintBarWrapper";
+import ToastContainer from "@/src/components/shared/ToastContainer";
 import "./globals.css";
 
 const playfair = Playfair_Display({
@@ -40,6 +41,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </div>
           </header>
           <BlueprintBarWrapper>{children}</BlueprintBarWrapper>
+          <ToastContainer />
           <footer style={{ backgroundColor: "#1B2A4A", color: "rgba(255,255,255,0.5)", textAlign: "center", padding: "24px", fontSize: "0.8rem" }}>
             ClearPath Divorce Financial LLC is not a law firm and does not provide legal advice.
           </footer>
