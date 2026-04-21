@@ -8,6 +8,7 @@ import {
   CATEGORY_LABELS,
   LINE_ITEM_LABELS,
 } from '@/src/stores/m3Store';
+import { useDirtyFieldGuard } from '@/src/lib/hooks/useDirtyFieldGuard';
 
 // ─── Brand tokens ─────────────────────────────────────────────────────────────
 const NAVY      = '#1B2A4A';
@@ -259,12 +260,12 @@ export default function AffidavitBuilder({ userTier = 'essentials' }) {
   const dismissNudge = (id) =>
     setDismissedNudges((prev) => ({ ...prev, [id]: true }));
 
-  // Track which pre-populated field paths have been edited in this session
-  const editedPathsRef = useRef(new Set());
-  const markEdited = useCallback((path) => {
-    editedPathsRef.current.add(path);
-  }, []);
-  const isEdited = (path) => editedPathsRef.current.has(path);
+  // Track which pre-populated field paths have been edited.
+  // Persisted to sessionStorage so edits survive intra-session navigation —
+  // the generic hook is shared with M5+ tools that pre-populate from upstream.
+  const { isDirty: isEdited, markDirty: markEdited } = useDirtyFieldGuard({
+    storageKey: 'm3-affidavit-dirty-fields',
+  });
 
   // Accordion open state for expenses
   const [expenseExpanded, setExpenseExpanded] = useState(() => {
