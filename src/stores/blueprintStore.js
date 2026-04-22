@@ -27,9 +27,28 @@ const useBlueprintStore = create(
       },
 
       // Cost basis data (lives here, not in m4Store, because it modifies §3 and §5)
-      costBasisEntries: [],   // Array of { assetId, description, fmv, costBasis, builtInGain, estimatedTax, taxAdjustedValue, isPrimaryResidence }
+      // costBasisEntries[i] shape (DEF-9 + DEF-6):
+      //   {
+      //     assetId, description, category,
+      //     fmv,                  // Number — face value from m2Store currentValue
+      //     costBasis,            // Number|null — what was originally paid (null = N/A for accountSubType='bank' or no-basis assets)
+      //     baseline,             // Number — DEF-6: realEstate = FMV − outstandingBalance (net equity); all others = FMV
+      //     builtInGain,          // Number — fmv − costBasis (or 0 when costBasis is null)
+      //     estimatedTax,         // Number — branch-routed per category (LTCG, ordinary income, §121 exclusion, etc.)
+      //     taxAdjustedValue,     // Number — DEF-6 invariant: baseline − estimatedTax === taxAdjustedValue
+      //     isPrimaryResidence,   // Boolean (realEstate only)
+      //     accountSubType,       // 'brokerage' | 'bank' | undefined (workingCapital only)
+      //   }
+      costBasisEntries: [],
       costBasisViewEnabled: false,
       costBasisFilingStatus: null,   // 'single' | 'mfj' | null — null on first mount triggers one-shot pre-pop from FSO divorceTimeline
+
+      // DEF-9: Deferred-comp stubs for unvested/unexercised equity (stockOptions, corporateIncentives).
+      // Stored as a list of placeholders the user creates from the M2 vested/exercised gate.
+      // Tracked separately from costBasisEntries because they have no current FMV — they surface
+      // as a "Deferred Comp Pending" advisory in §3 + §5 displays.
+      // Shape: { id, category ('stockOptions'|'corporateIncentives'), company, grantDate, sharesGranted, vestingSchedule, strikePrice, deferredComp: true, createdAt }
+      deferredCompStubs: [],
 
       // Computed — these are functions, NOT Zustand getters
       getCompletedCount: () => Object.values(get().sections).filter(s => s.status === 'complete').length,
@@ -241,6 +260,35 @@ const useBlueprintStore = create(
       toggleCostBasisView: () => set(state => ({ costBasisViewEnabled: !state.costBasisViewEnabled })),
       setCostBasisFilingStatus: (status) => set({ costBasisFilingStatus: status, lastUpdated: new Date().toISOString() }),
 
+      // DEF-9: Deferred-comp stub actions (used by M2 vested/exercised gate)
+      addDeferredCompStub: (stub) => set(state => ({
+        deferredCompStubs: [
+          ...state.deferredCompStubs,
+          {
+            id: stub.id ?? `dcs_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+            category: stub.category, // 'stockOptions' | 'corporateIncentives'
+            company: stub.company ?? '',
+            grantDate: stub.grantDate ?? null,
+            sharesGranted: stub.sharesGranted ?? null,
+            vestingSchedule: stub.vestingSchedule ?? '',
+            strikePrice: stub.strikePrice ?? null,
+            deferredComp: true,
+            createdAt: new Date().toISOString(),
+          },
+        ],
+        lastUpdated: new Date().toISOString(),
+      })),
+      updateDeferredCompStub: (id, patch) => set(state => ({
+        deferredCompStubs: state.deferredCompStubs.map((s) =>
+          s.id === id ? { ...s, ...patch } : s
+        ),
+        lastUpdated: new Date().toISOString(),
+      })),
+      removeDeferredCompStub: (id) => set(state => ({
+        deferredCompStubs: state.deferredCompStubs.filter((s) => s.id !== id),
+        lastUpdated: new Date().toISOString(),
+      })),
+
       // Reset — clears all section data, preserves labels and sourceModule
       resetBlueprint: () => set({
         userName: '',
@@ -261,6 +309,7 @@ const useBlueprintStore = create(
         costBasisEntries: [],
         costBasisViewEnabled: false,
         costBasisFilingStatus: null,
+        deferredCompStubs: [],
         lastUpdated: null,
       }),
     }),

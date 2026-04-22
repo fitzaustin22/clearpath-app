@@ -389,6 +389,25 @@ export default function MaritalEstateInventory({ userTier = 'essentials' }) {
     removeInventoryItem(id);
   };
 
+  // DEF-9: Convert an unvested/unexercised stockOptions or corporateIncentives
+  // item into a deferred-comp placeholder in the blueprint store, then remove it
+  // from the m2 inventory so today's tax-adjusted totals aren't inflated. The
+  // placeholder surfaces in §3 / §5 as a "Deferred Comp Pending" advisory.
+  // stubData carries the user-supplied stub-form values (company, grantDate,
+  // sharesGranted, vestingSchedule, strikePrice).
+  const handleConvertToDeferredCompStub = (item, stubData) => {
+    useBlueprintStore.getState().addDeferredCompStub({
+      category: item.category, // 'stockOptions' | 'corporateIncentives'
+      company: stubData.company,
+      grantDate: stubData.grantDate,
+      sharesGranted: stubData.sharesGranted,
+      vestingSchedule: stubData.vestingSchedule,
+      strikePrice: stubData.strikePrice,
+    });
+    if (expandedItemId === item.id) setExpandedItemId(null);
+    removeInventoryItem(item.id);
+  };
+
   const handleSaveMarriageDate = () => {
     if (tempMarriageDate) {
       setMarriageDateAction(tempMarriageDate, autoClassify);
@@ -1390,8 +1409,16 @@ export default function MaritalEstateInventory({ userTier = 'essentials' }) {
   function renderExpandedItem(item, section) {
     const isLiab = !!section.isLiability;
     const isCreditCard = section.key === 'creditCards';
-    const hideAssetOnlyFields = isLiab;
-    const showAppreciation = isNavigator && showAppreciationWarning(item, marriageDate);
+    // DEF-9: stockOptions and corporateIncentives need a vested/exercised gate so
+    // unvested grants get diverted to the deferred-comp placeholder flow rather
+    // than living in the m2 inventory with a fictional FMV.
+    const isEquityComp = section.key === 'stockOptions' || section.key === 'corporateIncentives';
+    // Default to vested for back-compat: items created before this change have
+    // no `vested` field, and toggling existed pre-DEF-9 would have meant they
+    // were already-recognized grants worth current FMV.
+    const isVested = !isEquityComp || item.vested !== false;
+    const hideAssetOnlyFields = isLiab || (isEquityComp && !isVested);
+    const showAppreciation = isNavigator && isVested && showAppreciationWarning(item, marriageDate);
 
     const chip = CHIP_STYLES[item.classification] || CHIP_STYLES.unknown;
     const rationale = getRationale(item);
@@ -1461,6 +1488,105 @@ export default function MaritalEstateInventory({ userTier = 'essentials' }) {
           </div>
         </div>
 
+        {/* DEF-9: Vested/exercised gate (stockOptions, corporateIncentives only) */}
+        {isEquityComp && (
+          <div
+            style={{
+              marginBottom: 14,
+              padding: 12,
+              background: PARCHMENT,
+              border: `1px solid ${NAVY}22`,
+              borderRadius: 6,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                color: NAVY,
+                opacity: 0.65,
+                textTransform: 'uppercase',
+                fontWeight: 600,
+                letterSpacing: 0.3,
+                marginBottom: 8,
+              }}
+            >
+              Vesting / exercise status
+            </div>
+            <div
+              role="group"
+              aria-label="Vesting status"
+              style={{
+                display: 'inline-flex',
+                border: `1px solid ${GOLD}`,
+                borderRadius: 4,
+                overflow: 'hidden',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => handleUpdate(item.id, { vested: true })}
+                aria-pressed={isVested}
+                style={{
+                  fontFamily: 'inherit',
+                  fontSize: 13,
+                  fontWeight: isVested ? 700 : 400,
+                  color: isVested ? WHITE : NAVY,
+                  background: isVested ? GOLD : 'transparent',
+                  border: 'none',
+                  padding: '6px 12px',
+                  cursor: isVested ? 'default' : 'pointer',
+                }}
+              >
+                Vested or already exercised
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  handleUpdate(item.id, { vested: false, currentValue: 0, costBasis: null })
+                }
+                aria-pressed={!isVested}
+                style={{
+                  fontFamily: 'inherit',
+                  fontSize: 13,
+                  fontWeight: !isVested ? 700 : 400,
+                  color: !isVested ? WHITE : NAVY,
+                  background: !isVested ? GOLD : 'transparent',
+                  border: 'none',
+                  padding: '6px 12px',
+                  cursor: !isVested ? 'default' : 'pointer',
+                }}
+              >
+                Unvested or unexercised
+              </button>
+            </div>
+            {!isVested && (
+              <div
+                style={{
+                  marginTop: 12,
+                  fontFamily: '"Source Sans Pro", -apple-system, system-ui, sans-serif',
+                  fontSize: 13,
+                  color: NAVY,
+                  lineHeight: 1.5,
+                }}
+              >
+                This grant has no current FMV to divide today. Fill in the identifying
+                fields below and save it as a deferred-comp placeholder so it appears in
+                your blueprint as <em>pending</em> (informing settlement conversations)
+                without inflating today&apos;s tax-adjusted total.
+              </div>
+            )}
+          </div>
+        )}
+
+        {isEquityComp && !isVested ? (
+          <DeferredCompStubForm
+            category={item.category}
+            initialCompany={item.description || ''}
+            initialGrantDate={item.dateAcquired || ''}
+            onSave={(stubData) => handleConvertToDeferredCompStub(item, stubData)}
+          />
+        ) : (
+        <>
         {/* Fields */}
         <div
           className="grid grid-cols-1 sm:grid-cols-2"
@@ -1743,6 +1869,8 @@ export default function MaritalEstateInventory({ userTier = 'essentials' }) {
             Done
           </button>
         </div>
+        </>
+        )}
       </div>
     );
   }
@@ -2080,6 +2208,153 @@ const summaryTdRightStyle = {
   textAlign: 'right',
   fontVariantNumeric: 'tabular-nums',
 };
+
+// ─── DEF-9: Truncated stub form for unvested equity comp ──────────────────────
+// Renders in place of the standard M2 entry form when the vesting/exercise gate
+// is set to "Unvested". Submitting creates a blueprint deferredCompStub and
+// removes the owning item from m2Store (via the parent's onSave handler) —
+// never writes to m2Store.maritalEstateInventory.items[].
+function DeferredCompStubForm({ category, initialCompany, initialGrantDate, onSave }) {
+  const [company, setCompany] = useState(initialCompany || '');
+  const [grantDate, setGrantDate] = useState(initialGrantDate || '');
+  const [sharesGranted, setSharesGranted] = useState('');
+  const [vestingSchedule, setVestingSchedule] = useState('');
+  const [strikePrice, setStrikePrice] = useState('');
+  const [errors, setErrors] = useState({});
+
+  const isStockOptions = category === 'stockOptions';
+
+  const handleSave = () => {
+    const nextErrors = {};
+    if (!company.trim()) nextErrors.company = 'Required.';
+    const sharesNum = Number(sharesGranted);
+    if (sharesGranted === '' || !Number.isFinite(sharesNum) || sharesNum < 0) {
+      nextErrors.sharesGranted = 'Enter 0 or a positive number.';
+    }
+    let strikeNum = null;
+    if (isStockOptions) {
+      const stripped = String(strikePrice).replace(/[$,]/g, '').trim();
+      strikeNum = Number(stripped);
+      if (stripped === '' || !Number.isFinite(strikeNum)) {
+        nextErrors.strikePrice = 'Required for stock options.';
+      }
+    }
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+    onSave({
+      company: company.trim(),
+      grantDate: grantDate || null,
+      sharesGranted: sharesNum,
+      vestingSchedule: vestingSchedule.trim(),
+      strikePrice: isStockOptions ? strikeNum : null,
+    });
+  };
+
+  return (
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2" style={{ gap: 14 }}>
+        <Field label="Company">
+          <input
+            type="text"
+            value={company}
+            onChange={(e) => {
+              setCompany(e.target.value);
+              if (errors.company) setErrors((p) => ({ ...p, company: undefined }));
+            }}
+            aria-invalid={errors.company ? 'true' : undefined}
+            style={fieldInputStyle}
+          />
+          {errors.company && (
+            <span style={{ fontSize: 12, color: RED, marginTop: 4 }}>{errors.company}</span>
+          )}
+        </Field>
+
+        <Field label="Grant date">
+          <input
+            type="date"
+            value={grantDate}
+            onChange={(e) => setGrantDate(e.target.value)}
+            style={fieldInputStyle}
+          />
+        </Field>
+
+        <Field label="Shares granted">
+          <input
+            type="number"
+            min="0"
+            inputMode="numeric"
+            value={sharesGranted}
+            onChange={(e) => {
+              setSharesGranted(e.target.value);
+              if (errors.sharesGranted) setErrors((p) => ({ ...p, sharesGranted: undefined }));
+            }}
+            aria-invalid={errors.sharesGranted ? 'true' : undefined}
+            style={fieldInputStyle}
+          />
+          {errors.sharesGranted && (
+            <span style={{ fontSize: 12, color: RED, marginTop: 4 }}>
+              {errors.sharesGranted}
+            </span>
+          )}
+        </Field>
+
+        {isStockOptions && (
+          <Field label="Strike price">
+            <input
+              type="text"
+              inputMode="decimal"
+              value={strikePrice}
+              onChange={(e) => {
+                setStrikePrice(e.target.value);
+                if (errors.strikePrice) setErrors((p) => ({ ...p, strikePrice: undefined }));
+              }}
+              placeholder="$0.00"
+              aria-invalid={errors.strikePrice ? 'true' : undefined}
+              style={fieldInputStyle}
+            />
+            {errors.strikePrice && (
+              <span style={{ fontSize: 12, color: RED, marginTop: 4 }}>
+                {errors.strikePrice}
+              </span>
+            )}
+          </Field>
+        )}
+
+        <Field label="Vesting schedule">
+          <textarea
+            value={vestingSchedule}
+            onChange={(e) => setVestingSchedule(e.target.value)}
+            rows={2}
+            placeholder="e.g., 4-year graded, 25%/year"
+            style={{ ...fieldInputStyle, resize: 'vertical', minHeight: 60 }}
+          />
+        </Field>
+      </div>
+
+      <div style={{ marginTop: 16, display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type="button"
+          onClick={handleSave}
+          style={{
+            background: GOLD,
+            border: 'none',
+            color: NAVY,
+            padding: '8px 20px',
+            borderRadius: 4,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          }}
+        >
+          Save as deferred-comp placeholder →
+        </button>
+      </div>
+    </>
+  );
+}
 
 // ─── Text input with commit-on-blur ───────────────────────────────────────────
 function TextInput({ value, onCommit, multiline }) {

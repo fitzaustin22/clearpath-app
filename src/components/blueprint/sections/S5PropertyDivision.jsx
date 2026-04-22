@@ -57,6 +57,10 @@ export default function S5PropertyDivision({ data, status }) {
   // Cost basis toggle (shared with S3)
   const costBasisViewEnabled = useBlueprintStore((s) => s.costBasisViewEnabled);
   const toggleCostBasisView = useBlueprintStore((s) => s.toggleCostBasisView);
+  // DEF-9: Surface deferred-comp placeholders in §5 so the user knows there are
+  // items still to negotiate that aren't reflected in either Face Value or
+  // Tax-Adjusted columns.
+  const deferredCompStubs = useBlueprintStore((s) => s.deferredCompStubs);
 
   if (!data || !data.faceValue) return null;
 
@@ -219,6 +223,28 @@ export default function S5PropertyDivision({ data, status }) {
             </div>
           )}
         </>
+      )}
+
+      {deferredCompStubs.length > 0 && (
+        <div
+          style={{
+            fontFamily: SANS,
+            fontSize: 14,
+            color: NAVY,
+            padding: '10px 14px',
+            marginTop: 20,
+            border: `1px solid ${GOLD}`,
+            borderLeft: `3px solid ${GOLD}`,
+            borderRadius: 6,
+            backgroundColor: 'rgba(200, 169, 110, 0.08)',
+            lineHeight: 1.5,
+          }}
+        >
+          <strong>Deferred Comp Pending:</strong> {deferredCompStubs.length} item
+          {deferredCompStubs.length === 1 ? '' : 's'}
+          {' '}— unvested or unexercised equity isn&apos;t reflected in either column above
+          and will need separate treatment in settlement.
+        </div>
       )}
     </div>
   );

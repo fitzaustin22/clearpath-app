@@ -12,14 +12,17 @@ const GREEN = '#2D8A4E';
 const MUTED = '#6B7280';
 const SANS = "var(--font-source-sans), 'Source Sans 3', sans-serif";
 
+// DEF-9: Aligned with the locked v1 m2 taxonomy.
 const CATEGORY_LABELS = {
-  realEstate: 'Real Estate',
-  retirementAccounts: 'Retirement Accounts',
-  bankAccounts: 'Bank Accounts',
-  investments: 'Investments',
-  vehicles: 'Vehicles',
+  realEstate: 'Real Estate (Net Equity)',
+  workingCapital: 'Working Capital',
+  retirement: 'Retirement Accounts',
+  pensions: 'Pension Plans',
+  stockOptions: 'Stock Options',
+  corporateIncentives: 'Corporate Incentive Programs',
   businessInterests: 'Business Interests',
   otherAssets: 'Other Assets',
+  personalProperty: 'Personal Property',
 };
 
 function titleize(key) {
@@ -119,13 +122,27 @@ function CategoryRow({ name, total, count, parenthesize, taxAdj }) {
           </span>
         ) : null}
       </div>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span style={{ ...bodyStyle, color: parenthesize ? RED : 'rgba(27,42,74,0.8)' }}>
-          {parenthesize ? `(${currency(total)})` : currency(total)}
-        </span>
-        {taxAdj && (
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+        {taxAdj ? (
+          // DEF-6: Render baseline − tax = adjusted so the math is verifiable.
+          // baseline is the per-category sum of stored entry baselines (net equity
+          // for real estate; FMV for everything else), guaranteeing
+          // baseline − estimatedTax === taxAdjustedValue.
           <>
-            <span style={{ ...bodyStyle, color: NAVY, fontWeight: 400 }}>→</span>
+            <span style={{ ...bodyStyle, color: 'rgba(27,42,74,0.8)' }}>
+              {currency(taxAdj.baseline)}
+            </span>
+            <span style={{ ...bodyStyle, color: NAVY, fontWeight: 400 }}>−</span>
+            <span
+              style={{
+                ...bodyStyle,
+                color: taxAdj.estimatedTax > 0 ? RED : taxAdj.estimatedTax < 0 ? GREEN : 'rgba(27,42,74,0.5)',
+                fontWeight: 400,
+              }}
+            >
+              {currency(Math.abs(taxAdj.estimatedTax))}
+            </span>
+            <span style={{ ...bodyStyle, color: NAVY, fontWeight: 400 }}>=</span>
             <span style={{ ...bodyStyle, color: NAVY, fontWeight: 600 }}>
               {currency(taxAdj.taxAdjustedValue)}
             </span>
@@ -133,14 +150,17 @@ function CategoryRow({ name, total, count, parenthesize, taxAdj }) {
               style={{
                 fontFamily: SANS,
                 fontSize: 13,
-                color: taxAdj.estimatedTax > 0 ? RED : taxAdj.estimatedTax < 0 ? GREEN : 'rgba(27,42,74,0.5)',
+                color: 'rgba(27,42,74,0.5)',
                 fontWeight: 400,
               }}
             >
-              ({taxAdj.estimatedTax >= 0 ? '−' : '+'}
-              {currency(Math.abs(taxAdj.estimatedTax))} hidden tax)
+              (hidden tax)
             </span>
           </>
+        ) : (
+          <span style={{ ...bodyStyle, color: parenthesize ? RED : 'rgba(27,42,74,0.8)' }}>
+            {parenthesize ? `(${currency(total)})` : currency(total)}
+          </span>
         )}
       </div>
     </div>
@@ -156,15 +176,21 @@ export default function S3AssetInventory({ data, status }) {
   const costBasisViewEnabled = useBlueprintStore((s) => s.costBasisViewEnabled);
   const costBasisEntries = useBlueprintStore((s) => s.costBasisEntries);
   const toggleCostBasisView = useBlueprintStore((s) => s.toggleCostBasisView);
+  // DEF-9: Deferred-comp placeholders surfaced as a "Pending" advisory in §3.
+  const deferredCompStubs = useBlueprintStore((s) => s.deferredCompStubs);
 
-  // Tax adjustments grouped by category
+  // Tax adjustments grouped by category. DEF-6: aggregate baseline so the
+  // display can render `baseline − tax = adjusted` instead of an opaque arrow.
   const taxByCat = useMemo(() => {
     const map = {};
     costBasisEntries.forEach((e) => {
-      if (!map[e.category]) map[e.category] = { estimatedTax: 0, taxAdjustedValue: 0, fmv: 0 };
+      if (!map[e.category]) {
+        map[e.category] = { estimatedTax: 0, taxAdjustedValue: 0, fmv: 0, baseline: 0 };
+      }
       map[e.category].estimatedTax += e.estimatedTax;
       map[e.category].taxAdjustedValue += e.taxAdjustedValue;
       map[e.category].fmv += e.fmv;
+      map[e.category].baseline += (e.baseline ?? e.fmv);
     });
     return map;
   }, [costBasisEntries]);
@@ -311,6 +337,30 @@ export default function S3AssetInventory({ data, status }) {
               ))}
             </div>
           )}
+        </section>
+      )}
+
+      {deferredCompStubs.length > 0 && (
+        <section style={{ marginTop: 16 }}>
+          <div
+            style={{
+              fontFamily: SANS,
+              fontSize: 14,
+              color: NAVY,
+              padding: '10px 14px',
+              border: `1px solid ${GOLD}`,
+              borderLeft: `3px solid ${GOLD}`,
+              borderRadius: 6,
+              backgroundColor: 'rgba(200, 169, 110, 0.08)',
+              lineHeight: 1.5,
+            }}
+          >
+            <strong>Deferred Comp Pending:</strong> {deferredCompStubs.length} item
+            {deferredCompStubs.length === 1 ? '' : 's'}
+            {' '}— unvested or unexercised equity tracked in your blueprint without an
+            FMV today. These will need separate treatment in settlement (coverture
+            fraction, vesting schedule).
+          </div>
         </section>
       )}
 
