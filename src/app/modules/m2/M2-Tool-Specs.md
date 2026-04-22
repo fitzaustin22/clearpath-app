@@ -1406,3 +1406,74 @@ All three tools share a Zustand store scoped to `m2`:
 - [[Brand Voice]] — voice and style rules
 - [[M1-Tool-Specs]] — M1 spec format reference
 - [[M2-Handoff]] — build context and lessons learned
+
+---
+
+## Addendum 1 — Vested/Exercised Gate on Equity Compensation Entries (DEF-9, 2026-04-21)
+
+**Applies to:** Tool 2 (Marital Estate Inventory), categories `stockOptions` and `corporateIncentives`.
+
+**Problem:** Unvested equity compensation (unvested RSUs, unexercised options) is legally *deferred compensation*, not owned property. Its division uses coverture formulas (Hug / Nelson time-rule analysis), not direct allocation. Current M2 treats all equity comp identically, conflating owned vested shares with contingent future compensation.
+
+**Resolution:** Add a per-grant vested/exercised vs. unvested/unexercised gate at the top of the entry form for both `stockOptions` and `corporateIncentives` categories.
+
+### UI Specification
+
+Before any other entry fields render, the gate appears:
+
+```
+┌─────────────────────────────────────────────────────────┐
+│  Is this grant vested/exercised or unvested/unexercised?│
+│                                                         │
+│  ( ) Vested or exercised — I own it                     │
+│  ( ) Unvested or unexercised — it's deferred comp       │
+│                                                         │
+│  [Info icon] Why does this matter?                      │
+└─────────────────────────────────────────────────────────┘
+```
+
+Info-panel copy (shown on info icon hover/tap):
+
+> Unvested equity compensation isn't legally yours yet — it's contingent on you staying employed through the vesting date. Courts divide these using coverture formulas (a time-rule that reflects how much of the vesting period overlapped with your marriage), not by splitting them as regular assets.
+>
+> If you select "Unvested," we'll capture the grant details but route them to Module 6's Deferred Compensation Analyzer rather than including them in your Asset Inventory totals.
+
+Per-grant classification, not per-category. A single grant with partially-vested tranches should be entered as separate tranche records — each with its own gate answer.
+
+### Behavior
+
+- **Vested/exercised selection:** Standard entry form renders below the gate. Entry proceeds normally — written to `m2Store.maritalEstateInventory.items[]` with existing fields. Flows through TAV with standard 15% LTCG branch (see M4-Tool-Specs.md §9 Branch 5).
+- **Unvested/unexercised selection:** Truncated stub entry form renders — fields: company, grant date, shares granted, vesting schedule (free-text if complex), strike price (options only). Entry routes to `blueprintStore.deferredCompStubs[]` with `deferredComp: true` flag. **Does NOT** write to `m2Store.maritalEstateInventory.items[]`. **Does NOT** contribute to M2 §3 Asset Inventory dollar totals.
+
+### Blueprint §3 Rendering
+
+Deferred comp stubs render as a separate, clearly-differentiated line item below the Asset Inventory proper:
+
+```
+Deferred Compensation (Pending Module 6)
+  • [Company] — Grant [Date], [N] shares — valuation pending
+  • [Company] — Grant [Date], [N] options @ $[strike] — valuation pending
+
+  [→ Analyze deferred compensation in Module 6]
+```
+
+No dollar values shown. Link routes to M6 Deferred Compensation Analyzer (M6-TICKET-1) when that tool is built.
+
+### Store Changes
+
+- `blueprintStore`: add `deferredCompStubs: []` array. Each stub: `{ id, category: 'stockOptions' | 'corporateIncentives', company, grantDate, sharesGranted, vestingSchedule, strikePrice?, deferredComp: true, createdAt }`.
+- `m2Store`: no schema change. Unvested entries don't write here.
+
+### Validation
+
+- **TC-A1:** User selects "Unvested" on a new `stockOptions` entry, enters stub fields, saves. Entry appears in `blueprintStore.deferredCompStubs[]`. Does NOT appear in `m2Store.maritalEstateInventory.items[]`. M2 §3 totals unchanged. Blueprint §3 renders the stub in the "Deferred Compensation (Pending Module 6)" line.
+- **TC-A2:** User selects "Vested/exercised" on a new `stockOptions` entry. Standard entry form renders. Entry writes to `m2Store` normally. TAV entry panel picks it up per M4-Tool-Specs.md §9 Branch 5.
+- **TC-A3:** User edits an existing entry — gate value is preserved and editable. Changing gate value mid-edit triggers confirmation dialog ("This will move the entry between your Asset Inventory and your Deferred Compensation list. Continue?").
+
+### Cross-References
+
+- **M4-Tool-Specs.md §9** — TAV scope and calculation branches; vested equity comp flows through the 15% LTCG branch
+- **M6-TICKET-1** — Deferred Compensation Analyzer (coverture calculator, consumes the stubs this addendum routes)
+- **`M5-Scope-and-Progress.md`** session 2026-04-21 (late evening) — Full DEF-9 rationale and contingent-asset pattern
+- **TC-A3 implementation ticket** — `M2-Handoff.md` M2 Schema Evolution Sprint table (gate-flip confirmation dialog)
+- **Commit of record:** `0188f64` on `m4-blueprint` (DEF-9 + DEF-6 implementation, 2026-04-21)
