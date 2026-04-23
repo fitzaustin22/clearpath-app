@@ -1,4 +1,3 @@
-# ClearPath Pro — Claude Code context
 # ClearPath — Claude Code context
 
 ## What this project is
@@ -17,32 +16,41 @@ The **consumer marketing site** (ClearPath for Women) is built on Google Stitch 
 
 ---
 
-## Revenue funnel (four tiers)
+## Revenue funnel (three tiers)
 
 | Tier | Product | Price | What it unlocks |
 |---|---|---|---|
 | Free | Lead magnets: Budget Gap Calculator, M1 content | $0 | Email capture only |
 | Essentials | ClearPath Essentials — static toolkit | $97 one-time | Modules 1–3, worksheets, basic calculators |
-| Navigator | ClearPath Navigator — AI-powered | $247 / 3mo auto-renew | Modules 1–6, AI knowledge base, advanced tools |
-| Signature | Full CDFA engagement | $3,500+ | All 7 modules + live CDFA sessions + Blueprint |
+| Full Access | ClearPath Full Access — AI-powered | $247 / 3mo auto-renew | All 7 modules, all interactive tools, Theo AI assistant, all PDF exports, Blueprint |
 
-Navigator replaces group coaching. It uses a proprietary AI assistant trained on CDFA curriculum with compliance guardrails and escalation logic to Signature.
+**Internal tier names (Supabase `public.users.tier`):** `free`, `essentials`, `navigator`. The DB value `navigator` represents Full Access — retained as the internal name per `Tier-Architecture-and-Gating-Map.md §3` migration note. Any legacy `signature` values are treated as Full Access equivalent. Clean rename to `full_access` is a post-launch task.
+
+**Canonical reference:** `ClearPath LLC/Curriculum/Tier-Architecture-and-Gating-Map.md` (in the Obsidian vault) is the single source of truth for tier structure. This document mirrors it.
+
+### Future add-ons (deferred, not v1)
+- **CDFA 1:1 consulting** — $3,500+ per engagement; separate service layer, launches post-traction
+- **Attorney Blueprint export** — one-time $499 add-on to Full Access; V2 post-launch; Harvey / LegalShield integration planned for V3
+- **Monthly webinars** — community/retention feature, post-launch
+- **ClearPath Pro** — B2B white-label licensing to other CDFAs, separate product roadmap
 
 ---
 
 ## Seven-module curriculum
 
-All 7 modules feed a **Cumulative Data Pipeline** (JSON, per user). Data entered in M1 pre-populates M2 tools. M7 assembles everything into the ClearPath Financial Blueprint — the final attorney-ready deliverable.
+All 7 modules feed a **Cumulative Data Pipeline** (JSON, per user). Data entered in M1 pre-populates M2 tools. M7 assembles everything into the ClearPath Financial Blueprint — the final consumer-ready deliverable.
 
 | Module | Title | Tier gate | Key tools |
 |---|---|---|---|
 | M1 | Permission to Explore | Free | Life Transition Readiness Assessment, Budget Gap Calculator |
 | M2 | Know What You Own | Essentials | Marital Estate Inventory, Asset Classification Wizard |
 | M3 | Know What You Spend | Essentials | Budget Modeler, Financial Affidavit Builder |
-| M4 | Tax Landscape | Navigator | Filing Status Optimizer, Point-in-Time Tax Discount Calculator |
-| M5 | Value What Matters | Navigator | Home Decision Analyzer, Retirement Division Modeler |
-| M6 | Negotiate from Strength | Navigator | Priorities Worksheet, Settlement Offer Evaluator |
-| M7 | ClearPath Financial Blueprint | Signature | Blueprint Generator (all prior data → attorney-ready PDF) |
+| M4 | Tax Landscape | Full Access | Filing Status Optimizer, Point-in-Time Tax Discount Calculator, Tax-Adjusted Asset View |
+| M5 | Value What Matters | Full Access | State-Configurable Support Estimator (VA/MD/DC/CA/NY), Marital Home Decision Analyzer, QDRO / Retirement Division Modeler |
+| M6 | Negotiate from Strength | Full Access | Priorities Worksheet, Trade-Off Analyzer, Settlement Offer Evaluator |
+| M7 | ClearPath Financial Blueprint | Full Access | Client Blueprint Generator (consumer-ready PDF, all 12 sections). Attorney Blueprint variant ($499 one-time add-on) deferred to V2. |
+
+**Gating model:** Two render states per module — **Locked** or **Full**. The "conceptual/preview" state (sample-data read-only mode under the old Navigator tier) has been removed per the 2026-04-20 tier simplification. See `Tier-Architecture-and-Gating-Map.md §3` for the full gating matrix.
 
 **Canonical data schema:** `curriculum-data.schema.v2.json` (in vault). Every tool reads and writes this schema. Never break the contract between modules.
 
@@ -98,16 +106,21 @@ Every tool writes structured output to a per-user JSON object keyed by module. S
 - **Pre-populate** later module inputs from earlier module outputs where mapped
 - **Persist to Supabase** on every tool save — not just on module completion
 - **Blueprint Generator** (M7) reads the entire object and renders all 12 sections
+- **Forward-compatibility for V2 Attorney Blueprint:** Every calculation tool must persist its formula identifier, calculation assumptions, statutory/legal citations, and data-source attribution alongside the output values — not just the output numbers. Examples: PIT Calculator persists `{ formula: 'Sutherland PIT', TR, i, n, years_to_withdrawal_midpoint, citation: 'DJ Q2 2025' }` alongside the discount dollar amount; FSO persists the Dec 31 filing-status determination rule and governing IRS publication reference; M5 Support Estimator persists state statute citation, schedule version, and any income-imputation rules applied. The V1 Client Blueprint will not render these fields, but they must be present in the pipeline from day one so the V2 Attorney Blueprint ($499 add-on) can extract them without retrofitting tools. The schema may need an optional `metadata` object per tool output to accommodate this — audit `curriculum-data.schema.v2.json` and extend as part of M5 build; retrofit M1–M4 tools on their next touch.
 
 ---
 
-## ClearPath Navigator AI
+## Theo — AI Teaching Assistant
 
-- Model: Claude API (claude-sonnet-4-20250514)
-- RAG knowledge base: CDFA curriculum, DFA Journal articles, IDFA methodology
-- System prompt must include: compliance guardrails (no legal advice, no investment advice, no UPL), soft escalation trigger (surfaces Signature CTA when complexity threshold is hit), hard escalation trigger (mandatory for specific topics: QDRO, business valuation, domestic violence)
-- Available to: Navigator and Signature tier users only
-- Must log: every query + response for compliance audit trail
+- **Model:** Claude API (claude-sonnet-4-20250514)
+- **RAG knowledge base:** CDFA curriculum, DFA Journal articles, IDFA methodology
+- **System prompt must include:**
+  - Compliance guardrails: no legal advice, no investment advice, no UPL
+  - **Soft escalation trigger** — when a question exceeds curricular scope, Theo responds with a message along the lines of "this question is beyond the scope of my current capabilities" rather than speculating or upselling. Phrasing to be finalized in Theo spec.
+  - **Hard escalation trigger** — mandatory for specific topics: QDRO, business valuation, domestic violence. Theo must decline and redirect.
+- **Available to:** Full Access tier users only
+- **Must log:** every query + response for compliance audit trail
+- **Canonical spec:** `ClearPath LLC/Curriculum/Theo-AI-Assistant-Spec.md` (vault)
 
 ---
 
@@ -116,7 +129,7 @@ Every tool writes structured output to a per-user JSON object keyed by module. S
 1. Project structure and Supabase schema (users, tenants, module_progress, tool_data)
 2. Clerk auth (consumer user + practitioner org flows)
 3. Stripe: Essentials one-time + Navigator subscription + webhook handler
-4. Tier gating middleware (free / essentials / navigator / signature)
+4. Tier gating middleware — 2 states (locked / full), 3 tiers (free / essentials / navigator-as-full-access)
 5. Root layout with brand token injection (reads tenant config or uses ClearPath defaults)
 6. M1 module shell: content display + Budget Gap Calculator + email capture gate
 7. Practitioner dashboard stub (auth-gated, ClearPath Pro)
