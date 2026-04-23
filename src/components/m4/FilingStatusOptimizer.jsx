@@ -447,7 +447,7 @@ function SectionHeader({ letter, title }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
-  const lockedOut = userTier !== 'navigator' && userTier !== 'signature';
+  const lockedOut = userTier !== 'signature';
 
   const filingStatusOptimizer = useM4Store((s) => s.filingStatusOptimizer);
   const setFilingStatusInputs = useM4Store((s) => s.setFilingStatusInputs);
@@ -520,9 +520,7 @@ export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
 
   const results = storedResults;
 
-  const canCalculate =
-    inputs.grossAnnualIncome > 0 &&
-    inputs.divorceTimeline != null;
+  const canCalculate = inputs.divorceTimeline != null;
 
   const handleCalculate = useCallback(() => {
     if (lockedOut) return;
