@@ -734,7 +734,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
             textDecoration: 'none',
           }}
         >
-          Upgrade to Access
+          Upgrade to Full Access
         </Link>
       </div>
     );

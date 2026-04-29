@@ -447,7 +447,7 @@ function SectionHeader({ letter, title }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
-  const lockedOut = userTier !== 'signature';
+  const lockedOut = userTier !== 'navigator' && userTier !== 'signature';
 
   const filingStatusOptimizer = useM4Store((s) => s.filingStatusOptimizer);
   const setFilingStatusInputs = useM4Store((s) => s.setFilingStatusInputs);
@@ -566,7 +566,7 @@ export default function FilingStatusOptimizer({ userTier = 'essentials' }) {
             textDecoration: 'none',
           }}
         >
-          Upgrade to Access
+          Upgrade to Full Access
         </Link>
       </div>
     );
