@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useM2Store } from '@/src/stores/m2Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';
 import { useM4Store } from '@/src/stores/m4Store';
+import { calculateSection121Exclusion } from '@/src/lib/section121';
 
 // ─── Brand tokens ────────────────────────────────────────────────────────────
 const NAVY = '#1B2A4A';
@@ -422,10 +423,9 @@ export default function CostBasisEntryPanel() {
         const rawGain = parsed !== null ? fmv - parsed : 0;
         builtInGain = rawGain;
         isPrimaryResidence = !!primaryResidenceValues[item.id];
-        const exclusionCap = isPrimaryResidence
-          ? (costBasisFilingStatus === 'mfj' ? 500000 : 250000)
-          : 0;
-        const taxableGain = Math.max(0, rawGain - exclusionCap);
+        const { taxableGain } = isPrimaryResidence
+          ? calculateSection121Exclusion({ gain: rawGain, filingStatusAtSale: costBasisFilingStatus })
+          : { taxableGain: Math.max(0, rawGain) };
         estimatedTax = Math.max(0, taxableGain * LTCG_RATE);
         baseline = netEquity;
       } else if (item.category === 'workingCapital') {
