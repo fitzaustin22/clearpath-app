@@ -1,0 +1,616 @@
+/**
+ * DC Child Support Guideline Calculator
+ * Based on D.C. Code § 16-916.01 and Appendix I (§ 16-916.01a)
+ *
+ * Schedule values are ANNUAL combined adjusted gross income → annual basic obligation.
+ * The statute defines 4 columns: 1, 2, 3, and "4 or more" children.
+ * For 5+ children, use the "4 or more" column per the guideline ceiling.
+ *
+ * Two apparent typos preserved from the official source (flagged below):
+ *   Row 87000: 4-child value is 34751 in source — likely should be 24751
+ *   Row 132000: 3-child value is 20473 in source — likely should be 30473
+ *
+ * Usage:
+ *   const result = calculateChildSupport(parentAIncome, parentBIncome, numChildren);
+ *   // Returns { basicObligation, parentAShare, parentBShare, parentAMonthly, parentBMonthly }
+ *
+ * All dollar values in the schedule are annual. Monthly figures are divided by 12.
+ * Combined income cap for presumptive guideline: $240,000/year.
+ * Below $12,382/year combined: court uses individualized assessment / minimum order rules.
+ */
+
+// [combinedGrossAnnual, 1child, 2children, 3children, 4orMoreChildren]
+export const SCHEDULE = [
+  [12382, 3261, 4634, 5410, 6063],
+  [12600, 3310, 4702, 5488, 6151],
+  [13200, 3444, 4890, 5705, 6393],
+  [13800, 3577, 5076, 5919, 6632],
+  [14400, 3695, 5244, 6113, 6847],
+  [15000, 3810, 5411, 6306, 7063],
+  [15600, 3926, 5578, 6500, 7279],
+  [16200, 4042, 5740, 6693, 7494],
+  [16800, 4157, 5902, 6886, 7710],
+  [17400, 4270, 6064, 7074, 7926],
+  [18000, 4371, 6226, 7261, 8141],
+  [18600, 4471, 6389, 7448, 8352],
+  [19200, 4571, 6550, 7629, 8547],
+  [19800, 4669, 6692, 7791, 8728],
+  [20400, 4760, 6835, 7952, 8908],
+  [21000, 4851, 6958, 8114, 9088],
+  [21600, 4941, 7081, 8276, 9269],
+  [22200, 5032, 7205, 8438, 9449],
+  [22800, 5123, 7328, 8599, 9629],
+  [23400, 5214, 7451, 8761, 9809],
+  [24000, 5305, 7575, 8905, 9990],
+  [24600, 5395, 7698, 9045, 10170],
+  [25200, 5486, 7821, 9185, 10350],
+  [25800, 5577, 7945, 9326, 10530],
+  [26400, 5668, 8068, 9463, 10697],
+  [27000, 5759, 8190, 9593, 10850],
+  [27600, 5849, 8306, 9724, 10995],
+  [28200, 5936, 8423, 9854, 11140],
+  [28800, 6023, 8539, 9984, 11285],
+  [29400, 6110, 8655, 10114, 11430],
+  [30000, 6205, 8782, 10256, 11588],
+  [30600, 6305, 8915, 10405, 11754],
+  [31200, 6405, 9048, 10554, 11921],
+  [31800, 6503, 9181, 10703, 12087],
+  [32400, 6596, 9315, 10852, 12253],
+  [33000, 6689, 9448, 11001, 12419],
+  [33600, 6782, 9581, 11151, 12605],
+  [34200, 6875, 9716, 11318, 12791],
+  [34800, 6966, 9861, 11485, 12977],
+  [35400, 7061, 9998, 11652, 13163],
+  [36000, 7158, 10132, 11819, 13349],
+  [36600, 7255, 10266, 11986, 13535],
+  [37200, 7352, 10399, 12151, 13721],
+  [37800, 7449, 10533, 12313, 13908],
+  [38400, 7546, 10666, 12465, 14092],
+  [39000, 7643, 10800, 12617, 14274],
+  [39600, 7740, 10933, 12769, 14456],
+  [40200, 7837, 11067, 12921, 14623],
+  [40800, 7934, 11201, 13070, 14769],
+  [41400, 8031, 11334, 13192, 14906],
+  [42000, 8128, 11453, 13314, 15041],
+  [42600, 8222, 11564, 13435, 15177],
+  [43200, 8304, 11674, 13577, 15313],
+  [43800, 8387, 11785, 13679, 15448],
+  [44400, 8469, 11895, 13800, 15584],
+  [45000, 8551, 12006, 13922, 15720],
+  [45600, 8633, 12116, 14043, 15855],
+  [46200, 8715, 12227, 14165, 15991],
+  [46800, 8797, 12337, 14287, 16126],
+  [47400, 8879, 12448, 14408, 16262],
+  [48000, 8961, 12558, 14530, 16376],
+  [48600, 9043, 12668, 14642, 16487],
+  [49200, 9125, 12779, 14742, 16598],
+  [49800, 9207, 12879, 14841, 16709],
+  [50400, 9290, 12979, 14941, 16820],
+  [51000, 9372, 13079, 15041, 16932],
+  [51600, 9455, 13180, 15140, 17043],
+  [52200, 9538, 13280, 15240, 17154],
+  [52800, 9621, 13380, 15340, 17265],
+  [53400, 9703, 13480, 15432, 17376],
+  [54000, 9786, 13580, 15539, 17487],
+  [54600, 9869, 13680, 15639, 17598],
+  [55200, 9952, 13780, 15738, 17716],
+  [55800, 10034, 13881, 15838, 17849],
+  [56400, 10117, 13981, 15954, 17983],
+  [57000, 10200, 14085, 16074, 18117],
+  [57600, 10283, 14195, 16194, 18250],
+  [58200, 10369, 14306, 16314, 18384],
+  [58800, 10455, 14417, 16434, 18518],
+  [59400, 10542, 14528, 16554, 18651],
+  [60000, 10628, 14638, 16674, 18785],
+  [60600, 10715, 14749, 16793, 18919],
+  [61200, 10801, 14860, 16913, 19052],
+  [61800, 10888, 14971, 17033, 19186],
+  [62400, 10974, 15081, 17153, 19320],
+  [63000, 11061, 15192, 17273, 19451],
+  [63600, 11147, 15303, 17392, 19582],
+  [64200, 11234, 15414, 17509, 19712],
+  [64800, 11320, 15522, 17626, 19843],
+  [65400, 11406, 15628, 17743, 19973],
+  [66000, 11490, 15735, 17860, 20103],
+  [66600, 11575, 15842, 17977, 20234],
+  [67200, 11659, 15949, 18094, 20364],
+  [67800, 11743, 16056, 18211, 20495],
+  [68400, 11827, 16163, 18328, 20625],
+  [69000, 11911, 16270, 18445, 20755],
+  [69600, 11995, 16377, 18562, 20886],
+  [70200, 12080, 16483, 18679, 21016],
+  [70800, 12164, 16590, 18796, 21147],
+  [71400, 12248, 16697, 18913, 21277],
+  [72000, 12332, 16804, 19030, 21408],
+  [72600, 12416, 16911, 19147, 21538],
+  [73200, 12500, 17018, 19264, 21668],
+  [73800, 12585, 17125, 19381, 21799],
+  [74400, 12662, 17232, 19498, 21936],
+  [75000, 12733, 17338, 19617, 22076],
+  [75600, 12805, 17445, 19743, 22216],
+  [76200, 12877, 17560, 19868, 22356],
+  [76800, 12949, 17676, 19994, 22496],
+  [77400, 13024, 17785, 20119, 22636],
+  [78000, 13101, 17885, 20245, 22776],
+  [78600, 13178, 17984, 20370, 22916],
+  [79200, 13254, 18083, 20496, 23056],
+  [79800, 13331, 18182, 20622, 23196],
+  [80400, 13408, 18282, 20743, 23336],
+  [81000, 13485, 18381, 20850, 23476],
+  [81600, 13562, 18480, 20957, 23616],
+  [82200, 13639, 18579, 21064, 23756],
+  [82800, 13715, 18678, 21171, 23896],
+  [83400, 13792, 18778, 21278, 24035],
+  [84000, 13869, 18877, 21385, 24154],
+  [84600, 13946, 18976, 21492, 24273],
+  [85200, 14023, 19075, 21599, 24393],
+  [85800, 14100, 19174, 21707, 24512],
+  [86400, 14177, 19274, 21814, 24632],
+  // NOTE: 4-child value 34751 is a likely typo in official source; probable correct value: 24751
+  [87000, 14253, 19373, 21921, 34751],
+  [87600, 14338, 19483, 22039, 24883],
+  [88200, 14424, 19593, 22158, 25015],
+  [88800, 14509, 19702, 22276, 25148],
+  [89400, 14594, 19812, 22395, 25280],
+  [90000, 14679, 19922, 22514, 25410],
+  [90600, 14764, 20032, 22632, 25537],
+  [91200, 14849, 20142, 22751, 25665],
+  [91800, 14934, 20251, 22865, 25792],
+  [92400, 15019, 20361, 22979, 25919],
+  [93000, 15104, 20467, 23093, 26046],
+  [93600, 15189, 20571, 23207, 26173],
+  [94200, 15272, 20674, 23320, 26300],
+  [94800, 15349, 20778, 23434, 26427],
+  [95400, 15427, 20881, 23548, 26554],
+  [96000, 15504, 20985, 23662, 26681],
+  [96600, 15582, 21089, 23776, 26808],
+  [97200, 15659, 21192, 23890, 26935],
+  [97800, 15736, 21296, 24004, 27062],
+  [98400, 15814, 21399, 24118, 27189],
+  [99000, 15891, 21503, 24232, 27316],
+  [99600, 15969, 21606, 24346, 27443],
+  [100200, 16046, 21710, 24460, 27570],
+  [100800, 16123, 21814, 24574, 27697],
+  [101400, 16201, 21917, 24688, 27824],
+  [102000, 16278, 22021, 24802, 27951],
+  [102600, 16356, 22124, 24916, 28078],
+  [103200, 16433, 22228, 25030, 28205],
+  [103800, 16510, 22331, 25143, 28332],
+  [104400, 16588, 22435, 25257, 28459],
+  [105000, 16665, 22539, 25371, 28586],
+  [105600, 16743, 22642, 25485, 28713],
+  [106200, 16820, 22746, 25599, 28840],
+  [106800, 16897, 22849, 25713, 28966],
+  [107400, 16975, 22953, 25827, 29093],
+  [108000, 17052, 23056, 25940, 29219],
+  [108600, 17130, 23160, 26053, 29345],
+  [109200, 17207, 23266, 26167, 29471],
+  [109800, 17284, 23372, 26280, 29598],
+  [110400, 17364, 23478, 26393, 29724],
+  [111000, 17447, 23584, 26506, 29850],
+  [111600, 17529, 23690, 26620, 29976],
+  [112200, 17611, 23796, 26733, 30103],
+  [112800, 17694, 23902, 26846, 30229],
+  [113400, 17776, 24008, 26959, 30355],
+  [114000, 17858, 24114, 27073, 30481],
+  [114600, 17940, 24220, 27186, 30608],
+  [115200, 18023, 24326, 27299, 30734],
+  [115800, 18105, 24432, 27412, 30860],
+  [116400, 18187, 24538, 27525, 30986],
+  [117000, 18270, 24644, 27639, 31113],
+  [117600, 18352, 24750, 27752, 31239],
+  [118200, 18434, 24856, 27865, 31365],
+  [118800, 18517, 24962, 27978, 31491],
+  [119400, 18599, 25068, 28092, 31618],
+  [120000, 18681, 25174, 28205, 31744],
+  [120600, 18763, 25280, 28318, 31870],
+  [121200, 18846, 25386, 28431, 31997],
+  [121800, 18928, 25492, 28545, 32123],
+  [122400, 19010, 25598, 28658, 32249],
+  [123000, 19093, 25704, 28771, 32375],
+  [123600, 19175, 25810, 28884, 32502],
+  [124200, 19257, 25916, 28998, 32628],
+  [124800, 19339, 26022, 29111, 32754],
+  [125400, 19422, 26128, 29224, 32880],
+  [126000, 19504, 26234, 29337, 33007],
+  [126600, 19586, 26340, 29450, 33133],
+  [127200, 19669, 26447, 29564, 33259],
+  [127800, 19748, 26553, 29677, 33385],
+  [128400, 19827, 26659, 29790, 33512],
+  [129000, 19905, 26765, 29903, 33638],
+  [129600, 19983, 26871, 30017, 33764],
+  [130200, 20062, 26977, 30130, 33892],
+  [130800, 20140, 27080, 30243, 34022],
+  [131400, 20219, 27181, 30357, 34152],
+  // NOTE: 3-child value 20473 is a likely typo in official source; probable correct value: 30473
+  [132000, 20297, 27282, 20473, 34281],
+  [132600, 20376, 27383, 30590, 34411],
+  [133200, 20454, 27484, 30706, 34541],
+  [133800, 20533, 27585, 30820, 34671],
+  [134400, 20611, 27686, 30931, 34801],
+  [135000, 20688, 27787, 31042, 34931],
+  [135600, 20765, 27888, 31153, 35060],
+  [136200, 20842, 27989, 31264, 35190],
+  [136800, 20918, 28090, 31375, 35319],
+  [137400, 20995, 28191, 31486, 35442],
+  [138000, 21072, 28292, 31597, 35566],
+  [138600, 21149, 28392, 31708, 35690],
+  [139200, 21225, 28493, 31819, 35814],
+  [139800, 21302, 28594, 31930, 35937],
+  [140400, 21379, 28695, 32041, 36061],
+  [141000, 21456, 28796, 32152, 36185],
+  [141600, 21532, 28897, 32263, 36309],
+  [142200, 21609, 28998, 32374, 36432],
+  [142800, 21686, 29099, 32485, 36556],
+  [143400, 21763, 29200, 32596, 36680],
+  [144000, 21839, 29301, 32707, 36804],
+  [144600, 21916, 29402, 32818, 36928],
+  [145200, 21993, 29503, 32929, 37051],
+  [145800, 22070, 29604, 33040, 37175],
+  [146400, 22147, 29705, 33151, 37299],
+  [147000, 22223, 29805, 33262, 37423],
+  [147600, 22300, 29906, 33373, 37546],
+  [148200, 22377, 30007, 33484, 37670],
+  [148800, 22454, 30108, 33595, 37794],
+  [149400, 22530, 30209, 33706, 37918],
+  [150000, 22607, 30310, 33817, 38041],
+  [150600, 22684, 30411, 33928, 38165],
+  [151200, 22761, 30512, 34039, 38289],
+  [151800, 22837, 30613, 34150, 38413],
+  [152400, 22914, 30714, 34261, 38536],
+  [153000, 22991, 30815, 34372, 38660],
+  [153600, 23068, 30916, 34483, 38784],
+  [154200, 23144, 31017, 34594, 38908],
+  [154800, 23221, 31118, 34705, 39031],
+  [155400, 23298, 31219, 34816, 39155],
+  [156000, 23375, 31319, 34927, 39279],
+  [156600, 23452, 31420, 35038, 39403],
+  [157200, 23528, 31521, 35149, 39527],
+  [157800, 23605, 31622, 35260, 39650],
+  [158400, 23682, 31723, 35371, 39774],
+  [159000, 23759, 31824, 35482, 39898],
+  [159600, 23835, 31925, 35593, 40022],
+  [160200, 23912, 32026, 35704, 40145],
+  [160800, 23989, 32127, 35815, 40269],
+  [161400, 24066, 32228, 35926, 40393],
+  [162000, 24142, 32329, 36037, 40517],
+  [162600, 24219, 32430, 36148, 40640],
+  [163200, 24296, 32531, 36259, 40764],
+  [163800, 24373, 32632, 36370, 40888],
+  [164400, 24449, 32732, 36481, 41012],
+  [165000, 24526, 32833, 36592, 41135],
+  [165600, 24603, 32934, 36703, 41259],
+  [166200, 24680, 33035, 36814, 41383],
+  [166800, 24757, 33136, 36925, 41507],
+  [167400, 24833, 33237, 37036, 41630],
+  [168000, 24910, 33338, 37147, 41735],
+  [168600, 24987, 33439, 37258, 41836],
+  [169200, 25064, 33540, 37366, 41937],
+  [169800, 25140, 33641, 37457, 42039],
+  [170400, 25217, 33742, 37548, 42140],
+  [171000, 25294, 33837, 37639, 42242],
+  [171600, 25371, 33924, 37730, 42343],
+  [172200, 25447, 34012, 37821, 42445],
+  [172800, 25520, 34100, 37912, 42546],
+  [173400, 25591, 34187, 38003, 42648],
+  [174000, 25662, 34275, 38094, 42749],
+  [174600, 25733, 34363, 38184, 42850],
+  [175200, 25804, 34451, 38275, 42952],
+  [175800, 25876, 34538, 38366, 43053],
+  [176400, 25947, 34626, 38457, 43155],
+  [177000, 26018, 34714, 38548, 43256],
+  [177600, 26089, 34802, 38639, 43358],
+  [178200, 26160, 34889, 38730, 43459],
+  [178800, 26231, 34977, 38821, 43561],
+  [179400, 26302, 35065, 38912, 43662],
+  [180000, 26374, 35152, 39003, 43764],
+  [180600, 26445, 35240, 39094, 43865],
+  [181200, 26516, 35328, 39185, 43966],
+  [181800, 26587, 35416, 39276, 44068],
+  [182400, 26658, 35503, 39367, 44169],
+  [183000, 26729, 35591, 39458, 44271],
+  [183600, 26801, 35679, 39549, 44372],
+  [184200, 26872, 35767, 39640, 44474],
+  [184800, 26943, 35854, 39731, 44575],
+  [185400, 27014, 35942, 39822, 44677],
+  [186000, 27085, 36030, 39913, 44778],
+  [186600, 27156, 36117, 40004, 44879],
+  [187200, 27227, 36205, 40095, 44981],
+  [187800, 27299, 36293, 40186, 45082],
+  [188400, 27370, 36381, 40277, 45184],
+  [189000, 27441, 36468, 40368, 45285],
+  [189600, 27512, 36556, 40459, 45387],
+  [190200, 27583, 36644, 40550, 45488],
+  [190800, 27654, 36732, 40641, 45590],
+  [191400, 27725, 36819, 40732, 45691],
+  [192000, 27797, 36907, 40823, 45793],
+  [192600, 27868, 36995, 40914, 45894],
+  [193200, 27939, 37082, 41005, 45995],
+  [193800, 28010, 37170, 41096, 46097],
+  [194400, 28081, 37258, 41187, 46198],
+  [195000, 28151, 37346, 41278, 46300],
+  [195600, 28216, 37433, 41369, 46401],
+  [196200, 28282, 37521, 41460, 46503],
+  [196800, 28347, 37609, 41551, 46604],
+  [197400, 28412, 37697, 41642, 46706],
+  [198000, 28478, 37784, 41733, 46807],
+  [198600, 28543, 37864, 41824, 46908],
+  [199200, 28608, 37945, 41915, 47010],
+  [199800, 28674, 38025, 42006, 47111],
+  [200400, 28739, 38106, 42097, 47213],
+  [201000, 28804, 38187, 42188, 47314],
+  [201600, 28870, 38267, 42272, 47416],
+  [202200, 28935, 38348, 42356, 47517],
+  [202800, 29000, 38428, 42439, 47619],
+  [203400, 29066, 38509, 42523, 47720],
+  [204000, 29131, 38589, 42606, 47821],
+  [204600, 29196, 38670, 42690, 47917],
+  [205200, 29262, 38750, 42773, 48010],
+  [205800, 29327, 38831, 42857, 48103],
+  [206400, 29392, 38912, 42941, 48196],
+  [207000, 29458, 38992, 43024, 48289],
+  [207600, 29523, 39073, 43108, 48383],
+  [208200, 29588, 39153, 43191, 48476],
+  [208800, 29654, 39234, 43275, 48569],
+  [209400, 29719, 39314, 43358, 48662],
+  [210000, 29784, 39395, 43442, 48755],
+  [210600, 29850, 39476, 43525, 48848],
+  [211200, 29915, 39556, 43609, 48942],
+  [211800, 29980, 39637, 43693, 49035],
+  [212400, 30046, 39717, 43776, 49128],
+  [213000, 30111, 39798, 43860, 49221],
+  [213600, 30176, 39878, 43943, 49314],
+  [214200, 30242, 39959, 44027, 49407],
+  [214800, 30307, 40039, 44110, 49501],
+  [215400, 30372, 40120, 44194, 49594],
+  [216000, 30438, 40201, 44277, 49687],
+  [216600, 30503, 40281, 44361, 49780],
+  [217200, 30568, 40362, 44445, 49873],
+  [217800, 30634, 40442, 44528, 49966],
+  [218400, 30699, 40523, 44612, 50060],
+  [219000, 30764, 40603, 44695, 50153],
+  [219600, 30830, 40684, 44779, 50246],
+  [220200, 30895, 40765, 44862, 50339],
+  [220800, 30960, 40845, 44946, 50432],
+  [221400, 31026, 40926, 45029, 50525],
+  [222000, 31091, 41006, 45113, 50619],
+  [222600, 31156, 41087, 45197, 50712],
+  [223200, 31222, 41167, 45280, 50805],
+  [223800, 31287, 41248, 45364, 50898],
+  [224400, 31352, 41329, 45447, 50991],
+  [225000, 31418, 41409, 45531, 51084],
+  [225600, 31483, 41490, 45614, 51178],
+  [226200, 31548, 41570, 45698, 51271],
+  [226800, 31614, 41651, 45782, 51364],
+  [227400, 31679, 41731, 45865, 51457],
+  [228000, 31744, 41812, 45949, 51550],
+  [228600, 31810, 41892, 46032, 51643],
+  [229200, 31875, 41973, 46116, 51737],
+  [229800, 31941, 42054, 46199, 51830],
+  [230400, 32006, 42134, 46283, 51923],
+  [231000, 32071, 42215, 46366, 52016],
+  [231600, 32137, 42295, 46450, 52109],
+  [232200, 32202, 42376, 46534, 52202],
+  [232800, 32267, 42456, 46617, 52296],
+  [233400, 32333, 42537, 46701, 52389],
+  [234000, 32398, 42618, 46784, 52482],
+  [234600, 32463, 42698, 46868, 52575],
+  [235200, 32529, 42779, 46951, 52668],
+  [235800, 32594, 42859, 47035, 52761],
+  [236400, 32659, 42940, 47118, 52885],
+  [237000, 32725, 43020, 47202, 52948],
+  [237600, 32790, 43101, 47286, 53041],
+  [238200, 32855, 43181, 47369, 53137],
+  [238800, 32921, 43262, 47453, 53235],
+  [239400, 32986, 43343, 47536, 53332],
+  [240000, 33051, 43423, 47621, 53429],
+];
+
+// Self-support reserve (133% of federal poverty guideline for a single person)
+export const SELF_SUPPORT_RESERVE = 15654; // annual
+export const MINIMUM_ORDER = 50; // monthly
+export const INCOME_CAP = 240000; // annual — guideline is not presumptive above this
+
+/**
+ * Look up the basic annual child support obligation from the schedule.
+ *
+ * Per D.C. Code § 16-916.01(f)(1)(B): if combined income falls between
+ * schedule amounts, round UP to the next higher row.
+ *
+ * @param {number} combinedAnnualIncome - Combined adjusted gross income (annual)
+ * @param {number} numChildren - Number of children (1–6; capped at 4 for schedule column)
+ * @returns {number|null} Annual basic obligation, or null if below schedule minimum
+ */
+export function lookupBasicObligation(combinedAnnualIncome, numChildren) {
+  const colIndex = Math.min(numChildren, 4); // columns: 1, 2, 3, 4+
+  const scheduleCol = colIndex - 1; // 0-based offset into obligation columns
+
+  // Below the lowest schedule entry — requires individualized assessment
+  if (combinedAnnualIncome < SCHEDULE[0][0]) return null;
+
+  // Above the income cap — guideline not presumptive; use $240k obligation as floor
+  const lookupIncome = Math.min(combinedAnnualIncome, INCOME_CAP);
+
+  // Find the first row where the schedule income >= lookupIncome (round up rule)
+  for (let i = 0; i < SCHEDULE.length; i++) {
+    if (SCHEDULE[i][0] >= lookupIncome) {
+      return SCHEDULE[i][1 + scheduleCol];
+    }
+  }
+
+  // Exactly at or above max schedule row
+  const lastRow = SCHEDULE[SCHEDULE.length - 1];
+  return lastRow[1 + scheduleCol];
+}
+
+/**
+ * Calculate each parent's share of the basic child support obligation (sole custody).
+ * Implements D.C. Code § 16-916.01(f)(1).
+ *
+ * @param {number} parentAGrossAnnual  - Parent A adjusted gross income (annual)
+ * @param {number} parentBGrossAnnual  - Parent B adjusted gross income (annual)
+ * @param {number} numChildren         - Number of children
+ * @returns {Object} Calculation result
+ */
+export function calculateChildSupport(parentAGrossAnnual, parentBGrossAnnual, numChildren) {
+  if (numChildren < 1) throw new Error("numChildren must be at least 1");
+
+  const combined = parentAGrossAnnual + parentBGrossAnnual;
+
+  // Low-income / below-reserve check for paying parent
+  // (This function does not determine which parent pays — caller supplies that context.)
+  const belowReserveA = parentAGrossAnnual < SELF_SUPPORT_RESERVE;
+  const belowReserveB = parentBGrossAnnual < SELF_SUPPORT_RESERVE;
+
+  const basicObligationAnnual = lookupBasicObligation(combined, numChildren);
+  const aboveIncomeCap = combined > INCOME_CAP;
+
+  if (basicObligationAnnual === null) {
+    return {
+      status: "below_schedule_minimum",
+      message:
+        "Combined income is below the schedule minimum ($12,382/year). " +
+        "An individualized assessment or minimum order ($50/month) applies per § 16-916.01(g).",
+      combinedAnnual: combined,
+      numChildren,
+      basicObligationAnnual: null,
+      basicObligationMonthly: null,
+      parentA: null,
+      parentB: null,
+    };
+  }
+
+  const parentAShare = parentAGrossAnnual / combined;
+  const parentBShare = parentBGrossAnnual / combined;
+
+  const parentAObligationAnnual = basicObligationAnnual * parentAShare;
+  const parentBObligationAnnual = basicObligationAnnual * parentBShare;
+
+  return {
+    status: aboveIncomeCap ? "above_income_cap" : "ok",
+    message: aboveIncomeCap
+      ? `Combined income exceeds $240,000/year. Guideline amount (at $240k cap) is the minimum obligation. Court may order more per § 16-916.01(h).`
+      : null,
+    combinedAnnual: combined,
+    numChildren,
+    scheduleColumnUsed: Math.min(numChildren, 4),
+    basicObligationAnnual,
+    basicObligationMonthly: Math.round(basicObligationAnnual / 12),
+    parentA: {
+      grossAnnual: parentAGrossAnnual,
+      incomeShare: parseFloat(parentAShare.toFixed(4)),
+      incomeSharePct: parseFloat((parentAShare * 100).toFixed(2)),
+      obligationAnnual: Math.round(parentAObligationAnnual),
+      obligationMonthly: Math.round(parentAObligationAnnual / 12),
+      belowSelfSupportReserve: belowReserveA,
+    },
+    parentB: {
+      grossAnnual: parentBGrossAnnual,
+      incomeShare: parseFloat(parentBShare.toFixed(4)),
+      incomeSharePct: parseFloat((parentBShare * 100).toFixed(2)),
+      obligationAnnual: Math.round(parentBObligationAnnual),
+      obligationMonthly: Math.round(parentBObligationAnnual / 12),
+      belowSelfSupportReserve: belowReserveB,
+    },
+  };
+}
+
+/**
+ * Convenience: accepts monthly incomes (common for CDFA use cases).
+ * Multiplies by 12 internally before looking up the schedule.
+ *
+ * @param {number} parentAGrossMonthly
+ * @param {number} parentBGrossMonthly
+ * @param {number} numChildren
+ * @returns {Object}
+ */
+export function calculateChildSupportMonthly(parentAGrossMonthly, parentBGrossMonthly, numChildren) {
+  return calculateChildSupport(
+    parentAGrossMonthly * 12,
+    parentBGrossMonthly * 12,
+    numChildren
+  );
+}
+
+/**
+ * Slope-based extrapolation above the $240k/yr schedule cap per *Builta v. Guzman*,
+ * 324 A.3d 269 (D.C. 2024) — the DC Court of Appeals endorsed slope-based methodology
+ * generally as one acceptable above-cap approach (DC Code §16-916.01(h) commits the
+ * amount to discretion; this is a planning reference, not a statutory floor).
+ *
+ * Returns annual extrapolated obligation, or null when at or below the cap.
+ *
+ * @param {number} combinedAnnualIncome
+ * @param {number} numChildren
+ * @returns {number|null}
+ */
+export function computeHollandExtrapolation(combinedAnnualIncome, numChildren) {
+  if (combinedAnnualIncome <= INCOME_CAP) return null;
+  const childColumnIndex = Math.min(Math.max(numChildren, 1), 4); // 1..4
+  const lastIndex = SCHEDULE.length - 1;
+  const last = SCHEDULE[lastIndex];
+  const prev = SCHEDULE[lastIndex - 1];
+  const slope = (last[childColumnIndex] - prev[childColumnIndex]) / (last[0] - prev[0]);
+  const topRowAmount = last[childColumnIndex];
+  const excess = combinedAnnualIncome - INCOME_CAP;
+  return topRowAmount + (excess * slope);
+}
+
+/**
+ * Look up DC child support per §6.5.3 return shape.
+ *
+ * DC schedule stores annual values; monthly input is multiplied by 12 internally per B5b-2.
+ * Above $240k/yr (D.C. Code §16-916.01(h)): top-row schedule amount is the statutory floor;
+ * Holland-method extrapolation surfaced as planning reference (cited *Builta v. Guzman*).
+ *
+ * @param {number} combinedMonthlyIncome
+ * @param {number} numChildren
+ * @returns {object} §6.5.3 shape (all monetary values monthly)
+ */
+export function lookupChildSupport(combinedMonthlyIncome, numChildren) {
+  const combinedAnnualIncome = combinedMonthlyIncome * 12;
+  const childColumnIndex = Math.min(Math.max(numChildren, 1), 4); // 1..4
+  const topRowAnnual = SCHEDULE[SCHEDULE.length - 1][childColumnIndex];
+  const scheduleMaxMonthly = topRowAnnual / 12;
+  const capValueMonthly = INCOME_CAP / 12;
+
+  if (combinedAnnualIncome > INCOME_CAP) {
+    const hollandAnnual = computeHollandExtrapolation(combinedAnnualIncome, numChildren);
+    return {
+      basicSupport: scheduleMaxMonthly,
+      source: 'dc',
+      scheduleStatus: 'above',
+      scheduleMax: scheduleMaxMonthly,
+      aboveScheduleMethod: 'dc_statutory_floor',
+      hollandExtrapolation: hollandAnnual === null ? null : hollandAnnual / 12,
+      capValue: capValueMonthly,
+      notes: [],
+    };
+  }
+
+  const annualObligation = lookupBasicObligation(combinedAnnualIncome, numChildren);
+  // Below schedule minimum — surface basicSupport: 0 + note; spec §6.5.3 requires guaranteed presence
+  if (annualObligation === null) {
+    return {
+      basicSupport: 0,
+      source: 'dc',
+      scheduleStatus: 'within',
+      scheduleMax: scheduleMaxMonthly,
+      aboveScheduleMethod: null,
+      hollandExtrapolation: null,
+      capValue: capValueMonthly,
+      notes: ['Combined income below schedule minimum ($12,382/yr); court uses individualized assessment or minimum order rules.'],
+    };
+  }
+
+  return {
+    basicSupport: annualObligation / 12,
+    source: 'dc',
+    scheduleStatus: 'within',
+    scheduleMax: scheduleMaxMonthly,
+    aboveScheduleMethod: null,
+    hollandExtrapolation: null,
+    capValue: capValueMonthly,
+    notes: [],
+  };
+}
