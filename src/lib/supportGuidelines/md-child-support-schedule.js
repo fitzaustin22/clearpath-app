@@ -582,27 +582,57 @@ export const mdChildSupportSchedule = [
   [30000, 3163, 4596, 5256, 5871, 6458, 7020],
 ];
 
+import { lookupAtDate, MD_CHILD_SUPPORT_CAP } from './effectiveDateConstants.js';
+
 /**
- * Look up the basic child support obligation from the Maryland schedule.
- * Per § 12-204(c), if income falls between table amounts, use the next higher row.
- * Per § 12-204(d), if income exceeds $30,000, court uses discretion.
+ * Look up MD child support per §6.5.3 return shape.
  *
- * @param {number} combinedAdjustedIncome - Combined adjusted actual monthly income
- * @param {number} numberOfChildren - Number of children (1–6; values >6 use the 6-child column)
- * @returns {number|null} Basic child support obligation in dollars, or null if income exceeds table
+ * Per Md. Fam. Law §12-204(c): income between table amounts uses the next higher row.
+ * Per §12-204(d): income above $30,000/mo is committed to judicial discretion;
+ * *Voishan v. Palma*, 327 Md. 318 (1992) treats the top-row amount as the
+ * rebuttable presumptive floor — surfaced as `aboveScheduleMethod: 'md_voishan_presumptive_floor'`.
+ *
+ * @param {number} combinedMonthlyIncome
+ * @param {number} numChildren
+ * @param {Date|string} [asOfDate]
+ * @returns {object} §6.5.3 shape
  */
-export function lookupChildSupport(combinedAdjustedIncome, numberOfChildren) {
-  if (combinedAdjustedIncome > 30000) return null;
+export function lookupChildSupport(combinedMonthlyIncome, numChildren, asOfDate) {
+  const capRecord = lookupAtDate(MD_CHILD_SUPPORT_CAP, asOfDate);
+  const scheduleMaxMonthly = capRecord?.monthlyValue ?? 30000;
+  const childIndex = Math.min(Math.max(numChildren, 1), 6);
 
-  const childIndex = Math.min(numberOfChildren, 6); // cap at 6
+  const topRowAmount = mdChildSupportSchedule[mdChildSupportSchedule.length - 1][childIndex];
 
-  // Find the row at or just above the income amount
-  for (const row of mdChildSupportSchedule) {
-    if (combinedAdjustedIncome <= row[0]) {
-      return row[childIndex];
-    }
+  if (combinedMonthlyIncome > scheduleMaxMonthly) {
+    return {
+      basicSupport: topRowAmount,
+      source: 'md',
+      scheduleStatus: 'above',
+      scheduleMax: scheduleMaxMonthly,
+      aboveScheduleMethod: 'md_voishan_presumptive_floor',
+      hollandExtrapolation: null,
+      capValue: scheduleMaxMonthly,
+      notes: [],
+    };
   }
 
-  return null;
+  let basicSupport = topRowAmount;
+  for (const row of mdChildSupportSchedule) {
+    if (combinedMonthlyIncome <= row[0]) {
+      basicSupport = row[childIndex];
+      break;
+    }
+  }
+  return {
+    basicSupport,
+    source: 'md',
+    scheduleStatus: 'within',
+    scheduleMax: scheduleMaxMonthly,
+    aboveScheduleMethod: null,
+    hollandExtrapolation: null,
+    capValue: scheduleMaxMonthly,
+    notes: [],
+  };
 }
 

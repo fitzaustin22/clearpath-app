@@ -847,38 +847,111 @@ export const VA_SCHEDULE = [
   [42500,3306,4792,5867,6554,7209,7837]
 ];
 
+// Alias preserved for cherry-pick fidelity and downstream consumers.
+export const vaChildSupportSchedule = VA_SCHEDULE;
+
+import { lookupAtDate, VA_CHILD_SUPPORT_CAP } from './effectiveDateConstants.js';
+
+// Va. Code §20-108.2(B) (post-SB 805) — marginal percentages applied to income
+// above the $42,500/mo schedule cap. Source: 2025 Va. Acts ch. 702.
+export const vaAboveCapPercentages = {
+  1: 0.026,
+  2: 0.034,
+  3: 0.038,
+  4: 0.042,
+  5: 0.046,
+  6: 0.050,
+};
+
 /**
- * Look up the basic child support obligation from the Virginia schedule.
- * Uses a floor lookup: finds the highest row whose income is <= combinedMonthlyIncome.
- * Returns the lowest-row value if income is below the schedule minimum.
- * Returns the highest-row value if income exceeds the schedule maximum.
- *
- * @param {number} combinedMonthlyIncome - Combined monthly gross income
- * @param {number} numChildren - Number of children (1–6)
- * @returns {number|null} Monthly child support obligation, or null for invalid numChildren
+ * Floor-lookup helper: largest schedule row whose combinedMonthly ≤ target.
+ * Returns the top-row monthly value when target ≥ schedule max.
  */
-export function lookupChildSupport(combinedMonthlyIncome, numChildren) {
-  if (numChildren < 1 || numChildren > 6) return null;
-
-  // Below minimum — return first row's value
+function scheduleFloorLookup(combinedMonthlyIncome, scheduleColumn) {
   if (combinedMonthlyIncome <= VA_SCHEDULE[0][0]) {
-    return VA_SCHEDULE[0][numChildren];
+    return VA_SCHEDULE[0][scheduleColumn];
   }
-
-  // Above maximum — return last row's value
   const last = VA_SCHEDULE[VA_SCHEDULE.length - 1];
   if (combinedMonthlyIncome >= last[0]) {
-    return last[numChildren];
+    return last[scheduleColumn];
   }
-
-  // Floor lookup: largest row[0] <= income
-  let result = VA_SCHEDULE[0][numChildren];
+  let result = VA_SCHEDULE[0][scheduleColumn];
   for (const row of VA_SCHEDULE) {
     if (row[0] <= combinedMonthlyIncome) {
-      result = row[numChildren];
+      result = row[scheduleColumn];
     } else {
       break;
     }
   }
   return result;
+}
+
+/**
+ * Look up VA child support per §6.5.3 return shape.
+ *
+ * Above-cap behavior (per Va. Code §20-108.2(B), eff. 2025-07-01):
+ * Add top-row schedule × (marginal % × excess monthly income above $42,500/mo).
+ * `numChildren > 6`: fall back to 6-child marginal percentage and surface `notes` flag.
+ *
+ * @param {number} combinedMonthlyIncome
+ * @param {number} numChildren
+ * @param {Date|string} [asOfDate]
+ * @returns {object} §6.5.3 shape
+ */
+export function lookupChildSupport(combinedMonthlyIncome, numChildren, asOfDate) {
+  const capRecord = lookupAtDate(VA_CHILD_SUPPORT_CAP, asOfDate);
+  const scheduleMaxMonthly = capRecord?.monthlyValue ?? 42500;
+
+  const notes = [];
+  let effectiveChildIndex = numChildren;
+  if (numChildren > 6) {
+    effectiveChildIndex = 6;
+    notes.push(
+      `Schedule supports up to 6 children; ${numChildren} children fall back to 6-child marginal percentage.`,
+    );
+  }
+  if (numChildren < 1) {
+    return {
+      basicSupport: 0,
+      source: 'va',
+      scheduleStatus: 'within',
+      scheduleMax: scheduleMaxMonthly,
+      aboveScheduleMethod: null,
+      hollandExtrapolation: null,
+      capValue: scheduleMaxMonthly,
+      notes,
+    };
+  }
+
+  const within = combinedMonthlyIncome <= scheduleMaxMonthly;
+  const topRow = VA_SCHEDULE[VA_SCHEDULE.length - 1];
+  const topRowAmount = topRow[effectiveChildIndex];
+
+  if (within) {
+    const basicSupport = scheduleFloorLookup(combinedMonthlyIncome, effectiveChildIndex);
+    return {
+      basicSupport,
+      source: 'va',
+      scheduleStatus: 'within',
+      scheduleMax: scheduleMaxMonthly,
+      aboveScheduleMethod: null,
+      hollandExtrapolation: null,
+      capValue: scheduleMaxMonthly,
+      notes,
+    };
+  }
+
+  const marginalPct = vaAboveCapPercentages[effectiveChildIndex];
+  const excess = combinedMonthlyIncome - scheduleMaxMonthly;
+  const basicSupport = topRowAmount + (marginalPct * excess);
+  return {
+    basicSupport,
+    source: 'va',
+    scheduleStatus: 'above',
+    scheduleMax: scheduleMaxMonthly,
+    aboveScheduleMethod: 'va_statutory_marginal_percentage',
+    hollandExtrapolation: null,
+    capValue: scheduleMaxMonthly,
+    notes,
+  };
 }

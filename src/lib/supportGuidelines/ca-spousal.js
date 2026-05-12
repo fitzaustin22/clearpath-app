@@ -239,3 +239,68 @@ export default {
   CA_DURATION_GUIDELINES,
   CA_FORMULA_OPTIONS,
 };
+
+/**
+ * Unified §6.5.4-shaped wrapper for the supportGuidelines barrel.
+ *
+ * Pendente lite → Santa Clara county formula (most widely referenced; not statewide
+ *   statutory authority). Net approximated at 75% of gross at Standard depth per §6.6.2 copy;
+ *   Full Worksheet net plumbed via `fullWorksheet` when present.
+ * Post-divorce → factor test under Cal. Fam. Code §4320; monthlyAmount: 0 + factor flag.
+ *
+ * @param {object} params
+ * @param {number} params.payorGrossMonthly
+ * @param {number} params.payeeGrossMonthly
+ * @param {('pendente_lite'|'post_divorce')} [params.temporal='post_divorce']
+ * @param {('standard'|'full_worksheet')} [params.depth='standard']
+ * @param {object|null} [params.fullWorksheet=null]
+ * @param {number} [params.monthlyChildSupport=0]
+ * @returns {object} §6.5.4 shape
+ */
+export function lookupSpousal({
+  payorGrossMonthly,
+  payeeGrossMonthly,
+  temporal = 'post_divorce',
+  depth = 'standard',
+  fullWorksheet = null,
+  monthlyChildSupport = 0,
+}) {
+  if (temporal === 'post_divorce') {
+    return {
+      monthlyAmount: 0,
+      formulaUsed: 'factor_test_approximation',
+      duration: null,
+      cap: { hit: false, capValue: null, aboveTreatment: null },
+      capBinds: false,
+      ssr: null,
+      factorTestApplies: true,
+      notes: [],
+    };
+  }
+
+  const payorNet =
+    depth === 'full_worksheet' && fullWorksheet?.partyA?.net != null
+      ? fullWorksheet.partyA.net
+      : payorGrossMonthly * 0.75;
+  const payeeNet =
+    depth === 'full_worksheet' && fullWorksheet?.partyB?.net != null
+      ? fullWorksheet.partyB.net
+      : payeeGrossMonthly * 0.75;
+
+  const result = calculateSantaClaraSpousal({
+    payorNetMonthly: payorNet,
+    payeeNetMonthly: payeeNet,
+    monthlyChildSupport,
+  });
+  // Existing calculator returns { monthlyAmount, ... }; pass through to §6.5.4 shape.
+  return {
+    monthlyAmount: Math.max(0, result?.monthlyAmount ?? 0),
+    formulaUsed: 'ca_santa_clara_temp',
+    duration: null,
+    cap: { hit: false, capValue: null, aboveTreatment: null },
+    capBinds: false,
+    ssr: null,
+    factorTestApplies: false,
+    notes: [],
+  };
+}

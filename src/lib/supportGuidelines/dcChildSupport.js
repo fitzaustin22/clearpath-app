@@ -533,14 +533,84 @@ export function calculateChildSupportMonthly(parentAGrossMonthly, parentBGrossMo
 }
 
 /**
- * Convenience lookup matching the VA/MD interface: accepts combined monthly income.
- * DC schedule stores annual values, so monthly income is multiplied by 12 internally.
- * Returns the annual basic obligation (divide by 12 for monthly).
+ * Slope-based extrapolation above the $240k/yr schedule cap per *Builta v. Guzman*,
+ * 324 A.3d 269 (D.C. 2024) — the DC Court of Appeals endorsed slope-based methodology
+ * generally as one acceptable above-cap approach (DC Code §16-916.01(h) commits the
+ * amount to discretion; this is a planning reference, not a statutory floor).
  *
- * @param {number} combinedMonthlyIncome - Combined monthly gross income
- * @param {number} numChildren - Number of children (1–4+; capped at 4 for schedule column)
- * @returns {number|null} Annual basic obligation, or null if below schedule minimum
+ * Returns annual extrapolated obligation, or null when at or below the cap.
+ *
+ * @param {number} combinedAnnualIncome
+ * @param {number} numChildren
+ * @returns {number|null}
+ */
+export function computeHollandExtrapolation(combinedAnnualIncome, numChildren) {
+  if (combinedAnnualIncome <= INCOME_CAP) return null;
+  const childColumnIndex = Math.min(Math.max(numChildren, 1), 4); // 1..4
+  const lastIndex = SCHEDULE.length - 1;
+  const last = SCHEDULE[lastIndex];
+  const prev = SCHEDULE[lastIndex - 1];
+  const slope = (last[childColumnIndex] - prev[childColumnIndex]) / (last[0] - prev[0]);
+  const topRowAmount = last[childColumnIndex];
+  const excess = combinedAnnualIncome - INCOME_CAP;
+  return topRowAmount + (excess * slope);
+}
+
+/**
+ * Look up DC child support per §6.5.3 return shape.
+ *
+ * DC schedule stores annual values; monthly input is multiplied by 12 internally per B5b-2.
+ * Above $240k/yr (D.C. Code §16-916.01(h)): top-row schedule amount is the statutory floor;
+ * Holland-method extrapolation surfaced as planning reference (cited *Builta v. Guzman*).
+ *
+ * @param {number} combinedMonthlyIncome
+ * @param {number} numChildren
+ * @returns {object} §6.5.3 shape (all monetary values monthly)
  */
 export function lookupChildSupport(combinedMonthlyIncome, numChildren) {
-  return lookupBasicObligation(combinedMonthlyIncome * 12, numChildren);
+  const combinedAnnualIncome = combinedMonthlyIncome * 12;
+  const childColumnIndex = Math.min(Math.max(numChildren, 1), 4); // 1..4
+  const topRowAnnual = SCHEDULE[SCHEDULE.length - 1][childColumnIndex];
+  const scheduleMaxMonthly = topRowAnnual / 12;
+  const capValueMonthly = INCOME_CAP / 12;
+
+  if (combinedAnnualIncome > INCOME_CAP) {
+    const hollandAnnual = computeHollandExtrapolation(combinedAnnualIncome, numChildren);
+    return {
+      basicSupport: scheduleMaxMonthly,
+      source: 'dc',
+      scheduleStatus: 'above',
+      scheduleMax: scheduleMaxMonthly,
+      aboveScheduleMethod: 'dc_statutory_floor',
+      hollandExtrapolation: hollandAnnual === null ? null : hollandAnnual / 12,
+      capValue: capValueMonthly,
+      notes: [],
+    };
+  }
+
+  const annualObligation = lookupBasicObligation(combinedAnnualIncome, numChildren);
+  // Below schedule minimum — surface basicSupport: 0 + note; spec §6.5.3 requires guaranteed presence
+  if (annualObligation === null) {
+    return {
+      basicSupport: 0,
+      source: 'dc',
+      scheduleStatus: 'within',
+      scheduleMax: scheduleMaxMonthly,
+      aboveScheduleMethod: null,
+      hollandExtrapolation: null,
+      capValue: capValueMonthly,
+      notes: ['Combined income below schedule minimum ($12,382/yr); court uses individualized assessment or minimum order rules.'],
+    };
+  }
+
+  return {
+    basicSupport: annualObligation / 12,
+    source: 'dc',
+    scheduleStatus: 'within',
+    scheduleMax: scheduleMaxMonthly,
+    aboveScheduleMethod: null,
+    hollandExtrapolation: null,
+    capValue: capValueMonthly,
+    notes: [],
+  };
 }
