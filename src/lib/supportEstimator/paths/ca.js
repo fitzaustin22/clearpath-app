@@ -14,10 +14,8 @@
  *   STEP 2 — Child support via generic fallback
  *   STEP 3 — Combine
  *
- * Caveat: lookupSpousalCA assumes fullWorksheet.partyA is the payor net;
- * v1 fixtures all map partyA as higher earner so this is not exercised, but
- * a swap is needed when partyB is the payor under Full Worksheet depth.
- * Surface to spec/code reconciliation queue.
+ * payorIsPartyA is threaded into lookupSpousalCA so the Full Worksheet branch
+ * resolves payor/payee net from the correct higher-earner side (see D4 fix).
  */
 
 import {
@@ -40,7 +38,7 @@ function emptyChildCalcGeneric() {
 }
 
 export function computeCA(ctx) {
-  const { inputs, payor_raw, payee_raw, highEarnerIsCustodial, callouts, perStepNarrative } = ctx;
+  const { inputs, payor_raw, payee_raw, payorIsPartyA, highEarnerIsCustodial, callouts, perStepNarrative } = ctx;
   const { numChildren, temporal, depth, fullWorksheet } = inputs;
 
   // STEP 1 — Compute spousal (Santa Clara PL or §4320 factor test post-div).
@@ -50,6 +48,7 @@ export function computeCA(ctx) {
     temporal,
     depth,
     fullWorksheet,
+    payorIsPartyA,
   });
   const spousalMonthly = spousalCalc.monthlyAmount;
   perStepNarrative.push({

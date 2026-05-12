@@ -68,6 +68,7 @@ export function calculateSupport(inputs) {
     inputs,
     payor_raw,
     payee_raw,
+    payorIsPartyA,
     highEarnerIsCustodial,
     asOfDate,
     callouts,
