@@ -72,3 +72,43 @@ export function prePopulateQDROInputs(_) {
 export function prePopulateHomeDecisionInputs(_) {
   return {};
 }
+
+/**
+ * Support Estimator — fresh-default detector. Gates one-time pre-pop on first
+ * tool entry per §6.2. Returns true when inputs match post-init default state
+ * across primary fields.
+ *
+ * "Fresh default" = grossMonthly null both parties, numChildren 0, state OTHER,
+ * marriageLengthYears null, temporal post_divorce, depth standard.
+ *
+ * Imputation toggles, add-ons (HI/childcare/etc.), and nyCustodyConfig are NOT
+ * checked — those default to 0/null at init and the pre-pop function doesn't
+ * source them, so a user setting them before partyA.grossMonthly is exotic
+ * enough that we ignore it for v1.
+ */
+export function isInputsFreshDefault(inputs) {
+  if (!inputs) return false;
+  return (
+    inputs.partyA?.grossMonthly === null &&
+    inputs.partyB?.grossMonthly === null &&
+    inputs.numChildren === 0 &&
+    inputs.state === 'OTHER' &&
+    inputs.marriageLengthYears === null &&
+    inputs.temporal === 'post_divorce' &&
+    inputs.depth === 'standard'
+  );
+}
+
+/**
+ * Clears the _prePopSources entry for a given field path. Called when the user
+ * overrides a pre-popped value — the badge stops surfacing for that field per
+ * §6.5.7. Immutable — returns a new object; does not mutate input.
+ *
+ * Usage: clearPrePopSource(_prePopSources, 'partyA.grossMonthly')
+ */
+export function clearPrePopSource(prePopSources, fieldPath) {
+  if (!prePopSources || !(fieldPath in prePopSources)) return prePopSources;
+  const next = { ...prePopSources };
+  delete next[fieldPath];
+  return next;
+}

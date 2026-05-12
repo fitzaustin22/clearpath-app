@@ -1,0 +1,26 @@
+{
+  "id": "TC-SE-PrePop-3",
+  "description": "All upstream stores empty → both parties stay null, _prePopSources entries all null",
+  "input": {
+    "m1Store": null,
+    "m2Store": null,
+    "m3Store": null
+  },
+  "expected": {
+    "inputs": {
+      "partyA": { "grossMonthly": null },
+      "partyB": { "grossMonthly": null },
+      "numChildren": 0,
+      "state": "OTHER",
+      "marriageLengthYears": null,
+      "nyCustodyConfig": null,
+      "temporal": "post_divorce",
+      "depth": "standard",
+      "caseEffectiveDate": null,
+      "fullWorksheet": null
+    },
+    "_prePopSources": {
+      "partyA.grossMonthly": null
+    }
+  }
+}
