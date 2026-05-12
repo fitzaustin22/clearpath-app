@@ -4,6 +4,8 @@ import {
   prePopulatePVAInputs,
   prePopulateQDROInputs,
   prePopulateHomeDecisionInputs,
+  isInputsFreshDefault,
+  clearPrePopSource,
 } from './prePopulate.js';
 
 describe('prePopulateSupportEstimatorInputs (§6.5.7)', () => {
@@ -75,4 +77,75 @@ describe('prePopulate stubs (PVA / QDG / HDA)', () => {
       expect(result).not.toBeNull();
     });
   }
+});
+
+describe('isInputsFreshDefault (§6.2 fresh-default gate)', () => {
+  it('returns true on init-default state from prePopulate (m3 absent)', () => {
+    const { inputs } = prePopulateSupportEstimatorInputs({
+      m1Store: null,
+      m2Store: null,
+      m3Store: null,
+    });
+    expect(isInputsFreshDefault(inputs)).toBe(true);
+  });
+
+  it('returns false when partyA.grossMonthly is set (pre-popped from m3)', () => {
+    const { inputs } = prePopulateSupportEstimatorInputs({
+      m1Store: null,
+      m2Store: null,
+      m3Store: { payStubDecoder: { results: { grossMonthlyIncome: 8000 } } },
+    });
+    expect(isInputsFreshDefault(inputs)).toBe(false);
+  });
+
+  it('returns false when user has touched numChildren', () => {
+    const { inputs } = prePopulateSupportEstimatorInputs({ m3Store: null });
+    inputs.numChildren = 2;
+    expect(isInputsFreshDefault(inputs)).toBe(false);
+  });
+
+  it('returns false when partyB.grossMonthly is user-entered', () => {
+    const { inputs } = prePopulateSupportEstimatorInputs({ m3Store: null });
+    inputs.partyB.grossMonthly = 5000;
+    expect(isInputsFreshDefault(inputs)).toBe(false);
+  });
+
+  it('returns false when state has been changed off default OTHER', () => {
+    const { inputs } = prePopulateSupportEstimatorInputs({ m3Store: null });
+    inputs.state = 'VA';
+    expect(isInputsFreshDefault(inputs)).toBe(false);
+  });
+
+  it('returns false when inputs is null/undefined', () => {
+    expect(isInputsFreshDefault(null)).toBe(false);
+    expect(isInputsFreshDefault(undefined)).toBe(false);
+  });
+});
+
+describe('clearPrePopSource (§6.5.7 override clears badge)', () => {
+  it('removes the specified field path', () => {
+    const sources = {
+      'partyA.grossMonthly': { source: 'm3.payStubDecoder', timestamp: 'x' },
+    };
+    const next = clearPrePopSource(sources, 'partyA.grossMonthly');
+    expect(next['partyA.grossMonthly']).toBeUndefined();
+  });
+
+  it('returns input unchanged when path not present', () => {
+    const sources = {};
+    expect(clearPrePopSource(sources, 'partyA.grossMonthly')).toBe(sources);
+  });
+
+  it('returns input unchanged when prePopSources is null', () => {
+    expect(clearPrePopSource(null, 'partyA.grossMonthly')).toBeNull();
+  });
+
+  it('does not mutate input', () => {
+    const sources = {
+      'partyA.grossMonthly': { source: 'm3.payStubDecoder', timestamp: 'x' },
+    };
+    const snapshot = { ...sources };
+    clearPrePopSource(sources, 'partyA.grossMonthly');
+    expect(sources).toEqual(snapshot);
+  });
 });

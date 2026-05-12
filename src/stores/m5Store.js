@@ -104,11 +104,46 @@ function makeInitialPensionValuation() {
 // ─── Store ──────────────────────────────────────────────────────────────────
 export const useM5Store = create(
   persist(
-    () => ({
+    (set) => ({
       homeDecision: makeInitialHomeDecision(),
       qdroDecision: makeInitialQDRODecision(),
       pensionValuation: makeInitialPensionValuation(),
       supportEstimator: makeInitialSupportEstimator(),
+
+      // ─── Support Estimator setters (§6.5.1 / §6.5.2 / §6.5.7) ──────────
+      // Partial-merge pattern mirrors m4Store (setFilingStatusInputs).
+      setSupportEstimatorInputs: (partial) =>
+        set((state) => ({
+          supportEstimator: {
+            ...state.supportEstimator,
+            inputs: { ...state.supportEstimator.inputs, ...partial },
+          },
+        })),
+
+      // Whole-object replacement — used by pre-pop and dev-route scenario seed.
+      replaceSupportEstimatorInputs: (nextInputs) =>
+        set((state) => ({
+          supportEstimator: {
+            ...state.supportEstimator,
+            inputs: nextInputs,
+          },
+        })),
+
+      setSupportEstimatorPrePopSources: (sources) =>
+        set((state) => ({
+          supportEstimator: {
+            ...state.supportEstimator,
+            _prePopSources: sources,
+          },
+        })),
+
+      setSupportEstimatorResults: (results) =>
+        set((state) => ({
+          supportEstimator: {
+            ...state.supportEstimator,
+            results,
+          },
+        })),
     }),
     {
       name: 'clearpath-m5',
