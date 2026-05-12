@@ -1,0 +1,22 @@
+{
+  "id": "TC-SE-NY-7",
+  "description": "NY pendente lite — no duration",
+  "input": {
+    "partyA": { "grossMonthly": 12500, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4166.67, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "numChildren": 0,
+    "state": "NY",
+    "marriageLengthYears": 10,
+    "nyCustodyConfig": null,
+    "temporal": "pendente_lite",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalCalc": {
+      "duration": null
+    }
+  },
+  "notes": "Spec text §6.7.2: PL terminates at judgment by operation of law; duration === null."
+}

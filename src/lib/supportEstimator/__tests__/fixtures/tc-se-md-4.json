@@ -1,0 +1,25 @@
+{
+  "id": "TC-SE-MD-4",
+  "description": "MD AAML zero-output, equal incomes",
+  "input": {
+    "partyA": { "grossMonthly": 5000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 5000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "numChildren": 0,
+    "state": "MD",
+    "marriageLengthYears": null,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 0,
+    "alimonyFirstOrderingApplied": false,
+    "adjustedIncomes": null,
+    "spousalCalc": {
+      "formulaUsed": "aaml_30_20_with_40pct_cap"
+    }
+  },
+  "notes": "Spec text §6.7.2: calcA = 1500 − 1000 = $500; cap = 4000 − 5000 = -$1000; max(0, min(500, -1000)) = $0. No alimony-first ordering when spousal === 0; adjustedIncomes null per B5b-4."
+}

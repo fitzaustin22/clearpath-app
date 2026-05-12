@@ -1,0 +1,27 @@
+{
+  "id": "TC-SE-Imputation-2",
+  "description": "Imputation × Full Worksheet — per F-8 + B5b-5 (v1: identical result to Imputation-1)",
+  "input": {
+    "partyA": { "grossMonthly": 4000, "imputeIncome": true, "imputedEarningCapacity": 8000, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 5000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "VA",
+    "marriageLengthYears": null,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "full_worksheet",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 0,
+    "childMonthly": 1343,
+    "metadata": {
+      "imputationApplied": {
+        "partyA": true
+      },
+      "depth": "full_worksheet"
+    }
+  },
+  "notes": "Spec text §6.7.3: when imputation ON for partyA, fullWorksheet.partyA fields reset to null per B5b-5. v1 VA doesn't use net, so result mirrors Imputation-1. Same childMonthly = 1343 (basicSupport 2182 × 8000/13000 share)."
+}

@@ -1,0 +1,25 @@
+{
+  "id": "TC-SE-EffectiveDate-1",
+  "description": "Case-effective date in past — NY 2024-effective constants",
+  "input": {
+    "partyA": { "grossMonthly": 25000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 3333.33, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "numChildren": 0,
+    "state": "NY",
+    "marriageLengthYears": 10,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": "2024-06-01",
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalCalc": {
+      "cap": { "hit": true, "capValue": 228000, "aboveTreatment": "discretionary" }
+    },
+    "metadata": {
+      "asOfDateForStatutoryConstants": "2024-06-01T00:00:00.000Z"
+    }
+  },
+  "notes": "Spec text §6.7.3: NY maintenance cap = $228K (2024 value, not 2026 $241K). metadata.asOfDateForStatutoryConstants reflects 2024-06-01."
+}

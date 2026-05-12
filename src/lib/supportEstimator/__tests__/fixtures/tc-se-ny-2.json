@@ -1,0 +1,24 @@
+{
+  "id": "TC-SE-NY-2",
+  "description": "NY Formula B — kids with payor / high-earner-custodial → bidirectional flow",
+  "input": {
+    "partyA": { "grossMonthly": 12500, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4166.67, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "NY",
+    "marriageLengthYears": 8,
+    "nyCustodyConfig": "kids_with_payor",
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 2500,
+    "childMonthly": 0,
+    "spousalCalc": {
+      "formulaUsed": "ny_2015_formula_b"
+    }
+  },
+  "notes": "Spec text §6.7.2: B1 = 0.30×150K − 0.20×50K = $35K/yr; B2 = 0.40×200K − 50K = $30K/yr; lower = $30K/yr ≈ $2,500/mo. childMonthly = 0 per S5a-2 v1 simplification; bidirectional_flow_disclosure callout surfaces."
+}

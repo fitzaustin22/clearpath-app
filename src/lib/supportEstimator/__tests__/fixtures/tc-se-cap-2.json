@@ -1,0 +1,24 @@
+{
+  "id": "TC-SE-Cap-2",
+  "description": "VA schedule extrapolation 7+ children — falls back to 6-child rate per practice",
+  "input": {
+    "partyA": { "grossMonthly": 35000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 15000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 7,
+    "state": "VA",
+    "marriageLengthYears": null,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "childCalc": {
+      "source": "va",
+      "scheduleStatus": "above",
+      "notes": ["Schedule supports up to 6 children; 7 children fall back to 6-child marginal percentage."]
+    }
+  },
+  "notes": "Spec text §6.7.3: VA combined $50K/mo, 7 kids → uses 6-child marginal percentage per practice; notes flag surfaces. Codebase lookupChildSupportVA pushes this note when numChildren > 6."
+}

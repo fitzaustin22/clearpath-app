@@ -1,0 +1,25 @@
+{
+  "id": "TC-SE-Bidirectional-2",
+  "description": "MD high-earner-custodial via parentingTimeNights — per S5a-2",
+  "input": {
+    "partyA": { "grossMonthly": 10000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "numChildren": 1,
+    "state": "MD",
+    "marriageLengthYears": 10,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 1600,
+    "childMonthly": 0,
+    "spousalCalc": {
+      "formulaUsed": "aaml_30_20_with_40pct_cap",
+      "capBinds": true
+    }
+  },
+  "notes": "Spec text §6.7.3: partyA (payor) custodial via parentingTimeNights 250 > 115. AAML spousal computed normally ($1,600 cap-binds). childMonthly = 0 per S5a-2. bidirectional_flow_disclosure callout surfaces."
+}

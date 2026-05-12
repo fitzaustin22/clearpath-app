@@ -1,0 +1,28 @@
+{
+  "id": "TC-SE-DC-3",
+  "description": "DC above-schedule + AAML + Holland extrapolation + pro-rate",
+  "input": {
+    "partyA": { "grossMonthly": 25000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 5000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "DC",
+    "marriageLengthYears": 12,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "alimonyFirstOrderingApplied": true,
+    "childCalc": {
+      "source": "dc",
+      "scheduleStatus": "above",
+      "aboveScheduleMethod": "dc_statutory_floor"
+    },
+    "spousalCalc": {
+      "formulaUsed": "aaml_30_20_with_40pct_cap"
+    }
+  },
+  "notes": "Spec text §6.7.2: combined annual $360K > $240K cap; AAML first then alimony-first ordering then DC §16-916.01(h) floor + Holland method per F-7. childCalc.hollandExtrapolation populated."
+}

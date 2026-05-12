@@ -1,0 +1,27 @@
+{
+  "id": "TC-SE-NY-9",
+  "description": "NY CSSA child support above $193K cap (Sinnott discretionary)",
+  "input": {
+    "partyA": { "grossMonthly": 16666.666666666668, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 1666.6666666666667, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "NY",
+    "marriageLengthYears": 10,
+    "nyCustodyConfig": "kids_with_payee",
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 2917,
+    "childMonthly": 3016,
+    "alimonyFirstOrderingApplied": true,
+    "childCalc": {
+      "source": "ny",
+      "scheduleStatus": "above",
+      "aboveScheduleMethod": "ny_cssa_above_cap_discretionary"
+    }
+  },
+  "notes": "Spec text §6.7.2: spousal Formula A $35K/yr ≈ $2,917/mo. After alimony-first, combined still > $193K cap. basicSupport anchored at $193K × 25% / 12 ≈ $4,021/mo. Pro-rate: payorIncomeShare ≈ 0.75; childMonthly ≈ $3,016. Tool does NOT auto-extend percentages above cap."
+}

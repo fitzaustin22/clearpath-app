@@ -1,0 +1,27 @@
+{
+  "id": "TC-SE-MD-3",
+  "description": "MD post-divorce AAML + short-marriage caveat (3yr)",
+  "input": {
+    "partyA": { "grossMonthly": 10000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "numChildren": 0,
+    "state": "MD",
+    "marriageLengthYears": 3,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 1600,
+    "spousalCalc": {
+      "formulaUsed": "aaml_30_20_with_40pct_cap",
+      "capBinds": true,
+      "duration": {
+        "type": "aaml_advisory_multiplier"
+      }
+    }
+  },
+  "notes": "Spec text §6.7.2: same income as MD-2 → same AAML output. 3-yr marriage triggers short_marriage_caveat + aaml_duration_advisory (~11-18mo per AAML 0-3yr band; my impl: 3 × 12 × 0.5 = 18mo single-value advisory)."
+}

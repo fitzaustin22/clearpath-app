@@ -1,0 +1,27 @@
+{
+  "id": "TC-SE-NY-6",
+  "description": "NY post-divorce duration schedule (12yr marriage)",
+  "input": {
+    "partyA": { "grossMonthly": 12500, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4166.67, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "numChildren": 0,
+    "state": "NY",
+    "marriageLengthYears": 12,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalCalc": {
+      "duration": {
+        "type": "advisory_range",
+        "minMonths": 22,
+        "maxMonths": 43,
+        "statutorySource": "DRL §236(B)(6)(f)(1)"
+      }
+    }
+  },
+  "notes": "Spec text §6.7.2: duration.minMonths = round(12 × 0.15 × 12) = 22; maxMonths = round(12 × 0.30 × 12) = 43. Codebase uses Math.round not floor/ceil; tolerance ($1) covers any rounding discrepancy. Spec rounding (floor/ceil) is a polish item."
+}

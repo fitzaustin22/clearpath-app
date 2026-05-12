@@ -1,0 +1,29 @@
+{
+  "id": "TC-SE-MD-2",
+  "description": "MD post-divorce AAML + duration advisory (8yr marriage, 0 kids)",
+  "input": {
+    "partyA": { "grossMonthly": 10000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "numChildren": 0,
+    "state": "MD",
+    "marriageLengthYears": 8,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 1600,
+    "childMonthly": 0,
+    "spousalCalc": {
+      "formulaUsed": "aaml_30_20_with_40pct_cap",
+      "capBinds": true,
+      "duration": {
+        "type": "aaml_advisory_multiplier",
+        "statutorySource": "AAML duration multiplier (advisory)"
+      }
+    }
+  },
+  "notes": "Spec text §6.7.2: AAML calcA = 3000 − 800 = $2,200; cap = 0.40 × 14000 − 4000 = $1,600. capBinds true. 8yr × 12 × 0.5 = 48 months advisory (AAML 3-10yr multiplier). NB: aamlDurationGuidance returns single multiplier × marriage years; minMonths === maxMonths === 48 (not a range). Verified against aaml-spousal.js."
+}

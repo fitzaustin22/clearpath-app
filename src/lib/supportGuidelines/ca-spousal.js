@@ -245,12 +245,13 @@ export default {
  *
  * Pendente lite → Santa Clara county formula (most widely referenced; not statewide
  *   statutory authority). Net approximated at 75% of gross at Standard depth per §6.6.2 copy;
- *   Full Worksheet net plumbed via `fullWorksheet` when present.
+ *   Full Worksheet net resolved from the higher-earner side (payor) via `payorIsPartyA`.
  * Post-divorce → factor test under Cal. Fam. Code §4320; monthlyAmount: 0 + factor flag.
  *
  * @param {object} params
  * @param {number} params.payorGrossMonthly
  * @param {number} params.payeeGrossMonthly
+ * @param {boolean} params.payorIsPartyA - required; selects which fullWorksheet side is payor net
  * @param {('pendente_lite'|'post_divorce')} [params.temporal='post_divorce']
  * @param {('standard'|'full_worksheet')} [params.depth='standard']
  * @param {object|null} [params.fullWorksheet=null]
@@ -260,11 +261,16 @@ export default {
 export function lookupSpousal({
   payorGrossMonthly,
   payeeGrossMonthly,
+  payorIsPartyA,
   temporal = 'post_divorce',
   depth = 'standard',
   fullWorksheet = null,
   monthlyChildSupport = 0,
 }) {
+  if (typeof payorIsPartyA !== 'boolean') {
+    throw new Error('lookupSpousalCA: payorIsPartyA is required (boolean)');
+  }
+
   if (temporal === 'post_divorce') {
     return {
       monthlyAmount: 0,
@@ -278,14 +284,15 @@ export function lookupSpousal({
     };
   }
 
-  const payorNet =
-    depth === 'full_worksheet' && fullWorksheet?.partyA?.net != null
-      ? fullWorksheet.partyA.net
-      : payorGrossMonthly * 0.75;
-  const payeeNet =
-    depth === 'full_worksheet' && fullWorksheet?.partyB?.net != null
-      ? fullWorksheet.partyB.net
-      : payeeGrossMonthly * 0.75;
+  let payorNet;
+  let payeeNet;
+  if (depth === 'full_worksheet' && fullWorksheet?.partyA?.net != null && fullWorksheet?.partyB?.net != null) {
+    payorNet = payorIsPartyA ? fullWorksheet.partyA.net : fullWorksheet.partyB.net;
+    payeeNet = payorIsPartyA ? fullWorksheet.partyB.net : fullWorksheet.partyA.net;
+  } else {
+    payorNet = payorGrossMonthly * 0.75;
+    payeeNet = payeeGrossMonthly * 0.75;
+  }
 
   const result = calculateSantaClaraSpousal({
     payorNetMonthly: payorNet,

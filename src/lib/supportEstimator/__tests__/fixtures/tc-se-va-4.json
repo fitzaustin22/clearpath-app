@@ -1,0 +1,25 @@
+{
+  "id": "TC-SE-VA-4",
+  "description": "VA above-cap statutory marginal-percentage formula (F-7)",
+  "input": {
+    "partyA": { "grossMonthly": 35000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 15000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "VA",
+    "marriageLengthYears": null,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "childMonthly": 3533,
+    "childCalc": {
+      "source": "va",
+      "scheduleStatus": "above",
+      "aboveScheduleMethod": "va_statutory_marginal_percentage"
+    }
+  },
+  "notes": "Spec text §6.7.2: combined $50K/mo above $42.5K cap; basicSupport ≈ schedule@42500 + $7,500 × 0.034 (2-child marginal %); pro-rated payor share 35000/50000 = 0.70."
+}

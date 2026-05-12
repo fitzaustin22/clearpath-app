@@ -1,0 +1,24 @@
+{
+  "id": "TC-SE-Bidirectional-1",
+  "description": "NY high-earner-custodial (kids_with_payor) — per S5a-2 v1 simplification",
+  "input": {
+    "partyA": { "grossMonthly": 12500, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4166.67, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "NY",
+    "marriageLengthYears": 10,
+    "nyCustodyConfig": "kids_with_payor",
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 2500,
+    "childMonthly": 0,
+    "spousalCalc": {
+      "formulaUsed": "ny_2015_formula_b"
+    }
+  },
+  "notes": "Spec text §6.7.3: spousal computed via Formula B normally; childMonthly = 0; combinedMonthly = spousalMonthly; bidirectional_flow_disclosure callout surfaces (regression guard for v1 simplification)."
+}

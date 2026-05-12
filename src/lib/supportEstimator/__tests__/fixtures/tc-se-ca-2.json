@@ -1,0 +1,26 @@
+{
+  "id": "TC-SE-CA-2",
+  "description": "CA PL Santa Clara at Full Worksheet depth — uses user-supplied net",
+  "input": {
+    "partyA": { "grossMonthly": 10000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "CA",
+    "marriageLengthYears": null,
+    "nyCustodyConfig": null,
+    "temporal": "pendente_lite",
+    "depth": "full_worksheet",
+    "caseEffectiveDate": null,
+    "fullWorksheet": {
+      "partyA": { "fedTax": 1800, "stateTax": 600, "fica": 765, "otherDeductions": 0, "net": 6835 },
+      "partyB": { "fedTax": 480, "stateTax": 160, "fica": 306, "otherDeductions": 0, "net": 3054 }
+    }
+  },
+  "expected": {
+    "spousalMonthly": 1207,
+    "spousalCalc": {
+      "formulaUsed": "ca_santa_clara_temp"
+    }
+  },
+  "notes": "Spec text §6.7.2: actual net inputs used at Full Worksheet depth; spousal = max(0, 0.40 × 6835 − 0.50 × 3054) = 2734 − 1527 = $1,207. Different from Standard-depth approximation in CA-1."
+}

@@ -1,0 +1,26 @@
+{
+  "id": "TC-SE-NY-5",
+  "description": "NY SSR (Self-Support Reserve) floor activates",
+  "input": {
+    "partyA": { "grossMonthly": 2083.3333333333335, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 416.6666666666667, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 1,
+    "state": "NY",
+    "marriageLengthYears": 5,
+    "nyCustodyConfig": "kids_with_payee",
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalCalc": {
+      "formulaUsed": "ny_2015_formula_a",
+      "ssr": {
+        "activated": true,
+        "ssrAnnual": 21546
+      }
+    }
+  },
+  "notes": "Spec text §6.7.2: payor $25K/yr, payee $5K/yr; payor residual after $3,750/yr formula maintenance = $21,250 < $21,546 SSR → activated. NB: codebase computes SSR on capped payor residual not raw; surfaced in PR description as spec/code divergence."
+}

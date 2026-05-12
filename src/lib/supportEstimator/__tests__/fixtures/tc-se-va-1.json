@@ -1,0 +1,31 @@
+{
+  "id": "TC-SE-VA-1",
+  "description": "VA post-divorce, schedule-based child support + factor-test spousal (R-2)",
+  "input": {
+    "partyA": { "grossMonthly": 5000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 3000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "VA",
+    "marriageLengthYears": null,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "childMonthly": 1026,
+    "spousalMonthly": 0,
+    "alimonyFirstOrderingApplied": false,
+    "adjustedIncomes": null,
+    "spousalCalc": {
+      "formulaUsed": "factor_test_approximation",
+      "factorTestApplies": true
+    },
+    "childCalc": {
+      "source": "va",
+      "scheduleStatus": "within"
+    }
+  },
+  "notes": "Spec text §6.7.2: VA-1 covers VA-1 + post-divorce factor-test regression in single fixture per S5a-10. Spousal returns 0 + factorTestApplies; child support is schedule-based pro-rated to non-custodial payor."
+}
