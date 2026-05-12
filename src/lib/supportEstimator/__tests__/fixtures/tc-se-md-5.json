@@ -1,0 +1,29 @@
+{
+  "id": "TC-SE-MD-5",
+  "description": "MD AAML + Voishan above-schedule child support + pro-rate (regression for F-7 × AAML × S5a-1)",
+  "input": {
+    "partyA": { "grossMonthly": 40000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 5000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "MD",
+    "marriageLengthYears": null,
+    "nyCustodyConfig": null,
+    "temporal": "pendente_lite",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "alimonyFirstOrderingApplied": true,
+    "adjustedIncomes": {
+      "payorAdjustedMonthly": 29000,
+      "payeeAdjustedMonthly": 16000
+    },
+    "childCalc": {
+      "source": "md",
+      "scheduleStatus": "above",
+      "aboveScheduleMethod": "md_voishan_presumptive_floor"
+    }
+  },
+  "notes": "Spec text §6.7.2: AAML reduces incomes; combined adjusted still > $30K → Voishan floor applies; pro-rate basic support to payor share."
+}

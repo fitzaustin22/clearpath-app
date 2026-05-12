@@ -1,0 +1,24 @@
+{
+  "id": "TC-SE-VA-3",
+  "description": "VA PL above $120K presumption — formula computed with discretionary callout",
+  "input": {
+    "partyA": { "grossMonthly": 12000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 1,
+    "state": "VA",
+    "marriageLengthYears": null,
+    "nyCustodyConfig": null,
+    "temporal": "pendente_lite",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 800,
+    "spousalCalc": {
+      "formulaUsed": "va_pendente_lite_278_17_1",
+      "cap": { "hit": true, "capValue": 120000, "aboveTreatment": "discretionary" }
+    }
+  },
+  "notes": "Spec text §6.7.2: 0.26 × 12000 − 0.58 × 4000 = 3120 − 2320 = $800; va_pl_spousal_above_120k callout (cap.hit) flags discretionary-zone status. Combined annual $192K > $120K."
+}

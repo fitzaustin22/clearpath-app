@@ -1,0 +1,24 @@
+{
+  "id": "TC-SE-CA-3",
+  "description": "CA post-divorce factor test (Cal. Fam. Code §4320)",
+  "input": {
+    "partyA": { "grossMonthly": 10000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 0,
+    "state": "CA",
+    "marriageLengthYears": 10,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 0,
+    "spousalCalc": {
+      "formulaUsed": "factor_test_approximation",
+      "factorTestApplies": true
+    }
+  },
+  "notes": "Spec text §6.7.2: post-divorce returns 0 + factorTestApplies per R-2. Factor-test callout surfaces with CA §4320 framing."
+}

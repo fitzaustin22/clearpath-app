@@ -1,0 +1,27 @@
+{
+  "id": "TC-SE-NY-8",
+  "description": "NY maintenance-first ordering (Formula A, kids_with_payee)",
+  "input": {
+    "partyA": { "grossMonthly": 12500, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4166.67, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "NY",
+    "marriageLengthYears": 8,
+    "nyCustodyConfig": "kids_with_payee",
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "alimonyFirstOrderingApplied": true,
+    "adjustedIncomes": {
+      "payorAdjustedMonthly": 11042,
+      "payeeAdjustedMonthly": 5625
+    },
+    "spousalCalc": {
+      "formulaUsed": "ny_2015_formula_a"
+    }
+  },
+  "notes": "Spec text §6.7.2: maintenance first; child support runs on adjusted incomes. alimony_first_ordering callout cites Formula A subsection per S5a-3."
+}

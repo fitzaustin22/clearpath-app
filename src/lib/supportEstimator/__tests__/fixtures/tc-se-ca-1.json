@@ -1,0 +1,26 @@
+{
+  "id": "TC-SE-CA-1",
+  "description": "CA PL Santa Clara at Standard depth (75%-net approximation)",
+  "input": {
+    "partyA": { "grossMonthly": 10000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "CA",
+    "marriageLengthYears": null,
+    "nyCustodyConfig": null,
+    "temporal": "pendente_lite",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 1500,
+    "spousalCalc": {
+      "formulaUsed": "ca_santa_clara_temp"
+    },
+    "childCalc": {
+      "source": "generic"
+    }
+  },
+  "notes": "Spec text §6.7.2: net approx payor 10000 × 0.75 = 7500, payee 4000 × 0.75 = 3000; spousal = max(0, 0.40 × 7500 − 0.50 × 3000) = $1,500. state_specific_educational callout flags Standard-depth approximation. Child support via generic Federal HHS/OCSE fallback."
+}

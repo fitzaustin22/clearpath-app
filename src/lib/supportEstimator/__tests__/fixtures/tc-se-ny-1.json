@@ -1,0 +1,35 @@
+{
+  "id": "TC-SE-NY-1",
+  "description": "NY Formula A — kids with payee, payor pays CS",
+  "input": {
+    "partyA": { "grossMonthly": 12500, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4166.67, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "NY",
+    "marriageLengthYears": 8,
+    "nyCustodyConfig": "kids_with_payee",
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 1458,
+    "childMonthly": 2664,
+    "alimonyFirstOrderingApplied": true,
+    "spousalCalc": {
+      "formulaUsed": "ny_2015_formula_a",
+      "duration": {
+        "type": "advisory_range",
+        "minMonths": 14,
+        "maxMonths": 29,
+        "statutorySource": "DRL §236(B)(6)(f)(1)"
+      }
+    },
+    "childCalc": {
+      "source": "ny",
+      "scheduleStatus": "above"
+    }
+  },
+  "notes": "Spec text §6.7.2: A1 = 0.20×150K − 0.25×50K = $17,500/yr ≈ $1,458/mo. After alimony-first, combined adjusted $200K > $193K CSSA cap → basicSupport = 0.25 × $193K/12. Pro-rate by payorAdj ≈ 0.6625. Duration 8yr × 12 × [0.15, 0.30] = [14, 29]mo."
+}

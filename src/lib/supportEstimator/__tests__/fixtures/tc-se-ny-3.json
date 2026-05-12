@@ -1,0 +1,24 @@
+{
+  "id": "TC-SE-NY-3",
+  "description": "NY Formula B — no kids",
+  "input": {
+    "partyA": { "grossMonthly": 12500, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4166.67, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "numChildren": 0,
+    "state": "NY",
+    "marriageLengthYears": 8,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 2500,
+    "childMonthly": 0,
+    "spousalCalc": {
+      "formulaUsed": "ny_2015_formula_b"
+    }
+  },
+  "notes": "Spec text §6.7.2: same spousal calc as NY-2; childMonthly = 0 (numChildren === 0). No bidirectional callout (no kids)."
+}

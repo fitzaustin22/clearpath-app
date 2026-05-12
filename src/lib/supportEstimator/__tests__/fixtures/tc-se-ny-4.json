@@ -1,0 +1,24 @@
+{
+  "id": "TC-SE-NY-4",
+  "description": "NY maintenance cap behavior (2026 → $241K)",
+  "input": {
+    "partyA": { "grossMonthly": 25000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 3333.33, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "numChildren": 0,
+    "state": "NY",
+    "marriageLengthYears": 10,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 5358,
+    "spousalCalc": {
+      "formulaUsed": "ny_2015_formula_b",
+      "cap": { "hit": true, "capValue": 241000, "aboveTreatment": "discretionary" }
+    }
+  },
+  "notes": "Spec text §6.7.2: payorIncomeCappedAnnual = $241K. B1 = 0.30 × 241000 − 0.20 × 40000 = $64,300/yr; B2 = 0.40 × 281000 − 40000 = $72,400/yr; lower = $64,300/yr ≈ $5,358/mo. cap.hit true."
+}

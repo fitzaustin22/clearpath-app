@@ -1,0 +1,29 @@
+{
+  "id": "TC-SE-MD-1",
+  "description": "MD PL AAML + alimony-first ordering",
+  "input": {
+    "partyA": { "grossMonthly": 8000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 3000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 1,
+    "state": "MD",
+    "marriageLengthYears": null,
+    "nyCustodyConfig": null,
+    "temporal": "pendente_lite",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 1400,
+    "alimonyFirstOrderingApplied": true,
+    "adjustedIncomes": {
+      "payorAdjustedMonthly": 6600,
+      "payeeAdjustedMonthly": 4400
+    },
+    "spousalCalc": {
+      "formulaUsed": "aaml_30_20_with_40pct_cap",
+      "capBinds": true
+    }
+  },
+  "notes": "Spec text §6.7.2: AAML calcA = 2400 − 600 = $1,800; cap = 0.40 × 11000 − 3000 = $1,400; lower = $1,400. capBinds true. payorAdj $6,600, payeeAdj $4,400; payorIncomeShare 0.60."
+}

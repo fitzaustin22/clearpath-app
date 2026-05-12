@@ -1,0 +1,28 @@
+{
+  "id": "TC-SE-DC-1",
+  "description": "DC PL AAML + alimony-first ordering",
+  "input": {
+    "partyA": { "grossMonthly": 15000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 5000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 1,
+    "state": "DC",
+    "marriageLengthYears": null,
+    "nyCustodyConfig": null,
+    "temporal": "pendente_lite",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "alimonyFirstOrderingApplied": true,
+    "adjustedIncomes": {
+      "payorAdjustedMonthly": 12000,
+      "payeeAdjustedMonthly": 8000
+    },
+    "spousalCalc": {
+      "formulaUsed": "aaml_30_20_with_40pct_cap",
+      "capBinds": true
+    }
+  },
+  "notes": "Spec text §6.7.2: AAML compute; alimony-first applied per D.C. Code §16-916.01(d)(3); child support guideline runs on adjusted incomes; pro-rate to payor share."
+}

@@ -1,0 +1,25 @@
+{
+  "id": "TC-SE-DC-2",
+  "description": "DC post-divorce AAML + no native authority callout (0 kids)",
+  "input": {
+    "partyA": { "grossMonthly": 12000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 6000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 0, "otherSupportObligations": 0 },
+    "numChildren": 0,
+    "state": "DC",
+    "marriageLengthYears": 10,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "childMonthly": 0,
+    "spousalMonthly": 1200,
+    "spousalCalc": {
+      "formulaUsed": "aaml_30_20_with_40pct_cap",
+      "capBinds": true
+    }
+  },
+  "notes": "Spec text §6.7.2: AAML number; childMonthly = 0 (numChildren === 0). state_specific_educational callout surfaces DC AAML disclosure framing (no native DC alimony formula)."
+}
