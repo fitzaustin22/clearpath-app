@@ -1,0 +1,28 @@
+{
+  "id": "TC-SE-Generic-1",
+  "description": "Non-launch state generic Federal HHS/OCSE fallback",
+  "input": {
+    "partyA": { "grossMonthly": 6000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 4000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 1,
+    "state": "OTHER",
+    "marriageLengthYears": null,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 0,
+    "childMonthly": 1020,
+    "spousalCalc": {
+      "formulaUsed": "factor_test_approximation",
+      "factorTestApplies": true
+    },
+    "childCalc": {
+      "source": "generic"
+    }
+  },
+  "notes": "Spec text §6.7.3: TX Standard, payor $6K + payee $4K, 1 kid. lookupSupportGeneric returns childCalc via Federal HHS/OCSE; pro-rate to payor 0.60. spousal returns 0 + factorTestApplies (S5a-6, no national spousal formula). basicSupport = 10000 × 0.17 = $1,700; childMonthly = 1700 × 0.60 = 1020."
+}

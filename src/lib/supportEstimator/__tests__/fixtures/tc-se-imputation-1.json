@@ -1,0 +1,29 @@
+{
+  "id": "TC-SE-Imputation-1",
+  "description": "Per-party imputation, single state (VA Standard)",
+  "input": {
+    "partyA": { "grossMonthly": 4000, "imputeIncome": true, "imputedEarningCapacity": 8000, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 5000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "VA",
+    "marriageLengthYears": null,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "standard",
+    "caseEffectiveDate": null,
+    "fullWorksheet": null
+  },
+  "expected": {
+    "spousalMonthly": 0,
+    "spousalCalc": {
+      "factorTestApplies": true
+    },
+    "metadata": {
+      "imputationApplied": {
+        "partyA": true,
+        "partyB": false
+      }
+    }
+  },
+  "notes": "Spec text §6.7.3: calc uses $8K for payor at calc entry; show-the-math surfaces imputation flag for partyA. Payor = partyA (imputed 8K) > partyB (5K). VA post-div → spousal factor test."
+}

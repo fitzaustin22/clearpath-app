@@ -1,0 +1,30 @@
+{
+  "id": "TC-SE-FullWorksheet-1",
+  "description": "VA Full Worksheet identical-result regression — v1 VA doesn't use net",
+  "input": {
+    "partyA": { "grossMonthly": 5000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 3000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "VA",
+    "marriageLengthYears": null,
+    "nyCustodyConfig": null,
+    "temporal": "post_divorce",
+    "depth": "full_worksheet",
+    "caseEffectiveDate": null,
+    "fullWorksheet": {
+      "partyA": { "fedTax": 850, "stateTax": 280, "fica": 383, "otherDeductions": 0, "net": 3487 },
+      "partyB": { "fedTax": 380, "stateTax": 130, "fica": 230, "otherDeductions": 0, "net": 2260 }
+    }
+  },
+  "expected": {
+    "childMonthly": 1026,
+    "spousalMonthly": 0,
+    "spousalCalc": {
+      "formulaUsed": "factor_test_approximation"
+    },
+    "metadata": {
+      "depth": "full_worksheet"
+    }
+  },
+  "notes": "Spec text §6.7.3: identical results to TC-SE-VA-1 at v1 (Full Worksheet is depth toggle, not different formula; net captured for downstream reference but VA path uses gross). v1.1 may diverge."
+}
