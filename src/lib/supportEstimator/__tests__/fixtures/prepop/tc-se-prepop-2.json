@@ -1,0 +1,25 @@
+{
+  "id": "TC-SE-PrePop-2",
+  "description": "F-2 regression — m3 empty + m1 populated must NOT pre-pop partyA from m1",
+  "input": {
+    "m1Store": {
+      "budgetGap": {
+        "inputs": { "grossIncome": 9500 },
+        "results": { "adjustedMonthlyIncome": 6000, "grossMonthlyIncome": 9500 }
+      }
+    },
+    "m2Store": null,
+    "m3Store": {
+      "payStubDecoder": { "results": {} }
+    }
+  },
+  "expected": {
+    "inputs": {
+      "partyA": { "grossMonthly": null },
+      "partyB": { "grossMonthly": null }
+    },
+    "_prePopSources": {
+      "partyA.grossMonthly": null
+    }
+  }
+}

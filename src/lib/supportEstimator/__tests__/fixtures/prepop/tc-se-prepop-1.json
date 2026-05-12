@@ -1,0 +1,36 @@
+{
+  "id": "TC-SE-PrePop-1",
+  "description": "m3.payStubDecoder source populates partyA.grossMonthly + sets badge",
+  "input": {
+    "m1Store": null,
+    "m2Store": null,
+    "m3Store": {
+      "payStubDecoder": { "results": { "grossMonthlyIncome": 8000 } }
+    }
+  },
+  "expected": {
+    "inputs": {
+      "partyA": {
+        "grossMonthly": 8000,
+        "imputeIncome": false,
+        "imputedEarningCapacity": null
+      },
+      "partyB": {
+        "grossMonthly": null
+      },
+      "numChildren": 0,
+      "state": "OTHER",
+      "marriageLengthYears": null,
+      "nyCustodyConfig": null,
+      "temporal": "post_divorce",
+      "depth": "standard",
+      "caseEffectiveDate": null,
+      "fullWorksheet": null
+    },
+    "_prePopSources": {
+      "partyA.grossMonthly": {
+        "source": "m3.payStubDecoder"
+      }
+    }
+  }
+}
