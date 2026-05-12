@@ -31,8 +31,10 @@ export function SupportEstimator({ disablePrePop = false }) {
   const setPrePopSources = useM5Store((s) => s.setSupportEstimatorPrePopSources);
   const setResults = useM5Store((s) => s.setSupportEstimatorResults);
 
-  // Read m3Store once via selector — for prePop only.
-  const m3Store = useM3Store((s) => ({ payStubDecoder: s.payStubDecoder }));
+  // Select the primitive field directly to get a stable reference across renders.
+  // Returning a new object literal from the selector would cause Zustand's snapshot
+  // comparison to always report "changed" → infinite re-render loop.
+  const payStubDecoder = useM3Store((s) => s.payStubDecoder);
 
   const [calcError, setCalcError] = useState(null);
 
@@ -43,7 +45,7 @@ export function SupportEstimator({ disablePrePop = false }) {
       const pre = prePopulateSupportEstimatorInputs({
         m1Store: null,
         m2Store: null,
-        m3Store,
+        m3Store: { payStubDecoder },
       });
       // Only commit when we actually have a non-null source.
       if (pre._prePopSources['partyA.grossMonthly']) {
