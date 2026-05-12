@@ -1,0 +1,26 @@
+{
+  "id": "TC-SE-CA-4",
+  "description": "CA pendente lite, Full Worksheet, partyB is payor — net swap correctness",
+  "input": {
+    "partyA": { "grossMonthly": 4000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 250, "otherSupportObligations": 0 },
+    "partyB": { "grossMonthly": 12000, "imputeIncome": false, "imputedEarningCapacity": null, "healthInsurance": 0, "childcare": 0, "parentingTimeNights": 115, "otherSupportObligations": 0 },
+    "numChildren": 2,
+    "state": "CA",
+    "marriageLengthYears": 10,
+    "nyCustodyConfig": null,
+    "temporal": "pendente_lite",
+    "depth": "full_worksheet",
+    "caseEffectiveDate": null,
+    "fullWorksheet": {
+      "partyA": { "fedTax": 0, "stateTax": 0, "fica": 0, "otherDeductions": 0, "net": 3000 },
+      "partyB": { "fedTax": 0, "stateTax": 0, "fica": 0, "otherDeductions": 0, "net": 9000 }
+    }
+  },
+  "expected": {
+    "spousalMonthly": 2100,
+    "spousalCalc": {
+      "formulaUsed": "ca_santa_clara_temp"
+    }
+  },
+  "notes": "partyB ($12K gross / $9K net) is payor. Spousal = 0.40 × 9000 − 0.50 × 3000 = 3600 − 1500 = 2100. Regression guard for D4 from PR #6 (ca-spousal.js was using partyA.net unconditionally before this fix)."
+}
