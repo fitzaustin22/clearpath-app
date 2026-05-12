@@ -21,7 +21,7 @@ function deriveGross(party) {
 }
 
 function deriveCustodialIsPartyA(inputs, payorIsPartyA) {
-  const { state, nyCustodyConfig, partyA, partyB } = inputs;
+  const { state, nyCustodyConfig, partyA, partyB, numChildren } = inputs;
   if (state === 'NY' && nyCustodyConfig) {
     // 'kids_with_payee'  → custodial = payee
     // 'kids_with_payor'  → custodial = payor (Formula B, S5a-2 suppression)
@@ -31,9 +31,19 @@ function deriveCustodialIsPartyA(inputs, payorIsPartyA) {
     }
     return !payorIsPartyA; // kids_with_payee
   }
-  if (partyA.parentingTimeNights > partyB.parentingTimeNights) return true;
-  if (partyA.parentingTimeNights < partyB.parentingTimeNights) return false;
-  return true; // tie → partyA
+  const pntA = partyA.parentingTimeNights;
+  const pntB = partyB.parentingTimeNights;
+  if (pntA === pntB) {
+    if (numChildren > 0) {
+      throw new Error(
+        'calculateSupport: ambiguous custodial parent — equal parentingTimeNights ' +
+          'with numChildren > 0. UI must require explicit parenting-time entry ' +
+          'before calculation.'
+      );
+    }
+    return true; // numChildren === 0; choice has no effect on output
+  }
+  return pntA > pntB;
 }
 
 export function calculateSupport(inputs) {
