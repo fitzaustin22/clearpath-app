@@ -36,7 +36,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <a href="/signup" style={{ backgroundColor: "#C8A96E", color: "#1B2A4A", padding: "8px 20px", borderRadius: "4px", textDecoration: "none", fontWeight: 700, fontSize: "0.9rem" }}>Sign Up Free</a>
               </Show>
               <Show when="signed-in">
-                <UserButton afterSignOutUrl="/" />
+                <UserButton />
               </Show>
             </div>
           </header>
