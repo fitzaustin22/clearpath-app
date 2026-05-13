@@ -1,5 +1,5 @@
 import { ClerkProvider, Show, UserButton } from "@clerk/nextjs";
-import { Playfair_Display, Source_Sans_3 } from "next/font/google";
+import { Playfair_Display, Source_Sans_3, Newsreader, Inter } from "next/font/google";
 import BlueprintBarWrapper from "@/src/components/blueprint/BlueprintBarWrapper";
 import ToastContainer from "@/src/components/shared/ToastContainer";
 import "./globals.css";
@@ -18,11 +18,23 @@ const sourceSans = Source_Sans_3({
   display: "swap",
 });
 
+const newsreader = Newsreader({
+  subsets: ["latin"],
+  variable: "--font-newsreader",
+  display: "swap",
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
 export const metadata = { title: "ClearPath for Women", description: "Divorce financial education and planning" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${playfair.variable} ${sourceSans.variable}`}>
+    <html lang="en" className={`${playfair.variable} ${sourceSans.variable} ${newsreader.variable} ${inter.variable}`}>
       <body style={{ margin: 0, backgroundColor: "#FAF8F2", fontFamily: "var(--font-source-sans), 'Source Sans Pro', sans-serif" }}>
         <ClerkProvider signInUrl="/login" signUpUrl="/signup" signInFallbackRedirectUrl="/dashboard" signUpFallbackRedirectUrl="/dashboard">
           <header
@@ -36,7 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <a href="/signup" style={{ backgroundColor: "#C8A96E", color: "#1B2A4A", padding: "8px 20px", borderRadius: "4px", textDecoration: "none", fontWeight: 700, fontSize: "0.9rem" }}>Sign Up Free</a>
               </Show>
               <Show when="signed-in">
-                <UserButton afterSignOutUrl="/" />
+                <UserButton />
               </Show>
             </div>
           </header>
