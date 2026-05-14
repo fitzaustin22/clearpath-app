@@ -1,0 +1,37 @@
+{
+  "tc": "TC-PVA-Tier2-1",
+  "description": "Tier 2 estimated-benefit: identical numerical inputs as Tier1-1, distinct formulaId + benefitSource.",
+  "inputs": {
+    "path": "tier_2",
+    "participantDOB": "1981-05-01",
+    "caseEffectiveDate": "2026-05-01",
+    "planNRA": 65,
+    "accruedMonthlyBenefitAtNRA": 3000,
+    "formOfBenefitOnStatement": "single_life",
+    "vestingStatus": "fully_vested",
+    "benefitSource": "plan_estimator_or_manual_calculation",
+    "mortalityTable": "irs_417e",
+    "discountRateBps": 5234,
+    "cola": 0
+  },
+  "expected": {
+    "path": "tier_2",
+    "formulaId": "pva_db_tier2_v1",
+    "pv": {
+      "best": 165783,
+      "low": 126443,
+      "high": 218973
+    },
+    "coverture": null,
+    "maritalPortion": null,
+    "metadata": {
+      "benefitSource": "plan_estimator_or_manual_calculation",
+      "citations": [
+        "IRC §417(e)(3)",
+        "26 CFR §1.417(e)-1",
+        "SOA actuarial standards (commutation methodology)"
+      ]
+    },
+    "engineCallouts": []
+  }
+}

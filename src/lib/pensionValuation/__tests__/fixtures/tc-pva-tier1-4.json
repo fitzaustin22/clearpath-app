@@ -1,0 +1,37 @@
+{
+  "tc": "TC-PVA-Tier1-4",
+  "description": "Already past NRA — yearsToNRA clamps to 0; deferralFactor = 1; annuityFactorAge = floor(67.333) = 67 per [R5b-1].",
+  "inputs": {
+    "path": "tier_1",
+    "participantDOB": "1959-01-01",
+    "caseEffectiveDate": "2026-05-01",
+    "planNRA": 65,
+    "accruedMonthlyBenefitAtNRA": 3000,
+    "formOfBenefitOnStatement": "single_life",
+    "vestingStatus": "fully_vested",
+    "benefitSource": "official_statement",
+    "mortalityTable": "irs_417e",
+    "discountRateBps": 5234,
+    "cola": 0
+  },
+  "expected": {
+    "path": "tier_1",
+    "formulaId": "pva_db_tier1_v1",
+    "pv": {
+      "best": 438587,
+      "low": 405958,
+      "high": 476231
+    },
+    "coverture": null,
+    "maritalPortion": null,
+    "metadata": {
+      "benefitSource": "official_statement",
+      "citations": [
+        "IRC §417(e)(3)",
+        "26 CFR §1.417(e)-1",
+        "SOA actuarial standards (commutation methodology)"
+      ]
+    },
+    "engineCallouts": []
+  }
+}

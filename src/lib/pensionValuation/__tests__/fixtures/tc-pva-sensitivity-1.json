@@ -1,0 +1,26 @@
+{
+  "tc": "TC-PVA-Sensitivity-1",
+  "description": "±100bp bracket monotonicity for Tier1-1 inputs through the router: pvLow < pvBest < pvHigh.",
+  "inputs": {
+    "path": "tier_1",
+    "planType": "private_db_traditional",
+    "participantDOB": "1981-05-01",
+    "caseEffectiveDate": "2026-05-01",
+    "planNRA": 65,
+    "accruedMonthlyBenefitAtNRA": 3000,
+    "formOfBenefitOnStatement": "single_life",
+    "vestingStatus": "fully_vested",
+    "benefitSource": "official_statement",
+    "mortalityTable": "irs_417e",
+    "discountRateBps": 5234,
+    "cola": 0
+  },
+  "expected": {
+    "pv": {
+      "best": 165783,
+      "low": 126443,
+      "high": 218973
+    },
+    "monotonicityProperty": "pvLow < pvBest < pvHigh"
+  }
+}

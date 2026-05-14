@@ -1,0 +1,52 @@
+{
+  "tc": "TC-PVA-Coverture-1",
+  "description": "Standard marriage-after-hire: hire 2010, marriage 2015-06, cutoff 2024-12, retirement 2040. Expected fraction 115/360 ≈ 0.3194.",
+  "inputs": {
+    "path": "tier_3",
+    "participantDOB": "1975-01-01",
+    "caseEffectiveDate": "2026-05-01",
+    "dateOfHire": "2010-01-01",
+    "dateOfMarriage": "2015-06-01",
+    "maritalCutoffDate": "2024-12-31",
+    "expectedRetirementAge": 65,
+    "currentAccruedMonthlyBenefit": 2500,
+    "formOfBenefitOnStatement": "single_life",
+    "vestingStatus": "fully_vested",
+    "benefitSource": "official_statement",
+    "mortalityTable": "irs_417e",
+    "discountRateBps": 5234,
+    "cola": 0
+  },
+  "expected": {
+    "path": "tier_3",
+    "formulaId": "pva_db_tier3_coverture_v1",
+    "pv": {
+      "total": {
+        "best": 190845,
+        "low": 154543,
+        "high": 237284
+      },
+      "marital": {
+        "best": 60964,
+        "low": 49368,
+        "high": 75799
+      }
+    },
+    "coverture": {
+      "fraction": 0.3194,
+      "numeratorMonths": 115,
+      "denominatorMonths": 360,
+      "maritalServiceStart": "2015-06-01",
+      "maritalServiceEnd": "2024-12-31"
+    },
+    "metadata": {
+      "citations": [
+        "Bender v. Bender, 297 A.2d 786 (DC 1972)",
+        "Mosley v. Mosley, 19 Va. App. 192, 450 S.E.2d 161 (1994)",
+        "Deering v. Deering, 292 Md. 115, 437 A.2d 883 (1981)",
+        "In re Marriage of Lehman, 18 Cal. 4th 169 (1998) (projected-at-retirement variant — v1.1 deferred)"
+      ]
+    },
+    "engineCallouts": []
+  }
+}

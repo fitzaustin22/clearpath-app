@@ -1,0 +1,37 @@
+{
+  "tc": "TC-PVA-Tier1-3",
+  "description": "Form-of-benefit (on_statement context) regression — PV unchanged for joint_50 (callout surfaced by router CP.4).",
+  "inputs": {
+    "path": "tier_1",
+    "participantDOB": "1981-05-01",
+    "caseEffectiveDate": "2026-05-01",
+    "planNRA": 65,
+    "accruedMonthlyBenefitAtNRA": 3000,
+    "formOfBenefitOnStatement": "joint_50",
+    "vestingStatus": "fully_vested",
+    "benefitSource": "official_statement",
+    "mortalityTable": "irs_417e",
+    "discountRateBps": 5234,
+    "cola": 0
+  },
+  "expected": {
+    "path": "tier_1",
+    "formulaId": "pva_db_tier1_v1",
+    "pv": {
+      "best": 165783,
+      "low": 126443,
+      "high": 218973
+    },
+    "coverture": null,
+    "maritalPortion": null,
+    "metadata": {
+      "benefitSource": "official_statement",
+      "citations": [
+        "IRC §417(e)(3)",
+        "26 CFR §1.417(e)-1",
+        "SOA actuarial standards (commutation methodology)"
+      ]
+    },
+    "engineCallouts": []
+  }
+}
