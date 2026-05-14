@@ -11,8 +11,8 @@
  * the engine call is gated against the error variant.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import PVA from '../PVA.jsx';
 import { useM2Store } from '@/src/stores/m2Store';
 import { useM5Store } from '@/src/stores/m5Store';
@@ -32,10 +32,6 @@ beforeEach(() => {
   useM5Store.setState((state) => ({
     pensionValuation: { ...state.pensionValuation, assets: {} },
   }));
-});
-
-afterEach(() => {
-  cleanup();
 });
 
 describe('PVA orchestrator (§7.10.3 / LL-17)', () => {

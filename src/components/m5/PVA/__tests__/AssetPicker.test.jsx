@@ -6,8 +6,8 @@
  * surfaces when an asset has a results slot in m5Store.
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import AssetPicker from '../AssetPicker.jsx';
 import { useM2Store } from '@/src/stores/m2Store';
 import { useM5Store } from '@/src/stores/m5Store';
@@ -38,13 +38,6 @@ beforeEach(() => {
   useM5Store.setState((state) => ({
     pensionValuation: { ...state.pensionValuation, assets: {} },
   }));
-});
-
-// RTL's auto-cleanup hook relies on afterEach being globally available,
-// which only happens when vitest is configured with `globals: true`.
-// This project sets globals=false, so wire cleanup manually.
-afterEach(() => {
-  cleanup();
 });
 
 describe('AssetPicker (§7.5 / §7.6.4)', () => {

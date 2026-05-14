@@ -12,13 +12,9 @@
  *   - 3 structural banners: frozen, legacy, flag-only
  */
 
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import ResultsPanel from '../ResultsPanel.jsx';
-
-afterEach(() => {
-  cleanup();
-});
 
 const TIER_1_RESULTS = {
   path: 'tier_1',

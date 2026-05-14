@@ -2,13 +2,9 @@
  * ValidationErrorPanel tests (§7.2 R3 / [R5b-8]).
  */
 
-import { describe, it, expect, afterEach } from 'vitest';
-import { render, screen, cleanup } from '@testing-library/react';
+import { describe, it, expect } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import ValidationErrorPanel from '../ValidationErrorPanel.jsx';
-
-afterEach(() => {
-  cleanup();
-});
 
 describe('ValidationErrorPanel', () => {
   it('TC-PVA-VE-1: renders the in_pay_data_incomplete message and missing-fields list', () => {
