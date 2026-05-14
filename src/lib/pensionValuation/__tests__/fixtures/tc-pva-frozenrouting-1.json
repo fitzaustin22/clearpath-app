@@ -1,0 +1,32 @@
+{
+  "tc": "TC-PVA-FrozenRouting-1",
+  "description": "M2 frozen claim routes to Tier 1 default (Tier 3 hidden in UI); _frozenRoutingApplied=true flows through inputs to calc engine for STEP CP.4 frozen_plan_tier1_routing callout surfacing.",
+  "inputs": {
+    "m1Store": null,
+    "m2Store": {
+      "maritalEstateInventory": {
+        "items": [
+          {
+            "id": "claim_frozen",
+            "category": "pensions",
+            "planName": "Frozen DB Plan",
+            "whoseplan": "Client",
+            "accrualStatus": "frozen"
+          }
+        ]
+      }
+    },
+    "m3Store": null,
+    "assetId": "claim_frozen"
+  },
+  "expected": {
+    "path": "tier_1",
+    "inputs": {
+      "planName": "Frozen DB Plan",
+      "whoseplan": "Client"
+    },
+    "_legacyCurrentValueDetected": false,
+    "_legacyValue": null,
+    "_frozenRoutingApplied": true
+  }
+}

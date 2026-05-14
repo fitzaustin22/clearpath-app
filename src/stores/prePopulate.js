@@ -57,10 +57,115 @@ export function prePopulateSupportEstimatorInputs({ m1Store, m2Store, m3Store })
   };
 }
 
-// TODO §13 step 5 (PVA implementation) — fill per PVA pre-pop pattern.
-// Empty stub at step 2; caller in §13 step 5 will replace.
-export function prePopulatePVAInputs(_) {
-  return {};
+/**
+ * Pre-populate PVA inputs from an M2 pension claim per spec §7.10.3.
+ *
+ * Return-shape union:
+ *   - `null` — no claim found at assetId (caller should not have invoked PVA).
+ *   - `{ error: 'in_pay_data_incomplete', missingFields, path: null }` —
+ *     R3 routing data-completeness guard per [R5b-8]: accrualStatus is
+ *     'in_pay_status' but monthlyBenefit and/or benefitStartDate are missing.
+ *     PVA must NOT enter the in-pay path; orchestrator surfaces validation to UI.
+ *     (§7.10.3 spec slice puts the guard at "caller must verify"; we centralize
+ *     it inside prePopulatePVAInputs for unit-testability — orchestrator becomes
+ *     a thin consumer of the return-union. Queued as spec-amendment item.)
+ *   - Normal pre-pop result with `{ path, inputs, _prePopSources, _legacyCurrentValueDetected,
+ *     _legacyValue, _frozenRoutingApplied }` per §7.10.3.
+ *
+ * Path selection:
+ *   - accrualStatus === 'in_pay_status' → path = 'in_pay_status' (pre-pops
+ *     monthlyBenefit + benefitStartDate from claim).
+ *   - accrualStatus === 'frozen'         → path = 'tier_1' default
+ *     (UI hides Tier 3 option for frozen plans); _frozenRoutingApplied = true.
+ *   - accrualStatus === 'accruing' OR absent → path = 'tier_3' default
+ *     (user may override to Tier 1/2 in UI).
+ *
+ * Legacy detection per [R5b-5]: pre-M2-TICKET-3 entries have currentValue set
+ * but no accrualStatus. Flagged via `_legacyCurrentValueDetected = true` and
+ * `_legacyValue` carries the legacy currentValue forward. The calc engine
+ * router surfaces `legacy_currentvalue_ignored` callout via STEP CP.4.
+ *
+ * m1Store/m3Store unused at v1 (deferred per P-7a); accepted for §6.5.7 cross-tool
+ * signature symmetry.
+ *
+ * @param {{m1Store: any, m2Store: any, m3Store: any, assetId: string}} args
+ * @returns {object | null}
+ */
+export function prePopulatePVAInputs({ m1Store, m2Store, m3Store, assetId }) {
+  void m1Store;
+  void m3Store;
+
+  const claim = m2Store?.maritalEstateInventory?.items?.find(
+    (i) => i.id === assetId && i.category === 'pensions'
+  );
+  if (!claim) return null;
+
+  // R3 routing data-completeness guard per [R5b-8]
+  if (claim.accrualStatus === 'in_pay_status') {
+    const missingFields = [];
+    if (claim.monthlyBenefit == null) missingFields.push('monthlyBenefit');
+    if (claim.benefitStartDate == null) missingFields.push('benefitStartDate');
+    if (missingFields.length > 0) {
+      return {
+        error: 'in_pay_data_incomplete',
+        missingFields,
+        path: null,
+      };
+    }
+  }
+
+  // Legacy currentValue detection per [R5b-5]: fires only when accrualStatus
+  // is absent (a hallmark of pre-M2-TICKET-3 entries).
+  const hasLegacyCurrentValue = claim.currentValue != null && claim.accrualStatus == null;
+
+  const now = () => new Date().toISOString();
+  const baseInputs = {
+    planName: claim.planName,
+    whoseplan: claim.whoseplan,
+  };
+  const baseProvenance = {
+    planName: { source: 'm2.pensionClaim', timestamp: now() },
+    whoseplan: { source: 'm2.pensionClaim', timestamp: now() },
+  };
+
+  if (claim.accrualStatus === 'in_pay_status') {
+    return {
+      path: 'in_pay_status',
+      inputs: {
+        ...baseInputs,
+        monthlyBenefit: claim.monthlyBenefit,
+        benefitStartDate: claim.benefitStartDate,
+      },
+      _prePopSources: {
+        ...baseProvenance,
+        monthlyBenefit: { source: 'm2.pensionClaim', timestamp: now() },
+        benefitStartDate: { source: 'm2.pensionClaim', timestamp: now() },
+      },
+      _legacyCurrentValueDetected: hasLegacyCurrentValue,
+      _legacyValue: hasLegacyCurrentValue ? claim.currentValue : null,
+    };
+  }
+
+  if (claim.accrualStatus === 'frozen') {
+    return {
+      path: 'tier_1',
+      inputs: { ...baseInputs },
+      _prePopSources: { ...baseProvenance },
+      _legacyCurrentValueDetected: hasLegacyCurrentValue,
+      _legacyValue: hasLegacyCurrentValue ? claim.currentValue : null,
+      _frozenRoutingApplied: true,
+    };
+  }
+
+  // accruing OR legacy entry without accrualStatus → tier_3 default
+  return {
+    path: 'tier_3',
+    inputs: { ...baseInputs },
+    _prePopSources: { ...baseProvenance },
+    _legacyCurrentValueDetected: hasLegacyCurrentValue,
+    _legacyValue: hasLegacyCurrentValue ? claim.currentValue : null,
+    _frozenRoutingApplied: false,
+  };
 }
 
 // TODO §13 step 4 (QDG implementation) — fill per §8.10.7 (M2 two-category pre-pop).

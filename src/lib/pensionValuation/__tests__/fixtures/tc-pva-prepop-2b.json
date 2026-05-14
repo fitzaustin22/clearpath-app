@@ -1,0 +1,29 @@
+{
+  "tc": "TC-PVA-PrePop-2b",
+  "description": "R3 routing data-completeness guard per [R5b-8]: in-pay claim with monthlyBenefit=null surfaces in_pay_data_incomplete validation; no path entered; calc engine NOT invoked downstream.",
+  "inputs": {
+    "m1Store": null,
+    "m2Store": {
+      "maritalEstateInventory": {
+        "items": [
+          {
+            "id": "claim_partial",
+            "category": "pensions",
+            "planName": "Partial Plan",
+            "whoseplan": "Client",
+            "accrualStatus": "in_pay_status",
+            "monthlyBenefit": null,
+            "benefitStartDate": "2020-01-01"
+          }
+        ]
+      }
+    },
+    "m3Store": null,
+    "assetId": "claim_partial"
+  },
+  "expected": {
+    "error": "in_pay_data_incomplete",
+    "missingFields": ["monthlyBenefit"],
+    "path": null
+  }
+}

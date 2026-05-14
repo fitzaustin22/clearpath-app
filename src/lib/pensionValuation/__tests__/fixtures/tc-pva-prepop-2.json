@@ -1,0 +1,36 @@
+{
+  "tc": "TC-PVA-PrePop-2",
+  "description": "M2 in-pay claim with FULL data routes to in_pay_status path; pre-pops planName + whoseplan + monthlyBenefit + benefitStartDate.",
+  "inputs": {
+    "m1Store": null,
+    "m2Store": {
+      "maritalEstateInventory": {
+        "items": [
+          {
+            "id": "claim_xyz",
+            "category": "pensions",
+            "planName": "XYZ Retirement Fund",
+            "whoseplan": "Spouse",
+            "accrualStatus": "in_pay_status",
+            "monthlyBenefit": 4200,
+            "benefitStartDate": "2020-01-01"
+          }
+        ]
+      }
+    },
+    "m3Store": null,
+    "assetId": "claim_xyz"
+  },
+  "expected": {
+    "path": "in_pay_status",
+    "inputs": {
+      "planName": "XYZ Retirement Fund",
+      "whoseplan": "Spouse",
+      "monthlyBenefit": 4200,
+      "benefitStartDate": "2020-01-01"
+    },
+    "_legacyCurrentValueDetected": false,
+    "_legacyValue": null,
+    "prePopSourcesFields": ["planName", "whoseplan", "monthlyBenefit", "benefitStartDate"]
+  }
+}

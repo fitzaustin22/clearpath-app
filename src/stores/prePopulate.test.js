@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
   prePopulateSupportEstimatorInputs,
-  prePopulatePVAInputs,
   prePopulateQDROInputs,
   prePopulateHomeDecisionInputs,
   isInputsFreshDefault,
@@ -60,10 +59,12 @@ describe('prePopulateSupportEstimatorInputs (§6.5.7)', () => {
   });
 });
 
-describe('prePopulate stubs (PVA / QDG / HDA)', () => {
+describe('prePopulate stubs (QDG / HDA)', () => {
+  // PVA dropped from STUBS array in PVA PR 1 — prePopulatePVAInputs is now
+  // fully implemented per §7.10.3 with a null-return contract for missing
+  // claims (see src/lib/pensionValuation/__tests__/prePopulate.test.js).
   const REP_INPUT = { m1Store: null, m2Store: null, m3Store: null };
   const STUBS = [
-    ['prePopulatePVAInputs', prePopulatePVAInputs],
     ['prePopulateQDROInputs', prePopulateQDROInputs],
     ['prePopulateHomeDecisionInputs', prePopulateHomeDecisionInputs],
   ];

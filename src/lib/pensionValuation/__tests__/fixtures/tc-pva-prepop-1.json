@@ -1,0 +1,33 @@
+{
+  "tc": "TC-PVA-PrePop-1",
+  "description": "M2 accruing claim drives full pre-pop and Tier 3 default. planName + whoseplan pre-popped with provenance; no legacy or frozen flags.",
+  "inputs": {
+    "m1Store": null,
+    "m2Store": {
+      "maritalEstateInventory": {
+        "items": [
+          {
+            "id": "claim_abc",
+            "category": "pensions",
+            "planName": "ABC Corp Pension",
+            "whoseplan": "Client",
+            "accrualStatus": "accruing"
+          }
+        ]
+      }
+    },
+    "m3Store": null,
+    "assetId": "claim_abc"
+  },
+  "expected": {
+    "path": "tier_3",
+    "inputs": {
+      "planName": "ABC Corp Pension",
+      "whoseplan": "Client"
+    },
+    "_legacyCurrentValueDetected": false,
+    "_legacyValue": null,
+    "_frozenRoutingApplied": false,
+    "prePopSourcesFields": ["planName", "whoseplan"]
+  }
+}
