@@ -144,6 +144,86 @@ export const useM5Store = create(
             results,
           },
         })),
+
+      // ─── PVA setters (§7.6.4 / §7.10.3) ────────────────────────────────
+      // Object-keyed asset CRUD per the §7.6.4 locked-literal `assets[assetId]`
+      // shape. Each asset slot carries `{ inputs, results, _prePopSources }`
+      // plus pre-pop derived flag fields (`_legacyCurrentValueDetected`,
+      // `_legacyValue`, `_frozenRoutingApplied`) per [R5b-18] / [R5b-5].
+      //
+      // `_prePopSources` is a SIBLING of `inputs` (not nested) per the
+      // cross-tool B5b-3 attribution convention shared with Support Estimator,
+      // Home Decision, and QDRO Decision Guide.
+
+      // Whole-object inputs replace (typical UI flow merges via spread at
+      // component level; orchestrator first-write seeds the full inputs
+      // object from prePopulatePVAInputs).
+      setPVAAssetInputs: (assetId, inputs) =>
+        set((state) => ({
+          pensionValuation: {
+            ...state.pensionValuation,
+            assets: {
+              ...state.pensionValuation.assets,
+              [assetId]: {
+                ...state.pensionValuation.assets[assetId],
+                inputs,
+              },
+            },
+          },
+        })),
+
+      setPVAAssetPrePopSources: (assetId, prePopSources) =>
+        set((state) => ({
+          pensionValuation: {
+            ...state.pensionValuation,
+            assets: {
+              ...state.pensionValuation.assets,
+              [assetId]: {
+                ...state.pensionValuation.assets[assetId],
+                _prePopSources: prePopSources,
+              },
+            },
+          },
+        })),
+
+      setPVAAssetResults: (assetId, results) =>
+        set((state) => ({
+          pensionValuation: {
+            ...state.pensionValuation,
+            assets: {
+              ...state.pensionValuation.assets,
+              [assetId]: {
+                ...state.pensionValuation.assets[assetId],
+                results,
+              },
+            },
+          },
+        })),
+
+      // Merges flag fields without disturbing sibling inputs/results/_prePopSources.
+      // Used by orchestrator post-prePopulate to surface routing-derived flags.
+      setPVAAssetFlags: (assetId, flags) =>
+        set((state) => ({
+          pensionValuation: {
+            ...state.pensionValuation,
+            assets: {
+              ...state.pensionValuation.assets,
+              [assetId]: {
+                ...state.pensionValuation.assets[assetId],
+                ...flags,
+              },
+            },
+          },
+        })),
+
+      clearPVAAsset: (assetId) =>
+        set((state) => {
+          // eslint-disable-next-line no-unused-vars
+          const { [assetId]: _removed, ...rest } = state.pensionValuation.assets;
+          return {
+            pensionValuation: { ...state.pensionValuation, assets: rest },
+          };
+        }),
     }),
     {
       name: 'clearpath-m5',
