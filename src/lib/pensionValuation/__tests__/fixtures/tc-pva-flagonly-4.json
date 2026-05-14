@@ -1,0 +1,31 @@
+{
+  "tc": "TC-PVA-FlagOnly-4",
+  "description": "Flag-only routing for planType=state_municipal: no PV; educational callout gov_flag_only (variant: state_municipal); no qpsa/qdro/liability-disclaimer is rendered alongside.",
+  "inputs": {
+    "path": "flag_only",
+    "planName": "ABC Plan",
+    "whoseplan": "Client",
+    "caseEffectiveDate": "2026-05-01",
+    "planType": "state_municipal"
+  },
+  "expected": {
+    "path": "flag_only",
+    "formulaId": null,
+    "pv": null,
+    "coverture": null,
+    "receiptForm": null,
+    "callouts": [
+      {
+        "type": "gov_flag_only",
+        "variant": "state_municipal"
+      },
+      {
+        "type": "liability_disclaimer"
+      }
+    ],
+    "expectedEducationalCallout": {
+      "type": "gov_flag_only",
+      "variant": "state_municipal"
+    }
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "tc": "TC-PVA-LumpSumDivergence-2",
+  "description": "Offer within 10% of tool PV (≈2.5% above). No callout — within tolerance band.",
+  "inputs": {
+    "path": "tier_1",
+    "planType": "private_db_traditional",
+    "participantDOB": "1981-05-01",
+    "caseEffectiveDate": "2026-05-01",
+    "planNRA": 65,
+    "accruedMonthlyBenefitAtNRA": 3000,
+    "formOfBenefitOnStatement": "single_life",
+    "vestingStatus": "fully_vested",
+    "benefitSource": "official_statement",
+    "mortalityTable": "irs_417e",
+    "discountRateBps": 5234,
+    "cola": 0,
+    "planAdministratorOfferedLumpSum": 170000
+  },
+  "expected": {
+    "callout": null,
+    "note": "breakdown.callouts must NOT contain lump_sum_offer_divergence"
+  }
+}

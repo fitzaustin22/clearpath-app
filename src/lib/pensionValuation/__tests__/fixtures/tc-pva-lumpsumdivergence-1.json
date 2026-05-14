@@ -1,0 +1,29 @@
+{
+  "tc": "TC-PVA-LumpSumDivergence-1",
+  "description": "Offer materially below tool PV (≈21.6% — well past >10% threshold). Callout fires.",
+  "inputs": {
+    "path": "tier_1",
+    "planType": "private_db_traditional",
+    "participantDOB": "1981-05-01",
+    "caseEffectiveDate": "2026-05-01",
+    "planNRA": 65,
+    "accruedMonthlyBenefitAtNRA": 3000,
+    "formOfBenefitOnStatement": "single_life",
+    "vestingStatus": "fully_vested",
+    "benefitSource": "official_statement",
+    "mortalityTable": "irs_417e",
+    "discountRateBps": 5234,
+    "cola": 0,
+    "planAdministratorOfferedLumpSum": 130000
+  },
+  "expected": {
+    "callout": {
+      "type": "lump_sum_offer_divergence",
+      "offer": 130000,
+      "toolPv": 165783,
+      "diff": -35783,
+      "pctDiffSign": "negative",
+      "pctDiffAbsoluteAtLeast": 0.1
+    }
+  }
+}

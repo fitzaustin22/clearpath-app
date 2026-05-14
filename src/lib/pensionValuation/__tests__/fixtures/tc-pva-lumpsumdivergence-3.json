@@ -1,0 +1,32 @@
+{
+  "tc": "TC-PVA-LumpSumDivergence-3",
+  "description": "Tier 3 coverture: divergence compares against pv.total (full PV, NOT marital) per [R5b-6]. Plan administrators offer full PV.",
+  "inputs": {
+    "path": "tier_3",
+    "planType": "private_db_traditional",
+    "participantDOB": "1975-01-01",
+    "caseEffectiveDate": "2026-05-01",
+    "dateOfHire": "2010-01-01",
+    "dateOfMarriage": "2015-06-01",
+    "maritalCutoffDate": "2024-12-31",
+    "expectedRetirementAge": 65,
+    "currentAccruedMonthlyBenefit": 2500,
+    "formOfBenefitOnStatement": "single_life",
+    "vestingStatus": "fully_vested",
+    "benefitSource": "official_statement",
+    "mortalityTable": "irs_417e",
+    "discountRateBps": 5234,
+    "cola": 0,
+    "planAdministratorOfferedLumpSum": 152676
+  },
+  "expected": {
+    "callout": {
+      "type": "lump_sum_offer_divergence",
+      "offer": 152676,
+      "toolPv": 190845,
+      "pvTotal": 190845,
+      "pvMarital": 60964,
+      "regressionRule": "toolPv must equal pv.total.best (NOT pv.marital.best)"
+    }
+  }
+}

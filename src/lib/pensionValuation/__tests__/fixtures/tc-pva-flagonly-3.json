@@ -1,0 +1,31 @@
+{
+  "tc": "TC-PVA-FlagOnly-3",
+  "description": "Flag-only routing for planType=military: no PV; educational callout gov_flag_only (variant: military); no qpsa/qdro/liability-disclaimer is rendered alongside.",
+  "inputs": {
+    "path": "flag_only",
+    "planName": "ABC Plan",
+    "whoseplan": "Client",
+    "caseEffectiveDate": "2026-05-01",
+    "planType": "military"
+  },
+  "expected": {
+    "path": "flag_only",
+    "formulaId": null,
+    "pv": null,
+    "coverture": null,
+    "receiptForm": null,
+    "callouts": [
+      {
+        "type": "gov_flag_only",
+        "variant": "military"
+      },
+      {
+        "type": "liability_disclaimer"
+      }
+    ],
+    "expectedEducationalCallout": {
+      "type": "gov_flag_only",
+      "variant": "military"
+    }
+  }
+}
