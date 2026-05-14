@@ -242,4 +242,65 @@ describe('ResultsPanel (§7.6.1 / §7.6.3)', () => {
     expect(screen.getByTestId('callout-multi_employer_flag_only')).toBeInTheDocument();
   });
 
+  // ─── PR 3 / Phase 3 — show-the-math + educational + disclaimer ─────────
+  it('TC-PVA-Results-16: mounts PerStepNarrative when breakdown.perStepNarrative is non-empty', () => {
+    const results = {
+      ...TIER_1_RESULTS,
+      breakdown: {
+        callouts: [],
+        perStepNarrative: [
+          { step: 0, stepId: 'step_cp_resolve_constants', label: 'Resolve constants', computation: '', result: null },
+        ],
+      },
+    };
+    render(<ResultsPanel results={results} flags={{}} />);
+    expect(screen.getByTestId('per-step-narrative')).toBeInTheDocument();
+  });
+
+  it('TC-PVA-Results-17: mounts PvComputationRationale on every compute path', () => {
+    const results = { ...TIER_1_RESULTS, breakdown: { callouts: [], perStepNarrative: [] } };
+    render(<ResultsPanel results={results} flags={{}} />);
+    expect(screen.getByTestId('pv-computation-rationale')).toBeInTheDocument();
+  });
+
+  it('TC-PVA-Results-18: mounts CovertureRationale ONLY on tier_3 path', () => {
+    const tier3 = { ...TIER_3_RESULTS, breakdown: { callouts: [], perStepNarrative: [] } };
+    render(<ResultsPanel results={tier3} flags={{}} />);
+    expect(screen.getByTestId('coverture-rationale')).toBeInTheDocument();
+  });
+
+  it('TC-PVA-Results-19: does NOT mount CovertureRationale on tier_1', () => {
+    const tier1 = { ...TIER_1_RESULTS, breakdown: { callouts: [], perStepNarrative: [] } };
+    render(<ResultsPanel results={tier1} flags={{}} />);
+    expect(screen.queryByTestId('coverture-rationale')).toBeNull();
+  });
+
+  it('TC-PVA-Results-20: does NOT mount CovertureRationale on cash_balance even with coverture', () => {
+    const cb = { ...CASH_BALANCE_COVERTURE_RESULTS, breakdown: { callouts: [], perStepNarrative: [] } };
+    render(<ResultsPanel results={cb} flags={{}} />);
+    // Coverture rationale is gated on path === 'tier_3' (§7.9.3 wording is
+    // tier-3 specific; cash balance coverture uses a separate explanation).
+    expect(screen.queryByTestId('coverture-rationale')).toBeNull();
+  });
+
+  it('TC-PVA-Results-21: mounts TaxTreatmentNote on compute paths', () => {
+    const results = { ...TIER_1_RESULTS, breakdown: { callouts: [], perStepNarrative: [] } };
+    render(<ResultsPanel results={results} flags={{}} />);
+    expect(screen.getByTestId('tax-treatment-note')).toBeInTheDocument();
+  });
+
+  it('TC-PVA-Results-22: flag_only path skips show-the-math, rationale, and disclaimer', () => {
+    const results = {
+      ...FLAG_ONLY_RESULTS,
+      breakdown: {
+        callouts: [{ type: 'multi_employer_flag_only', planName: 'X' }],
+        perStepNarrative: [],
+      },
+    };
+    render(<ResultsPanel results={results} flags={{}} />);
+    expect(screen.queryByTestId('per-step-narrative')).toBeNull();
+    expect(screen.queryByTestId('pv-computation-rationale')).toBeNull();
+    expect(screen.queryByTestId('coverture-rationale')).toBeNull();
+    expect(screen.queryByTestId('tax-treatment-note')).toBeNull();
+  });
 });
