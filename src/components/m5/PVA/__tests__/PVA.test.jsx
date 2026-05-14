@@ -124,4 +124,46 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
     expect(screen.getByTestId('pva-bignumber-marital')).toBeInTheDocument();
     expect(screen.getByTestId('pva-bignumber-total')).toBeInTheDocument();
   });
+
+  // ─── PR 3 / Phase 2 — TierOverride flag-timing fix ────────────────────
+  it('TC-PVA-Orchestrator-10: frozen seed hides tier_3 option in TierOverride on first render (no store roundtrip)', () => {
+    // The flag-timing fix threads _frozenRoutingApplied as a prop directly
+    // from prePopResult to InputsPanel → TierOverride, eliminating the
+    // 1-cycle staleness window where the m5Store flag hasn't propagated
+    // and tier_3 briefly shows for frozen plans.
+    render(<PVA seedOverride={SEED_VARIANTS.frozen_routing_banner} />);
+    // TierOverride is visible (planType=private_db_traditional, path=tier_1).
+    expect(screen.getByText(/Tier 1 — Accrued benefit known/)).toBeInTheDocument();
+    expect(screen.getByText(/Tier 2 — Estimated accrued benefit/)).toBeInTheDocument();
+    // The Tier 3 option should NOT appear at first render for frozen seed.
+    expect(screen.queryByText(/Tier 3 — Coverture/)).not.toBeInTheDocument();
+  });
+
+  it('TC-PVA-Orchestrator-11: non-frozen seed renders all 3 TierOverride options', () => {
+    render(<PVA seedOverride={SEED_VARIANTS.tier3_canonical} />);
+    expect(screen.getByText(/Tier 1 — Accrued benefit known/)).toBeInTheDocument();
+    expect(screen.getByText(/Tier 2 — Estimated accrued benefit/)).toBeInTheDocument();
+    expect(screen.getByText(/Tier 3 — Coverture/)).toBeInTheDocument();
+  });
+
+  // ─── PR 3 / Phase 2 — new callout-surfacing seeds end-to-end ──────────
+  it('TC-PVA-Orchestrator-12: vesting_partial seed surfaces vesting_status_callout via CalloutStack', () => {
+    render(<PVA seedOverride={SEED_VARIANTS.vesting_partial} />);
+    expect(screen.getByTestId('callout-vesting_status_callout')).toBeInTheDocument();
+  });
+
+  it('TC-PVA-Orchestrator-13: lump_sum_divergent seed surfaces lump_sum_offer_divergence via CalloutStack', () => {
+    render(<PVA seedOverride={SEED_VARIANTS.lump_sum_divergent} />);
+    expect(screen.getByTestId('callout-lump_sum_offer_divergence')).toBeInTheDocument();
+  });
+
+  it('TC-PVA-Orchestrator-14: coverture_zero_combo seed surfaces precedence-sorted multi-callout stack', () => {
+    render(<PVA seedOverride={SEED_VARIANTS.coverture_zero_combo} />);
+    // Expect at minimum: coverture_zero_fraction (5), vesting_status_callout (6),
+    // form_of_benefit_callout (7), qpsa (8), qdro_handoff (11), liability (12).
+    expect(screen.getByTestId('callout-coverture_zero_fraction')).toBeInTheDocument();
+    expect(screen.getByTestId('callout-vesting_status_callout')).toBeInTheDocument();
+    expect(screen.getByTestId('callout-form_of_benefit_callout')).toBeInTheDocument();
+    expect(screen.getByTestId('callout-liability_disclaimer')).toBeInTheDocument();
+  });
 });

@@ -35,6 +35,7 @@ import inPayCanonical from '@/src/lib/pensionValuation/__tests__/fixtures/tc-pva
 import cashBalanceCanonical from '@/src/lib/pensionValuation/__tests__/fixtures/tc-pva-cashbalance-1.json';
 import cashBalanceWithCoverture from '@/src/lib/pensionValuation/__tests__/fixtures/tc-pva-cashbalance-2.json';
 import flagOnlyMultiEmployer from '@/src/lib/pensionValuation/__tests__/fixtures/tc-pva-flagonly-1.json';
+import lumpSumDivergent from '@/src/lib/pensionValuation/__tests__/fixtures/tc-pva-lumpsumdivergence-1.json';
 
 const TIER_TRADITIONAL = 'private_db_traditional';
 const CASH_BALANCE_PLANTYPE = 'private_db_cash_balance';
@@ -156,6 +157,78 @@ export const SEED_VARIANTS = Object.freeze({
     inputs: {},
     error: 'in_pay_data_incomplete',
     missingFields: ['monthlyBenefit', 'benefitStartDate'],
+  },
+
+  // ─── Phase 2 (PR 3) callout-surfacing seeds via LL-22 hybrid pattern ───
+  // Each new seed wraps a compute-path engine fixture and overrides only
+  // the field(s) that trigger an additional callout. Engine surfaces:
+  //   - vesting_status_callout when vestingStatus !== 'fully_vested'
+  //   - form_of_benefit_callout when formOfBenefitOnStatement / InPay !== 'single_life'
+  //   - lump_sum_offer_divergence when offer diverges from tool PV by >10%
+  //   - coverture_zero_fraction when coverture numerator → 0
+
+  vesting_partial: {
+    assetId: 'seed-vesting-partial',
+    path: 'tier_1',
+    inputs: {
+      ...tier1Canonical.inputs,
+      planName: 'Tier 1 + partial vesting (seeded)',
+      whoseplan: 'Client',
+      planType: TIER_TRADITIONAL,
+      vestingStatus: 'partially_vested',
+    },
+  },
+
+  form_joint50_on_statement: {
+    assetId: 'seed-form-joint50-onstmt',
+    path: 'tier_1',
+    inputs: {
+      ...tier1Canonical.inputs,
+      planName: 'Tier 1 + joint-50 on statement (seeded)',
+      whoseplan: 'Client',
+      planType: TIER_TRADITIONAL,
+      formOfBenefitOnStatement: 'joint_50',
+    },
+  },
+
+  form_joint100_in_pay: {
+    assetId: 'seed-form-joint100-inpay',
+    path: 'in_pay_status',
+    inputs: {
+      ...inPayCanonical.inputs,
+      planName: 'In-pay + joint-100 elected (seeded)',
+      whoseplan: 'Client',
+      planType: TIER_TRADITIONAL,
+      formOfBenefitInPay: 'joint_100',
+    },
+  },
+
+  lump_sum_divergent: {
+    assetId: 'seed-lumpsum-divergent',
+    path: 'tier_1',
+    inputs: {
+      ...lumpSumDivergent.inputs,
+      planName: 'Tier 1 + lump-sum offer below tool PV (seeded)',
+      whoseplan: 'Client',
+      planType: TIER_TRADITIONAL,
+    },
+  },
+
+  coverture_zero_combo: {
+    // Multi-callout precedence sort exercise. Combines:
+    //   coverture_zero_fraction (5) + vesting_status_callout (6) +
+    //   form_of_benefit_callout (7) + qpsa_election_callout (8) +
+    //   qdro_handoff_recommended (11) + liability_disclaimer (12)
+    assetId: 'seed-coverture-zero-combo',
+    path: 'tier_3',
+    inputs: {
+      ...tier3ZeroCoverture.inputs,
+      planName: 'Tier 3 zero coverture + vesting + form (seeded)',
+      whoseplan: 'Client',
+      planType: TIER_TRADITIONAL,
+      vestingStatus: 'partially_vested',
+      formOfBenefitOnStatement: 'joint_50',
+    },
   },
 });
 

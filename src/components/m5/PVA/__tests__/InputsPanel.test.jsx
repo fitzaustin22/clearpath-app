@@ -136,9 +136,12 @@ describe('InputsPanel — path-conditional rendering (§7.2 / §7.3)', () => {
     expect(screen.queryByTestId('pva-input-tierOverride-tier_1')).not.toBeInTheDocument();
   });
 
-  it('TC-PVA-InputsPanel-9c: TierOverride hides tier_3 when _frozenRoutingApplied=true (R4)', () => {
-    seedInputs({ planType: 'private_db_traditional', _frozenRoutingApplied: true });
-    render(<InputsPanel assetId={ASSET_ID} path="tier_1" />);
+  it('TC-PVA-InputsPanel-9c: TierOverride hides tier_3 when frozenRoutingApplied prop is true (R4)', () => {
+    // Prop-threaded per PR 3 Phase 2 TierOverride flag-timing fix — eliminates
+    // the m5Store roundtrip and the 1-cycle staleness window that briefly
+    // showed tier_3 before the store hydrated.
+    seedInputs({ planType: 'private_db_traditional' });
+    render(<InputsPanel assetId={ASSET_ID} path="tier_1" frozenRoutingApplied={true} />);
     expect(screen.getByTestId('pva-input-tierOverride-tier_1')).toBeInTheDocument();
     expect(screen.getByTestId('pva-input-tierOverride-tier_2')).toBeInTheDocument();
     expect(screen.queryByTestId('pva-input-tierOverride-tier_3')).not.toBeInTheDocument();

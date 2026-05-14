@@ -34,8 +34,11 @@ import ReceiptFormDropdown from './ReceiptFormDropdown.jsx';
  * @param {object} props
  * @param {string} props.assetId
  * @param {'tier_1' | 'tier_2' | 'tier_3' | 'in_pay_status' | 'cash_balance' | 'flag_only' | null} props.path
+ * @param {boolean} [props.frozenRoutingApplied]  Threaded from orchestrator's
+ *   prePopResult to bypass m5Store roundtrip for visibility-critical state
+ *   (TierOverride tier_3 option hiding). PR 2 Phase 2 Deviation #6 fix.
  */
-export default function InputsPanel({ assetId, path }) {
+export default function InputsPanel({ assetId, path, frozenRoutingApplied = false }) {
   // LL-9: primitive selectors only.
   const inputs = useM5Store((s) => s.pensionValuation?.assets?.[assetId]?.inputs);
   const setPVAAssetInputs = useM5Store((s) => s.setPVAAssetInputs);
@@ -59,7 +62,12 @@ export default function InputsPanel({ assetId, path }) {
       <PlanTypeSelector inputs={safeInputs} onChange={updateField} />
       <CommonFields inputs={safeInputs} onChange={updateField} />
 
-      <TierOverride inputs={safeInputs} path={path} onChange={updateField} />
+      <TierOverride
+        inputs={safeInputs}
+        path={path}
+        frozenRoutingApplied={frozenRoutingApplied}
+        onChange={updateField}
+      />
 
       {path === 'tier_1' && (
         <Tier1And2Fields tier="tier_1" inputs={safeInputs} onChange={updateField} />

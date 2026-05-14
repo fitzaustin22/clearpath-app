@@ -16,6 +16,7 @@ export { IRS_417E_SEGMENT_2_RATES, lookupAtDate } from './effectiveDateConstants
 
 // Constants
 export { CITATIONS_BY_PATH } from './citations.js';
+export { CALLOUT_PRECEDENCE } from './calculatePensionValue.js';
 
 // Type-narrow helpers for discriminated-union pv field per [R5b-16]
 export { getHeadlinePV, getMaritalPV } from './pvHelpers.js';

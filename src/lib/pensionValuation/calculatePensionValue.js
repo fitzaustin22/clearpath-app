@@ -19,7 +19,7 @@ export const DEFAULT_RECEIPT_FORM_BY_PATH = Object.freeze({
 
 // §7.9.1 callout rendering precedence. Surfacing order is NOT semantically
 // meaningful per [R5b-11]; the show-the-math UI consumes the sorted array.
-const CALLOUT_PRECEDENCE = Object.freeze({
+export const CALLOUT_PRECEDENCE = Object.freeze({
   multi_employer_flag_only: 1,
   gov_flag_only: 2,
   legacy_currentvalue_ignored: 3,

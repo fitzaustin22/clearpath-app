@@ -28,14 +28,18 @@ const ALL_TIERS = [
 
 const TIER_OPTIONS_FROZEN = ALL_TIERS.filter((o) => o.value !== 'tier_3');
 
-export default function TierOverride({ inputs, path, onChange }) {
+export default function TierOverride({ inputs, path, frozenRoutingApplied = false, onChange }) {
   // Routing-locked paths: no override surface.
   if (inputs.planType !== 'private_db_traditional') return null;
   if (path === 'in_pay_status' || path === 'cash_balance' || path === 'flag_only') return null;
   if (!path) return null;
 
-  // Frozen-routing default (R4): tier_3 hidden.
-  const options = inputs._frozenRoutingApplied === true ? TIER_OPTIONS_FROZEN : ALL_TIERS;
+  // Frozen-routing visibility comes from the prop threaded through the
+  // orchestrator (prePopResult._frozenRoutingApplied), NOT from inputs —
+  // this eliminates the 1-cycle staleness window where the m5Store flag
+  // hasn't propagated yet (PR 2 Phase 2 Deviation #6).
+  const isFrozen = frozenRoutingApplied === true;
+  const options = isFrozen ? TIER_OPTIONS_FROZEN : ALL_TIERS;
 
   // The effective value: an explicit override wins; otherwise reflect the
   // resolved path so the radio shows the active selection.
@@ -47,7 +51,7 @@ export default function TierOverride({ inputs, path, onChange }) {
         id="pva-input-tierOverride"
         label="Compute path"
         helper={
-          inputs._frozenRoutingApplied === true
+          isFrozen
             ? 'Plan is frozen — Tier 3 (coverture) is unavailable. Default Tier 1; you may override to Tier 2.'
             : 'Default Tier 3 (coverture). You may override to Tier 1 or Tier 2 if you have an accrued-benefit anchor.'
         }

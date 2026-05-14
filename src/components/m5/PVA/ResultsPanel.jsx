@@ -21,6 +21,11 @@
 
 import { T } from '@/src/lib/brand/tokens';
 import { getHeadlinePV, getMaritalPV } from '@/src/lib/pensionValuation';
+import CalloutStack from './callouts/CalloutStack';
+import PerStepNarrative from './show-the-math/PerStepNarrative';
+import PvComputationRationale from './educational/PvComputationRationale';
+import CovertureRationale from './educational/CovertureRationale';
+import TaxTreatmentNote from './educational/TaxTreatmentNote';
 
 function formatUSD(value) {
   if (value == null || !Number.isFinite(value)) return '—';
@@ -116,6 +121,9 @@ export default function ResultsPanel({ results, flags }) {
 
   const headlinePV = isFlagOnly ? null : getHeadlinePV(results);
   const maritalPV = isCoverturePath ? getMaritalPV(results) : null;
+  const callouts = results.breakdown?.callouts ?? [];
+  const perStepNarrative = results.breakdown?.perStepNarrative ?? [];
+  const isTier3 = results.path === 'tier_3';
 
   const sensitivityVisible =
     !isFlagOnly &&
@@ -225,6 +233,17 @@ export default function ResultsPanel({ results, flags }) {
               </>
             )}
           </div>
+        </>
+      )}
+
+      <CalloutStack callouts={callouts} />
+
+      {!isFlagOnly && (
+        <>
+          <PerStepNarrative steps={perStepNarrative} />
+          <PvComputationRationale />
+          {isTier3 && <CovertureRationale />}
+          <TaxTreatmentNote />
         </>
       )}
     </section>

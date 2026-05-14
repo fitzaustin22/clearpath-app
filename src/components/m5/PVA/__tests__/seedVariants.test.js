@@ -22,6 +22,12 @@ const EXPECTED_KEYS = [
   'legacy_currentvalue_banner',
   'flag_only_multiemployer',
   'r3_validation_error',
+  // PR 3 / Phase 2 — callout-surfacing seeds via LL-22 hybrid pattern
+  'vesting_partial',
+  'form_joint50_on_statement',
+  'form_joint100_in_pay',
+  'lump_sum_divergent',
+  'coverture_zero_combo',
 ];
 
 const EXPECTED_PATH_BY_KEY = {
@@ -35,10 +41,23 @@ const EXPECTED_PATH_BY_KEY = {
   legacy_currentvalue_banner: 'tier_3',
   flag_only_multiemployer: 'flag_only',
   r3_validation_error: null,
+  vesting_partial: 'tier_1',
+  form_joint50_on_statement: 'tier_1',
+  form_joint100_in_pay: 'in_pay_status',
+  lump_sum_divergent: 'tier_1',
+  coverture_zero_combo: 'tier_3',
 };
 
+const NEW_CALLOUT_SEEDS = [
+  'vesting_partial',
+  'form_joint50_on_statement',
+  'form_joint100_in_pay',
+  'lump_sum_divergent',
+  'coverture_zero_combo',
+];
+
 describe('SEED_VARIANTS (§7.11 fixture wrapping)', () => {
-  it('TC-PVA-Seeds-1: exactly the 10 documented seed keys are exported', () => {
+  it('TC-PVA-Seeds-1: exactly the 15 documented seed keys are exported', () => {
     expect([...SEED_KEYS].sort()).toEqual([...EXPECTED_KEYS].sort());
   });
 
@@ -74,5 +93,43 @@ describe('SEED_VARIANTS (§7.11 fixture wrapping)', () => {
 
   it('TC-PVA-Seeds-6: flag_only_multiemployer carries planType=multi_employer so §7.2 R1 fires', () => {
     expect(SEED_VARIANTS.flag_only_multiemployer.inputs.planType).toBe('multi_employer');
+  });
+
+  it('TC-PVA-Seeds-7: new callout-surfacing seeds wrap compute-path fixtures (LL-22)', () => {
+    // Compute-path shape has top-level path / participantDOB / etc.
+    // Pre-pop shape has m1Store/m2Store/m3Store/assetId only.
+    for (const key of NEW_CALLOUT_SEEDS) {
+      const seed = SEED_VARIANTS[key];
+      expect(seed, `seed ${key}`).toBeDefined();
+      expect(seed.inputs, `seed ${key}: inputs`).toBeDefined();
+      expect(seed.inputs.m1Store, `seed ${key}: no m1Store`).toBeUndefined();
+      expect(seed.inputs.m2Store, `seed ${key}: no m2Store`).toBeUndefined();
+      expect(seed.inputs.m3Store, `seed ${key}: no m3Store`).toBeUndefined();
+      expect(seed.path, `seed ${key}: path set`).toBeDefined();
+      expect(seed.path, `seed ${key}: path non-null`).not.toBeNull();
+    }
+  });
+
+  it('TC-PVA-Seeds-8: vesting_partial overrides vestingStatus to partially_vested', () => {
+    expect(SEED_VARIANTS.vesting_partial.inputs.vestingStatus).toBe('partially_vested');
+  });
+
+  it('TC-PVA-Seeds-9: form_joint50_on_statement overrides formOfBenefitOnStatement', () => {
+    expect(SEED_VARIANTS.form_joint50_on_statement.inputs.formOfBenefitOnStatement).toBe('joint_50');
+  });
+
+  it('TC-PVA-Seeds-10: form_joint100_in_pay overrides formOfBenefitInPay', () => {
+    expect(SEED_VARIANTS.form_joint100_in_pay.inputs.formOfBenefitInPay).toBe('joint_100');
+  });
+
+  it('TC-PVA-Seeds-11: lump_sum_divergent carries planAdministratorOfferedLumpSum', () => {
+    expect(typeof SEED_VARIANTS.lump_sum_divergent.inputs.planAdministratorOfferedLumpSum).toBe('number');
+  });
+
+  it('TC-PVA-Seeds-12: coverture_zero_combo bundles vesting + form + zero-coverture overrides', () => {
+    const combo = SEED_VARIANTS.coverture_zero_combo;
+    expect(combo.inputs.vestingStatus).toBe('partially_vested');
+    expect(combo.inputs.formOfBenefitOnStatement).toBe('joint_50');
+    expect(combo.path).toBe('tier_3');
   });
 });

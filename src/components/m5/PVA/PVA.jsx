@@ -214,7 +214,11 @@ export default function PVA({ seedOverride = null }) {
       {/* Variant 3: normal pre-pop  →  InputsPanel + ResultsPanel */}
       {prePopResult && !prePopResult.error && selectedAssetId && (
         <div style={{ marginTop: '1rem' }}>
-          <InputsPanel assetId={selectedAssetId} path={resolvedPath} />
+          <InputsPanel
+            assetId={selectedAssetId}
+            path={resolvedPath}
+            frozenRoutingApplied={prePopResult._frozenRoutingApplied ?? false}
+          />
           <ResultsPanel
             results={results}
             flags={{
