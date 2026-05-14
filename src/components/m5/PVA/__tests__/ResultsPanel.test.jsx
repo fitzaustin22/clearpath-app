@@ -13,7 +13,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import ResultsPanel from '../ResultsPanel.jsx';
 
 const TIER_1_RESULTS = {
@@ -182,4 +182,64 @@ describe('ResultsPanel (§7.6.1 / §7.6.3)', () => {
     const banner = screen.getByTestId('pva-banner-flagonly');
     expect(banner).toHaveTextContent(/multi_employer/);
   });
+
+  // ─── PR 3 / Phase 2 — CalloutStack integration ─────────────────────────
+  it('TC-PVA-Results-12: mounts CalloutStack and renders engine callouts in §7.9.1 order', () => {
+    const results = {
+      ...TIER_1_RESULTS,
+      breakdown: {
+        callouts: [
+          { type: 'liability_disclaimer' },
+          { type: 'qpsa_election_callout' },
+          { type: 'qdro_handoff_recommended', path: 'tier_1', planType: 'private_db_traditional' },
+        ],
+      },
+    };
+    render(<ResultsPanel results={results} flags={{}} />);
+    const stack = screen.getByTestId('callout-stack');
+    const ids = within(stack)
+      .getAllByTestId(/^callout-/)
+      .map((c) => c.getAttribute('data-testid'));
+    expect(ids).toEqual([
+      'callout-qpsa_election_callout',
+      'callout-qdro_handoff_recommended',
+      'callout-liability_disclaimer',
+    ]);
+  });
+
+  it('TC-PVA-Results-13: renders nothing for empty callouts[]', () => {
+    const results = { ...TIER_1_RESULTS, breakdown: { callouts: [] } };
+    render(<ResultsPanel results={results} flags={{}} />);
+    expect(screen.queryByTestId('callout-stack')).toBeNull();
+  });
+
+  it('TC-PVA-Results-14: structural banner and frozen_plan_tier1_routing callout both render', () => {
+    // Banners (orchestrator flag) and CalloutStack content (engine
+    // breakdown.callouts) are complementary surfaces; do NOT dedupe.
+    const results = {
+      ...TIER_1_RESULTS,
+      breakdown: {
+        callouts: [
+          { type: 'frozen_plan_tier1_routing', planName: 'XYZ Plan' },
+          { type: 'liability_disclaimer' },
+        ],
+      },
+    };
+    render(<ResultsPanel results={results} flags={{ _frozenRoutingApplied: true }} />);
+    expect(screen.getByTestId('pva-banner-frozen')).toBeInTheDocument();
+    expect(screen.getByTestId('callout-frozen_plan_tier1_routing')).toBeInTheDocument();
+  });
+
+  it('TC-PVA-Results-15: flag_only path still renders CalloutStack if breakdown.callouts present', () => {
+    const results = {
+      ...FLAG_ONLY_RESULTS,
+      breakdown: {
+        callouts: [{ type: 'multi_employer_flag_only', planName: 'M' }],
+      },
+    };
+    render(<ResultsPanel results={results} flags={{}} />);
+    expect(screen.getByTestId('pva-banner-flagonly')).toBeInTheDocument();
+    expect(screen.getByTestId('callout-multi_employer_flag_only')).toBeInTheDocument();
+  });
+
 });

@@ -21,6 +21,7 @@
 
 import { T } from '@/src/lib/brand/tokens';
 import { getHeadlinePV, getMaritalPV } from '@/src/lib/pensionValuation';
+import CalloutStack from './callouts/CalloutStack';
 
 function formatUSD(value) {
   if (value == null || !Number.isFinite(value)) return '—';
@@ -116,6 +117,7 @@ export default function ResultsPanel({ results, flags }) {
 
   const headlinePV = isFlagOnly ? null : getHeadlinePV(results);
   const maritalPV = isCoverturePath ? getMaritalPV(results) : null;
+  const callouts = results.breakdown?.callouts ?? [];
 
   const sensitivityVisible =
     !isFlagOnly &&
@@ -227,6 +229,8 @@ export default function ResultsPanel({ results, flags }) {
           </div>
         </>
       )}
+
+      <CalloutStack callouts={callouts} />
     </section>
   );
 }
