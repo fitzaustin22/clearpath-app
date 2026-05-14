@@ -1,0 +1,37 @@
+{
+  "tc": "TC-PVA-Tier1-1",
+  "description": "Canonical Tier 1: age 45, planNRA 65, $3000/mo, irs_417e @ 5234bps, 0 COLA, single_life, fully_vested.",
+  "inputs": {
+    "path": "tier_1",
+    "participantDOB": "1981-05-01",
+    "caseEffectiveDate": "2026-05-01",
+    "planNRA": 65,
+    "accruedMonthlyBenefitAtNRA": 3000,
+    "formOfBenefitOnStatement": "single_life",
+    "vestingStatus": "fully_vested",
+    "benefitSource": "official_statement",
+    "mortalityTable": "irs_417e",
+    "discountRateBps": 5234,
+    "cola": 0
+  },
+  "expected": {
+    "path": "tier_1",
+    "formulaId": "pva_db_tier1_v1",
+    "pv": {
+      "best": 165783,
+      "low": 126443,
+      "high": 218973
+    },
+    "coverture": null,
+    "maritalPortion": null,
+    "metadata": {
+      "benefitSource": "official_statement",
+      "citations": [
+        "IRC §417(e)(3)",
+        "26 CFR §1.417(e)-1",
+        "SOA actuarial standards (commutation methodology)"
+      ]
+    },
+    "engineCallouts": []
+  }
+}

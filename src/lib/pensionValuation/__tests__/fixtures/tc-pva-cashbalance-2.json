@@ -1,0 +1,46 @@
+{
+  "tc": "TC-PVA-CashBalance-2",
+  "description": "Pass-through with coverture extension (reuses computeCovertureFraction): fraction 0.3194, marital = balance × fraction.",
+  "inputs": {
+    "path": "cash_balance",
+    "participantDOB": "1975-01-01",
+    "caseEffectiveDate": "2026-05-01",
+    "currentAccountBalance": 245600,
+    "dateOfHire": "2010-01-01",
+    "dateOfMarriage": "2015-06-01",
+    "maritalCutoffDate": "2024-12-31",
+    "expectedRetirementAge": 65,
+    "mortalityTable": "irs_417e",
+    "discountRateBps": 5234,
+    "cola": 0
+  },
+  "expected": {
+    "path": "cash_balance",
+    "formulaId": "pva_cashbalance_passthrough_v1",
+    "coverture": {
+      "fraction": 0.3194,
+      "numeratorMonths": 115,
+      "denominatorMonths": 360
+    },
+    "metadata": {
+      "citations": [
+        "IRS Notice 96-8",
+        "Pension Protection Act of 2006 §1107 (lump-sum-equals-balance safe harbor)",
+        "Cooper v. IBM Personal Pension Plan, 457 F.3d 636 (7th Cir. 2006)"
+      ]
+    },
+    "engineCallouts": [],
+    "pv": {
+      "total": {
+        "best": 245600,
+        "low": 245600,
+        "high": 245600
+      },
+      "marital": {
+        "best": 78456,
+        "low": 78456,
+        "high": 78456
+      }
+    }
+  }
+}

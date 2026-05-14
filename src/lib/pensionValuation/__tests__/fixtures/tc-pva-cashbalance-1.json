@@ -1,0 +1,36 @@
+{
+  "tc": "TC-PVA-CashBalance-1",
+  "description": "Pass-through, no coverture: PV = balance = $245,600; all three sensitivity legs equal; no coverture.",
+  "inputs": {
+    "path": "cash_balance",
+    "participantDOB": "1975-01-01",
+    "caseEffectiveDate": "2026-05-01",
+    "currentAccountBalance": 245600,
+    "dateOfHire": null,
+    "dateOfMarriage": null,
+    "maritalCutoffDate": null,
+    "expectedRetirementAge": null,
+    "mortalityTable": "irs_417e",
+    "discountRateBps": 5234,
+    "cola": 0
+  },
+  "expected": {
+    "path": "cash_balance",
+    "formulaId": "pva_cashbalance_passthrough_v1",
+    "coverture": null,
+    "metadata": {
+      "citations": [
+        "IRS Notice 96-8",
+        "Pension Protection Act of 2006 §1107 (lump-sum-equals-balance safe harbor)",
+        "Cooper v. IBM Personal Pension Plan, 457 F.3d 636 (7th Cir. 2006)"
+      ]
+    },
+    "engineCallouts": [],
+    "pv": {
+      "best": 245600,
+      "low": 245600,
+      "high": 245600
+    },
+    "maritalPortion": null
+  }
+}

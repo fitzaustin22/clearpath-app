@@ -1,0 +1,34 @@
+{
+  "tc": "TC-PVA-InPayStatus-1",
+  "description": "Canonical in-pay: age 67 at 2026-05-01, $4200/mo since 2020-01-01, single_life. No deferral discount.",
+  "inputs": {
+    "path": "in_pay_status",
+    "participantDOB": "1959-01-01",
+    "caseEffectiveDate": "2026-05-01",
+    "monthlyBenefit": 4200,
+    "benefitStartDate": "2020-01-01",
+    "formOfBenefitInPay": "single_life",
+    "mortalityTable": "irs_417e",
+    "discountRateBps": 5234,
+    "cola": 0
+  },
+  "expected": {
+    "path": "in_pay_status",
+    "formulaId": "pva_db_inpaystatus_v1",
+    "pv": {
+      "best": 614022,
+      "low": 568342,
+      "high": 666724
+    },
+    "coverture": null,
+    "maritalPortion": null,
+    "metadata": {
+      "formOfBenefitInPay": "single_life",
+      "citations": [
+        "IRC §417(e)(3)",
+        "SOA actuarial standards (commutation methodology)"
+      ]
+    },
+    "engineCallouts": []
+  }
+}
