@@ -9,8 +9,8 @@
  *   - Field-write round-trip via the m5Store setter
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, cleanup } from '@testing-library/react';
+import { describe, it, expect, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import InputsPanel from '../InputsPanel/index.jsx';
 import { useM5Store } from '@/src/stores/m5Store';
 
@@ -34,10 +34,6 @@ beforeEach(() => {
   useM5Store.setState((state) => ({
     pensionValuation: { ...state.pensionValuation, assets: {} },
   }));
-});
-
-afterEach(() => {
-  cleanup();
 });
 
 describe('InputsPanel — path-conditional rendering (§7.2 / §7.3)', () => {
