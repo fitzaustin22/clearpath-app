@@ -13,17 +13,13 @@ import HomeDecisionBindingConstraintMini from './HomeDecisionBindingConstraintMi
  *
  * Element coverage vs §9.8.1:
  *   1–2  Shared inputs + per-scenario accordion  → <HomeDecisionInputs/>
- *   3    Projection grid (3 scenarios × horizons) + verdict badge on Keep&refi
+ *   3    Projection grid (3 scenarios × horizons) + verdict badge & shortfall banner on Keep&refi
  *   4    Per-scenario callouts & narrative (column order, stacked, no truncation)
  *   6    Binding-constraint mini-section          → <HomeDecisionBindingConstraintMini/>
  *   7    Cross-scenario summary (opp-cost, real-dollar, timing, strict-comparator)
  *   7a   Selection: column-header click (toggle off / transfer, last-click wins)
  *   8    Disclaimer block (§9.8.4 four notes, fixed order)
  *   9    Action surface: Save selection to Blueprint
- *
- * DEFERRED to PR 4 (Fitz-approved Option 1): the §9.2.1 shortfall banner —
- * its trigger ("buyout exceeds DTI/LTV/credit-feasible refi") needs a lib
- * signal the frozen PR #16 surface does not expose.
  *
  * @param {object}   props
  * @param {object}   props.inputs            m5Store.homeDecision.inputs
@@ -82,6 +78,10 @@ function fmtUSD(n) {
   return `${sign}$${Math.abs(rounded).toLocaleString('en-US')}`;
 }
 
+function underwaterPrefixCopy(currentFMV, existingMortgageBalance) {
+  return `Note: your home is currently underwater (FMV ${fmtUSD(currentFMV)} < mortgage ${fmtUSD(existingMortgageBalance)}). This scenario's calculations remain meaningful and may be your primary path.`;
+}
+
 function pmiNarrative(kr) {
   const y = kr?.metadata?.projectedPmiDropYear;
   if (y == null) return null;
@@ -94,7 +94,7 @@ function mfjFootnote(ds) {
   return `If you expect to be remarried and filing jointly at sale, §121 exclusion may be up to $500k subject to the new spouse's 2+ year use of this home. Deferred-sale value could be up to ${fmtUSD(diff)} higher than shown — discuss with your CDFA.`;
 }
 
-function ScenarioNarrative({ id, scenario }) {
+function ScenarioNarrative({ id, scenario, underwaterPrefix }) {
   if (!scenario) return null;
   const lines = [];
   lines.push(OPENING_LINE[id]);
@@ -110,6 +110,10 @@ function ScenarioNarrative({ id, scenario }) {
   if (id === 'deferredSale') {
     const mfj = mfjFootnote(scenario);
     if (mfj) lines.push(mfj);
+  }
+
+  if (underwaterPrefix && (id === 'sellNow' || id === 'deferredSale')) {
+    lines.unshift(underwaterPrefix);
   }
 
   return (
@@ -167,6 +171,12 @@ export default function HomeDecisionComparator({
 
   const horizons = scenarios?.keepAndRefi?.horizons ?? null;
 
+  const isUnderwater =
+    scenarios?.keepAndRefi?.refiQualification?.bindingConstraint === 'underwater';
+  const underwaterPrefix = isUnderwater
+    ? underwaterPrefixCopy(inputs?.currentFMV, inputs?.existingMortgageBalance)
+    : null;
+
   return (
     <div
       data-testid="hda-comparator"
@@ -199,6 +209,42 @@ export default function HomeDecisionComparator({
         </div>
       ) : (
         <>
+          {/* §9.2.1 / §9.8.1 el.3 — shortfall banner (Keep & refi only) */}
+          {scenarios.keepAndRefi?.feasibility?.shortfall && (
+            <div
+              data-testid="hda-shortfall-banner"
+              style={{
+                marginTop: 8,
+                marginBottom: 4,
+                padding: '12px 16px',
+                background: T.CARD,
+                borderLeft: `4px solid ${T.GOLD}`,
+                borderRadius: 6,
+              }}
+            >
+              <p
+                style={{
+                  margin: '0 0 4px',
+                  fontFamily: T.FONT_DISPLAY,
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: T.NAVY,
+                }}
+              >
+                Keep &amp; refinance
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 14,
+                  lineHeight: 1.55,
+                  color: T.NAVY,
+                }}
+              >
+                Cash-out refi cannot fund the full buyout — gap must come from other sources, discuss with your CDFA.
+              </p>
+            </div>
+          )}
           <div style={{ overflowX: 'auto', marginTop: 8 }}>
             <table
               data-testid="hda-projection-grid"
@@ -337,7 +383,7 @@ export default function HomeDecisionComparator({
           {/* §9.8.1 el.4 — per-scenario callouts & narrative, column order */}
           <div style={{ marginTop: 20 }}>
             {SCENARIOS.map(({ id }) => (
-              <ScenarioNarrative key={id} id={id} scenario={scenarios[id]} />
+              <ScenarioNarrative key={id} id={id} scenario={scenarios[id]} underwaterPrefix={underwaterPrefix} />
             ))}
           </div>
 

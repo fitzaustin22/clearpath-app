@@ -157,4 +157,45 @@ describe('HomeDecisionInputs', () => {
     expect(screen.getByTestId('hda-input-currentFMV')).toHaveValue(700000);
     expect(screen.getByTestId('hda-input-spouseEquityShare')).toHaveValue(0.6);
   });
+
+  describe('RefiRateInput integration wiring', () => {
+    it('threads creditBand: opt-in link present when creditBand is a valid band', () => {
+      render(
+        <HomeDecisionInputs
+          inputs={{ ...baseInputs, userCreditScoreBand: 'good' }}
+          onChange={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('hda-scenario-keepAndRefi-toggle'));
+      expect(screen.getByTestId('hda-input-refiRate')).toBeInTheDocument();
+      expect(screen.getByTestId('hda-refiRate-optin')).toBeInTheDocument();
+    });
+
+    it('threads onChange: typing fires dual-write (refiRate + refiRateProvenance)', () => {
+      const onChange = vi.fn();
+      render(
+        <HomeDecisionInputs
+          inputs={{ ...baseInputs, userCreditScoreBand: 'good' }}
+          onChange={onChange}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('hda-scenario-keepAndRefi-toggle'));
+      fireEvent.change(screen.getByTestId('hda-input-refiRate'), {
+        target: { value: '0.0725' },
+      });
+      expect(onChange).toHaveBeenCalledWith('refiRate', 0.0725);
+      expect(onChange).toHaveBeenCalledWith('refiRateProvenance', 'user-quoted');
+    });
+
+    it('opt-in link absent when creditBand is null', () => {
+      render(
+        <HomeDecisionInputs
+          inputs={{ ...baseInputs }}
+          onChange={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('hda-scenario-keepAndRefi-toggle'));
+      expect(screen.queryByTestId('hda-refiRate-optin')).not.toBeInTheDocument();
+    });
+  });
 });

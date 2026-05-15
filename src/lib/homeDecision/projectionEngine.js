@@ -24,6 +24,7 @@ import {
   projectPmiDropYear,
 } from './pmiCalculator';
 import { evaluateRefiVerdict } from './refiQualifier';
+import { evaluateBuyoutFeasibility } from './buyoutFeasibility';
 import { evaluateOwnershipTest } from './ownershipTestEligibility';
 import { evaluateUseTest } from './useTestEligibility';
 import { calculateMfjDifferential } from './mfjDifferentialFootnote';
@@ -138,6 +139,10 @@ export function calculateKeepAndRefi(inputs) {
     currentFMV,
     existingMortgageBalance,
   });
+  const feasibility = evaluateBuyoutFeasibility({
+    verdictTier: refiQualification.verdictTier,
+    bindingConstraint: refiQualification.bindingConstraint,
+  });
 
   const monthlyNetCashflow = userPostDivorceGrossMonthlyIncome - housingPayment;
 
@@ -160,6 +165,7 @@ export function calculateKeepAndRefi(inputs) {
     horizons,
     section121: null,
     refiQualification,
+    feasibility,
     callouts: [],
     metadata: {
       scenario: 'keepAndRefi',
@@ -177,6 +183,7 @@ export function calculateKeepAndRefi(inputs) {
       effectiveBuyout,
       verdictTier: refiQualification.verdictTier,
       bindingConstraint: refiQualification.bindingConstraint,
+      shortfall: feasibility.shortfall,
     },
   };
 }

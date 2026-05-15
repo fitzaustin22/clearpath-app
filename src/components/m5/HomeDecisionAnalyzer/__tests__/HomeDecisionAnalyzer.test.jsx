@@ -13,7 +13,7 @@
  *   #5 one-shot pre-pop gated on _prePopSources == null
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { useM1Store } from '@/src/stores/m1Store';
 import { useM2Store } from '@/src/stores/m2Store';
@@ -21,6 +21,13 @@ import { useM3Store } from '@/src/stores/m3Store';
 import { useM5Store } from '@/src/stores/m5Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';
 import HomeDecisionAnalyzer from '../HomeDecisionAnalyzer.jsx';
+
+afterEach(() => {
+  // Reset viewport to jsdom default so mobile-width mutations from new tests
+  // do not leak into subsequent tests (test-order safety).
+  window.innerWidth = 1024;
+  window.dispatchEvent(new Event('resize'));
+});
 
 beforeEach(() => {
   localStorage.clear();
@@ -233,5 +240,60 @@ describe('HomeDecisionAnalyzer orchestrator integration', () => {
     const s9 = useBlueprintStore.getState().sections.s9;
     expect(s9.status).toBe('complete');
     expect(s9.data.userSelection).toBe('keepAndRefi');
+  });
+});
+
+describe('responsive breakpoint switching', () => {
+  it('desktop (default ≥1024): shows Comparator, hides mobile carousel', async () => {
+    // jsdom default innerWidth is 1024 — desktop branch resolves to true.
+    seedUpstream();
+    completeUserInputs();
+    render(<HomeDecisionAnalyzer />);
+    await waitFor(() =>
+      expect(useM5Store.getState().homeDecision.results).not.toBeNull(),
+    );
+
+    expect(screen.getByTestId('hda-comparator')).toBeTruthy();
+    expect(screen.queryByTestId('hda-mobile-carousel')).toBeNull();
+  });
+
+  it('mobile (<1024): shows mobile summary/inputs/carousel, hides Comparator', async () => {
+    window.innerWidth = 375;
+    act(() => window.dispatchEvent(new Event('resize')));
+
+    seedUpstream();
+    completeUserInputs();
+    render(<HomeDecisionAnalyzer />);
+    // Trigger resize again after mount so the hook picks up the mobile width.
+    act(() => window.dispatchEvent(new Event('resize')));
+
+    await waitFor(() =>
+      expect(useM5Store.getState().homeDecision.results).not.toBeNull(),
+    );
+
+    expect(screen.getByTestId('hda-mobile-summary')).toBeTruthy();
+    expect(screen.getByTestId('hda-mobile-carousel')).toBeTruthy();
+    expect(screen.getByTestId('hda-inputs')).toBeTruthy();
+    expect(screen.queryByTestId('hda-comparator')).toBeNull();
+  });
+
+  it('resize desktop→mobile swaps render branch', async () => {
+    // Start at desktop (jsdom default 1024).
+    seedUpstream();
+    completeUserInputs();
+    render(<HomeDecisionAnalyzer />);
+    await waitFor(() =>
+      expect(useM5Store.getState().homeDecision.results).not.toBeNull(),
+    );
+    expect(screen.getByTestId('hda-comparator')).toBeTruthy();
+
+    // Shrink to mobile — hook fires resize listener.
+    act(() => {
+      window.innerWidth = 375;
+      window.dispatchEvent(new Event('resize'));
+    });
+
+    await waitFor(() => expect(screen.queryByTestId('hda-comparator')).toBeNull());
+    expect(screen.getByTestId('hda-mobile-carousel')).toBeTruthy();
   });
 });

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { T } from '@/src/lib/brand/tokens';
+import RefiRateInput from './RefiRateInput.jsx';
 
 /**
  * §9.8.1 el.1–2 — HDA input surface.
@@ -407,14 +408,11 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
           value={inputs.buyoutAmount}
           onChange={(v) => onChange('buyoutAmount', v)}
         />
-        <NumberField
-          id="hda-input-refiRate"
-          label="Refi rate (% APR)"
-          helper="Enter your quoted rate. (Banded-estimate opt-in UX ships in a later update.)"
+        <RefiRateInput
           value={inputs.refiRate}
-          onChange={(v) => onChange('refiRate', v)}
-          min={0}
-          step={0.01}
+          creditBand={inputs.userCreditScoreBand}
+          provenance={inputs.refiRateProvenance}
+          onChange={onChange}
         />
         <NumberField
           id="hda-input-refiClosingCostsPercent"
