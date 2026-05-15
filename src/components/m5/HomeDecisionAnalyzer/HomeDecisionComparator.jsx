@@ -13,17 +13,13 @@ import HomeDecisionBindingConstraintMini from './HomeDecisionBindingConstraintMi
  *
  * Element coverage vs §9.8.1:
  *   1–2  Shared inputs + per-scenario accordion  → <HomeDecisionInputs/>
- *   3    Projection grid (3 scenarios × horizons) + verdict badge on Keep&refi
+ *   3    Projection grid (3 scenarios × horizons) + verdict badge & shortfall banner on Keep&refi
  *   4    Per-scenario callouts & narrative (column order, stacked, no truncation)
  *   6    Binding-constraint mini-section          → <HomeDecisionBindingConstraintMini/>
  *   7    Cross-scenario summary (opp-cost, real-dollar, timing, strict-comparator)
  *   7a   Selection: column-header click (toggle off / transfer, last-click wins)
  *   8    Disclaimer block (§9.8.4 four notes, fixed order)
  *   9    Action surface: Save selection to Blueprint
- *
- * DEFERRED to PR 4 (Fitz-approved Option 1): the §9.2.1 shortfall banner —
- * its trigger ("buyout exceeds DTI/LTV/credit-feasible refi") needs a lib
- * signal the frozen PR #16 surface does not expose.
  *
  * @param {object}   props
  * @param {object}   props.inputs            m5Store.homeDecision.inputs
@@ -213,6 +209,42 @@ export default function HomeDecisionComparator({
         </div>
       ) : (
         <>
+          {/* §9.2.1 / §9.8.1 el.3 — shortfall banner (Keep & refi only) */}
+          {scenarios.keepAndRefi?.feasibility?.shortfall && (
+            <div
+              data-testid="hda-shortfall-banner"
+              style={{
+                marginTop: 8,
+                marginBottom: 4,
+                padding: '12px 16px',
+                background: T.CARD,
+                borderLeft: `4px solid ${T.GOLD}`,
+                borderRadius: 6,
+              }}
+            >
+              <p
+                style={{
+                  margin: '0 0 4px',
+                  fontFamily: T.FONT_DISPLAY,
+                  fontSize: '0.85rem',
+                  fontWeight: 600,
+                  color: T.NAVY,
+                }}
+              >
+                Keep &amp; refinance
+              </p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: 14,
+                  lineHeight: 1.55,
+                  color: T.NAVY,
+                }}
+              >
+                Cash-out refi cannot fund the full buyout — gap must come from other sources, discuss with your CDFA.
+              </p>
+            </div>
+          )}
           <div style={{ overflowX: 'auto', marginTop: 8 }}>
             <table
               data-testid="hda-projection-grid"

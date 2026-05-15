@@ -4,7 +4,7 @@
  * stacked / no truncation), cross-scenario summary, disclaimer block,
  * selection mechanism (toggle / transfer), and Save action.
  *
- * Shortfall banner is intentionally absent (PR 4, Fitz-approved Option 1).
+ * Shortfall banner (§9.2.1): absent when feasibility.shortfall is falsy; present when true.
  */
 
 import { describe, it, expect, vi } from 'vitest';
@@ -165,9 +165,39 @@ describe('HomeDecisionComparator', () => {
     expect(iInd).toBeGreaterThan(iBpmi);
   });
 
-  it('does NOT render a shortfall banner (deferred to PR 4)', () => {
+  it('does NOT render a shortfall banner when feasibility.shortfall is falsy (absent field)', () => {
     renderComparator();
     expect(screen.queryByTestId('hda-shortfall-banner')).not.toBeInTheDocument();
+  });
+
+  it('does NOT render a shortfall banner when feasibility.shortfall is explicitly false', () => {
+    renderComparator({
+      scenarios: {
+        ...scenarios,
+        keepAndRefi: mkScenario({
+          refiQualification: { verdictTier: 'red', bindingConstraint: 'dti', narrative: 'DTI fails.' },
+          feasibility: { shortfall: false },
+          metadata: { scenario: 'keepAndRefi' },
+        }),
+      },
+    });
+    expect(screen.queryByTestId('hda-shortfall-banner')).not.toBeInTheDocument();
+  });
+
+  it('renders the shortfall banner when feasibility.shortfall is true', () => {
+    renderComparator({
+      scenarios: {
+        ...scenarios,
+        keepAndRefi: mkScenario({
+          refiQualification: { verdictTier: 'red', bindingConstraint: 'dti', narrative: 'DTI fails.' },
+          feasibility: { shortfall: true },
+          metadata: { scenario: 'keepAndRefi' },
+        }),
+      },
+    });
+    const banner = screen.getByTestId('hda-shortfall-banner');
+    expect(banner).toBeInTheDocument();
+    expect(banner).toHaveTextContent(/Cash-out refi cannot fund the full buyout/);
   });
 
   it('clicking an unselected column header selects that scenario', () => {
