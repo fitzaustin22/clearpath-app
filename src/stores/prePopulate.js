@@ -173,9 +173,136 @@ export function prePopulateQDROInputs(_) {
   return {};
 }
 
-// TODO §13 step 7 (HDA implementation) — fill per §10.7 (m1+m2+m3+M4 sources).
-export function prePopulateHomeDecisionInputs(_) {
-  return {};
+/**
+ * Home Decision Analyzer pre-pop per spec §10.7.
+ *
+ * m2 inventory category-key mapping (from src/lib/m2Sections.js ASSET_SECTIONS):
+ *   §10.7 "realEstate"      → item.category === 'realEstate'
+ *   §10.7 "cash+brokerage"  → item.category === 'workingCapital'
+ *     (workingCapital covers cash, checking, savings, money-market, CDs, mutual funds,
+ *      individual stocks/bonds — i.e. all liquid non-retirement assets in a single category)
+ *   §10.7 "retirement" (EXCLUDED per Q-16/§9.4.4) → item.category === 'retirement'
+ *     (IRA, Roth IRA, 401k/403b/457, TSP — these must NOT be summed into startingLiquidCash)
+ *
+ * m3 fallback chain for home/insurance fields (§10.7):
+ *   projected → current → omit (0 treated as empty per §10.7)
+ *
+ * userState: M4 FSO userState write target not yet implemented — §10.7 row is a
+ * no-op until M4 adds it. Always omitted from inputs; _prePopSources.userState = null.
+ *
+ * @param {{m1Store: any, m2Store: any, m3Store: any, blueprintStore: any}} stores
+ * @returns {{inputs: object, _prePopSources: object}}
+ */
+export function prePopulateHomeDecisionInputs({ m1Store, m2Store, m3Store, blueprintStore }) {
+  const now = () => new Date().toISOString();
+  const inputs = {};
+  const sources = {};
+
+  // ── M1: userPostDivorceGrossMonthlyIncome ──────────────────────────────────
+  const adjustedMonthlyIncome = m1Store?.budgetGap?.results?.adjustedMonthlyIncome ?? null;
+  if (adjustedMonthlyIncome !== null) {
+    inputs.userPostDivorceGrossMonthlyIncome = adjustedMonthlyIncome;
+    sources.userPostDivorceGrossMonthlyIncome = { source: 'm1.budgetGap', timestamp: now() };
+  } else {
+    sources.userPostDivorceGrossMonthlyIncome = null;
+  }
+
+  // ── M2: existingMortgageBalance (first realEstate item) ───────────────────
+  const estateItems = m2Store?.maritalEstateInventory?.items ?? [];
+  const homeItem = estateItems.find((i) => i.category === 'realEstate');
+  if (homeItem != null) {
+    inputs.existingMortgageBalance = homeItem.outstandingBalance ?? null;
+    sources.existingMortgageBalance = { source: 'm2.maritalEstateInventory', timestamp: now() };
+  } else {
+    sources.existingMortgageBalance = null;
+  }
+
+  // ── M2: startingLiquidCash (SUM workingCapital items; EXCLUDE retirement) ─
+  // §10.7 "cash+brokerage" intent → workingCapital category (liquid non-retirement).
+  // retirement category excluded per Q-16/§9.4.4 (mandatory exclusion).
+  const liquidItems = estateItems.filter((i) => i.category === 'workingCapital');
+  if (liquidItems.length > 0) {
+    const liquidSum = liquidItems.reduce((sum, i) => sum + (Number(i.currentValue) || 0), 0);
+    inputs.startingLiquidCash = liquidSum;
+    sources.startingLiquidCash = { source: 'm2.maritalEstateInventory', timestamp: now() };
+  } else {
+    sources.startingLiquidCash = null;
+  }
+
+  // ── M3: m3 fallback helper (projected → current → omit) ──────────────────
+  // 0 is treated as "empty" per §10.7; fall back to current when projected is 0/null/undefined.
+  function resolveM3Field(projectedVal, currentVal, projectedSource, currentSource) {
+    if (projectedVal != null && projectedVal !== 0) {
+      return { value: projectedVal, source: projectedSource };
+    }
+    if (currentVal != null && currentVal !== 0) {
+      return { value: currentVal, source: currentSource };
+    }
+    return null; // omit field entirely
+  }
+
+  const budgetModeler = m3Store?.budgetModeler;
+
+  // monthlyPropertyTax
+  const propertyTaxResolved = resolveM3Field(
+    budgetModeler?.projected?.home?.propertyTaxes,
+    budgetModeler?.current?.home?.propertyTaxes,
+    'm3.budgetModeler.projected',
+    'm3.budgetModeler.current'
+  );
+  if (propertyTaxResolved !== null) {
+    inputs.monthlyPropertyTax = propertyTaxResolved.value;
+    sources.monthlyPropertyTax = { source: propertyTaxResolved.source, timestamp: now() };
+  } else {
+    sources.monthlyPropertyTax = null;
+  }
+
+  // monthlyHOA
+  const hoaResolved = resolveM3Field(
+    budgetModeler?.projected?.home?.hoaFees,
+    budgetModeler?.current?.home?.hoaFees,
+    'm3.budgetModeler.projected',
+    'm3.budgetModeler.current'
+  );
+  if (hoaResolved !== null) {
+    inputs.monthlyHOA = hoaResolved.value;
+    sources.monthlyHOA = { source: hoaResolved.source, timestamp: now() };
+  } else {
+    sources.monthlyHOA = null;
+  }
+
+  // monthlyInsurance (NB: insurance is its own category, NOT under home)
+  const insuranceResolved = resolveM3Field(
+    budgetModeler?.projected?.insurance?.home,
+    budgetModeler?.current?.insurance?.home,
+    'm3.budgetModeler.projected',
+    'm3.budgetModeler.current'
+  );
+  if (insuranceResolved !== null) {
+    inputs.monthlyInsurance = insuranceResolved.value;
+    sources.monthlyInsurance = { source: insuranceResolved.source, timestamp: now() };
+  } else {
+    sources.monthlyInsurance = null;
+  }
+
+  // ── M4 FSO: userState — no write target at v1; always a no-op ─────────────
+  // M4 FSO userState write target not yet implemented — §10.7 row is a no-op
+  // until M4 adds it. inputs.userState is never set here.
+  sources.userState = null;
+
+  // ── M4 Blueprint: expectedFilingStatusAtSellNow ───────────────────────────
+  const filingStatus = blueprintStore?.costBasisFilingStatus ?? null;
+  if (filingStatus !== null) {
+    inputs.expectedFilingStatusAtSellNow = filingStatus;
+    sources.expectedFilingStatusAtSellNow = { source: 'm4.blueprintStore', timestamp: now() };
+  } else {
+    sources.expectedFilingStatusAtSellNow = null;
+  }
+
+  return {
+    inputs,
+    _prePopSources: sources,
+  };
 }
 
 /**
