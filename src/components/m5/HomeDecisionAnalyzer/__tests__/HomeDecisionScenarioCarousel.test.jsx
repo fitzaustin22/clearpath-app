@@ -147,6 +147,45 @@ describe('HomeDecisionScenarioCarousel', () => {
       expect(screen.getByTestId('hda-carousel-dot-sellNow')).toBeInTheDocument();
       expect(screen.getByTestId('hda-carousel-dot-deferredSale')).toBeInTheDocument();
     });
+
+    describe('a11y — dot indicators are keyboard-operable buttons', () => {
+      it('each dot is a <button> element (not a <span>)', () => {
+        renderCarousel();
+        expect(screen.getByTestId('hda-carousel-dot-keepAndRefi').tagName).toBe('BUTTON');
+        expect(screen.getByTestId('hda-carousel-dot-sellNow').tagName).toBe('BUTTON');
+        expect(screen.getByTestId('hda-carousel-dot-deferredSale').tagName).toBe('BUTTON');
+      });
+
+      it('each dot has an aria-label describing the target scenario', () => {
+        renderCarousel();
+        expect(screen.getByTestId('hda-carousel-dot-keepAndRefi')).toHaveAttribute(
+          'aria-label',
+          'Go to Keep & refi',
+        );
+        expect(screen.getByTestId('hda-carousel-dot-sellNow')).toHaveAttribute(
+          'aria-label',
+          'Go to Sell now',
+        );
+        expect(screen.getByTestId('hda-carousel-dot-deferredSale')).toHaveAttribute(
+          'aria-label',
+          'Go to Deferred sale',
+        );
+      });
+
+      it('clicking a dot navigates to the correct scenario (aria-current update)', () => {
+        renderCarousel();
+        // Start at index 0 (keepAndRefi active)
+        expect(screen.getByTestId('hda-carousel-dot-keepAndRefi')).toHaveAttribute('aria-current', 'true');
+        // Click the sellNow dot
+        fireEvent.click(screen.getByTestId('hda-carousel-dot-sellNow'));
+        expect(screen.getByTestId('hda-carousel-dot-sellNow')).toHaveAttribute('aria-current', 'true');
+        expect(screen.getByTestId('hda-carousel-dot-keepAndRefi')).toHaveAttribute('aria-current', 'false');
+        // Click the deferredSale dot
+        fireEvent.click(screen.getByTestId('hda-carousel-dot-deferredSale'));
+        expect(screen.getByTestId('hda-carousel-dot-deferredSale')).toHaveAttribute('aria-current', 'true');
+        expect(screen.getByTestId('hda-carousel-dot-sellNow')).toHaveAttribute('aria-current', 'false');
+      });
+    });
   });
 
   describe('Select CTA', () => {
@@ -375,6 +414,20 @@ describe('HomeDecisionScenarioCarousel', () => {
       renderCarousel();
       expect(screen.getByTestId('hda-carousel-narrative-sellNow')).toHaveTextContent(
         'Use-test callout: you may not satisfy §121 use. Discuss with your CDFA.',
+      );
+    });
+
+    it('narrative opening line still renders for all 3 scenarios (regression: buildNarrativeLines early return does not fire on present scenarios)', () => {
+      renderCarousel();
+      // Each scenario's opening line must appear — early return only fires for missing scenario
+      expect(screen.getByTestId('hda-carousel-narrative-keepAndRefi')).toHaveTextContent(
+        /In the Keep & refi scenario/i,
+      );
+      expect(screen.getByTestId('hda-carousel-narrative-sellNow')).toHaveTextContent(
+        /In the Sell-now scenario/i,
+      );
+      expect(screen.getByTestId('hda-carousel-narrative-deferredSale')).toHaveTextContent(
+        /In the Deferred-sale scenario/i,
       );
     });
 

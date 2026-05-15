@@ -88,6 +88,7 @@ const DISCLAIMERS = [
 const HORIZON_LABELS = ['3-year', '6-year', '10-year'];
 
 function buildNarrativeLines({ id, scenario, scenarios, inputs }) {
+  if (!scenario) return [];
   const lines = [];
   lines.push(OPENING_LINE[id]);
   if (id === 'sellNow') lines.push(SELLNOW_CASHFLOW_FOOTNOTE);
@@ -196,20 +197,25 @@ export default function HomeDecisionScenarioCarousel({
 
         {/* Dot indicators */}
         <div style={{ display: 'flex', gap: 8 }}>
-          {SCENARIOS.map(({ id }, i) => (
-            <span
+          {SCENARIOS.map(({ id, label }, i) => (
+            <button
               key={id}
+              type="button"
               data-testid={`hda-carousel-dot-${id}`}
               aria-current={currentIndex === i}
+              aria-label={`Go to ${label}`}
               onClick={() => goTo(i)}
               style={{
+                background: 'none',
+                border: 'none',
+                padding: 0,
+                cursor: 'pointer',
                 display: 'inline-block',
                 width: 10,
                 height: 10,
                 borderRadius: '50%',
-                background: currentIndex === i ? T.GOLD : T.NAVY_12,
-                border: `1px solid ${currentIndex === i ? T.GOLD : T.NAVY_38}`,
-                cursor: 'pointer',
+                backgroundColor: currentIndex === i ? T.GOLD : T.NAVY_12,
+                outline: `1px solid ${currentIndex === i ? T.GOLD : T.NAVY_38}`,
               }}
             />
           ))}
