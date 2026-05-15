@@ -57,11 +57,13 @@ function makeInitialHomeDecision() {
       currentFMV: null,
       existingMortgageBalance: null,
       existingMortgageRate: null,
+      existingMortgageRemainingTermMonths: 360,
       monthlyPropertyTax: null,
       monthlyInsurance: null,
       monthlyHOA: 0,
       userPostDivorceGrossMonthlyIncome: null,
       userTotalMonthlyDebtPayments: 0,
+      startingLiquidCash: null,
       userCreditScoreBand: null,
       userState: null,
       homeAcquisitionYear: null,
@@ -143,6 +145,69 @@ export const useM5Store = create(
             ...state.supportEstimator,
             results,
           },
+        })),
+
+      // ─── Home Decision Analyzer setters (§9.3 / §9.10 / §14.1) ─────────
+      // Partial-merge into homeDecision.inputs (mirrors setSupportEstimatorInputs).
+      setHomeDecisionInputs: (partial) =>
+        set((state) => ({
+          homeDecision: {
+            ...state.homeDecision,
+            inputs: { ...state.homeDecision.inputs, ...partial },
+          },
+        })),
+
+      // Whole-object replacement of homeDecision.inputs (mirrors replaceSupportEstimatorInputs).
+      // Used by the future pre-pop seed flow.
+      replaceHomeDecisionInputs: (nextInputs) =>
+        set((state) => ({
+          homeDecision: {
+            ...state.homeDecision,
+            inputs: nextInputs,
+          },
+        })),
+
+      // Set homeDecision.results; must not disturb inputs/metadata/userSelection/_prePopSources.
+      setHomeDecisionResults: (results) =>
+        set((state) => ({
+          homeDecision: {
+            ...state.homeDecision,
+            results,
+          },
+        })),
+
+      // Set homeDecision.metadata (§14.1 HomeDecisionMetadata block); must not disturb siblings.
+      setHomeDecisionMetadata: (metadata) =>
+        set((state) => ({
+          homeDecision: {
+            ...state.homeDecision,
+            metadata,
+          },
+        })),
+
+      // Set homeDecision.userSelection to one of 'keepAndRefi' | 'sellNow' | 'deferredSale' | null.
+      // Pure — no blueprint side-effect.
+      setHomeDecisionUserSelection: (scenarioId) =>
+        set((state) => ({
+          homeDecision: {
+            ...state.homeDecision,
+            userSelection: scenarioId,
+          },
+        })),
+
+      // Set homeDecision._prePopSources (mirrors setSupportEstimatorPrePopSources).
+      setHomeDecisionPrePopSources: (sources) =>
+        set((state) => ({
+          homeDecision: {
+            ...state.homeDecision,
+            _prePopSources: sources,
+          },
+        })),
+
+      // Reset entire homeDecision slice to initial state. Reuses makeInitialHomeDecision().
+      clearHomeDecision: () =>
+        set(() => ({
+          homeDecision: makeInitialHomeDecision(),
         })),
 
       // ─── PVA setters (§7.6.4 / §7.10.3) ────────────────────────────────
