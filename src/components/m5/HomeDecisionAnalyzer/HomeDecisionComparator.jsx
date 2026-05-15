@@ -82,6 +82,10 @@ function fmtUSD(n) {
   return `${sign}$${Math.abs(rounded).toLocaleString('en-US')}`;
 }
 
+function underwaterPrefixCopy(currentFMV, existingMortgageBalance) {
+  return `Note: your home is currently underwater (FMV ${fmtUSD(currentFMV)} < mortgage ${fmtUSD(existingMortgageBalance)}). This scenario's calculations remain meaningful and may be your primary path.`;
+}
+
 function pmiNarrative(kr) {
   const y = kr?.metadata?.projectedPmiDropYear;
   if (y == null) return null;
@@ -94,7 +98,7 @@ function mfjFootnote(ds) {
   return `If you expect to be remarried and filing jointly at sale, §121 exclusion may be up to $500k subject to the new spouse's 2+ year use of this home. Deferred-sale value could be up to ${fmtUSD(diff)} higher than shown — discuss with your CDFA.`;
 }
 
-function ScenarioNarrative({ id, scenario }) {
+function ScenarioNarrative({ id, scenario, underwaterPrefix }) {
   if (!scenario) return null;
   const lines = [];
   lines.push(OPENING_LINE[id]);
@@ -110,6 +114,10 @@ function ScenarioNarrative({ id, scenario }) {
   if (id === 'deferredSale') {
     const mfj = mfjFootnote(scenario);
     if (mfj) lines.push(mfj);
+  }
+
+  if (underwaterPrefix && (id === 'sellNow' || id === 'deferredSale')) {
+    lines.unshift(underwaterPrefix);
   }
 
   return (
@@ -166,6 +174,12 @@ export default function HomeDecisionComparator({
     onSelectScenario(userSelection === id ? null : id);
 
   const horizons = scenarios?.keepAndRefi?.horizons ?? null;
+
+  const isUnderwater =
+    scenarios?.keepAndRefi?.refiQualification?.bindingConstraint === 'underwater';
+  const underwaterPrefix = isUnderwater
+    ? underwaterPrefixCopy(inputs?.currentFMV, inputs?.existingMortgageBalance)
+    : null;
 
   return (
     <div
@@ -337,7 +351,7 @@ export default function HomeDecisionComparator({
           {/* §9.8.1 el.4 — per-scenario callouts & narrative, column order */}
           <div style={{ marginTop: 20 }}>
             {SCENARIOS.map(({ id }) => (
-              <ScenarioNarrative key={id} id={id} scenario={scenarios[id]} />
+              <ScenarioNarrative key={id} id={id} scenario={scenarios[id]} underwaterPrefix={underwaterPrefix} />
             ))}
           </div>
 

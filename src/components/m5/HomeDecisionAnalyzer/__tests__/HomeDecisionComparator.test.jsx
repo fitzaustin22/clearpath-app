@@ -222,6 +222,55 @@ describe('HomeDecisionComparator', () => {
     expect(screen.getByTestId('hda-save-confirmation')).toHaveTextContent(/selection recorded/i);
   });
 
+  describe('§9.8.5 underwater-prefix callouts', () => {
+    it('renders underwater prefix on sell-now and deferred-sale narratives when bindingConstraint=underwater', () => {
+      const underwaterInputs = { currentFMV: 300000, existingMortgageBalance: 400000, spouseEquityShare: 0.5 };
+      const underwaterScenarios = {
+        keepAndRefi: mkScenario({
+          refiQualification: { verdictTier: 'red', bindingConstraint: 'underwater', narrative: 'Underwater.' },
+          metadata: { scenario: 'keepAndRefi' },
+        }),
+        sellNow: mkScenario({ metadata: { scenario: 'sellNow' } }),
+        deferredSale: mkScenario({ metadata: { scenario: 'deferredSale' } }),
+      };
+      render(
+        <HomeDecisionComparator
+          inputs={underwaterInputs}
+          onInputChange={vi.fn()}
+          scenarios={underwaterScenarios}
+          userSelection={null}
+          onSelectScenario={vi.fn()}
+          onSave={vi.fn()}
+        />,
+      );
+      expect(screen.getByTestId('hda-narrative-sellNow')).toHaveTextContent(
+        /Note: your home is currently underwater \(FMV \$300,000 < mortgage \$400,000\)/,
+      );
+      expect(screen.getByTestId('hda-narrative-sellNow')).toHaveTextContent(/may be your primary path/);
+      expect(screen.getByTestId('hda-narrative-deferredSale')).toHaveTextContent(
+        /Note: your home is currently underwater \(FMV \$300,000 < mortgage \$400,000\)/,
+      );
+      expect(screen.getByTestId('hda-narrative-deferredSale')).toHaveTextContent(/may be your primary path/);
+      // Keep & refi must NOT carry the prefix (its underwater case is binding-constraint-mini's job)
+      expect(screen.getByTestId('hda-narrative-keepAndRefi')).not.toHaveTextContent(
+        /your home is currently underwater/,
+      );
+    });
+
+    it('does NOT render underwater prefix on any narrative when bindingConstraint is not underwater', () => {
+      renderComparator(); // default scenarios: bindingConstraint=margin-of-safety
+      expect(screen.getByTestId('hda-narrative-sellNow')).not.toHaveTextContent(
+        /your home is currently underwater/,
+      );
+      expect(screen.getByTestId('hda-narrative-deferredSale')).not.toHaveTextContent(
+        /your home is currently underwater/,
+      );
+      expect(screen.getByTestId('hda-narrative-keepAndRefi')).not.toHaveTextContent(
+        /your home is currently underwater/,
+      );
+    });
+  });
+
   it('formats negative net wealth and missing cells defensively', () => {
     const underwaterScenarios = {
       ...scenarios,
