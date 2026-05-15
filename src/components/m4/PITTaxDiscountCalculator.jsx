@@ -384,6 +384,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
   const allM2Items         = useM2Store((s) => s.maritalEstateInventory?.items) || [];
   const retirementItems    = useMemo(() => allM2Items.filter((i) => i.category === 'retirement'), [allM2Items]);
   const updateRetirementDivision = useBlueprintStore((s) => s.updateRetirementDivision);
+  const pvaData = useBlueprintStore((s) => s.sections.s6.data?.pva);
 
   const inputs = pitTaxDiscount.inputs;
   const disabled = false;
@@ -391,6 +392,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
   // Pre-pop banners
   const [m2Banner, setM2Banner] = useState(null);     // { count, total } or null
   const [tool1Banner, setTool1Banner] = useState(null); // rate number or null
+  const [pvaBanner, setPvaBanner] = useState(null);   // { maritalPV, path } or null
 
   // ─── Pre-population: M2 retirement accounts ─────────────────────────────────
   const retirementTotal = useMemo(() => retirementItems.reduce((sum, i) => sum + (Number(i.currentValue) || 0), 0), [retirementItems]);
@@ -399,6 +401,13 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
   useEffect(() => {
     if (lockedOut) return;
     if (retirementTotal <= 0) return;
+    // PVA-over-M2 precedence: when PVA has supplied a marital PV for a
+    // pension, suppress the M2 banner — PVA is the more specific
+    // computation for DB plans and the PVA banner takes the surface.
+    if (pvaData?.maritalPV != null && pvaData.maritalPV > 0) {
+      setM2Banner(null);
+      return;
+    }
     const alreadyPrePopped = pitTaxDiscount.prePopulated.fromM2;
 
     if (!alreadyPrePopped) {
@@ -414,6 +423,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
     lockedOut,
     retirementTotal,
     retirementCount,
+    pvaData?.maritalPV,
     pitTaxDiscount.prePopulated.fromM2,
     pitTaxDiscount.inputs.planBalance,
     setPITInputs,
@@ -443,6 +453,39 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
     filingStatusResults,
     pitTaxDiscount.prePopulated.fromTool1,
     pitTaxDiscount.inputs.effectiveTaxRate,
+    setPITInputs,
+    setPrePopulated,
+  ]);
+
+  // ─── Pre-population: M5 PVA (pension marital share) ─────────────────────────
+  // Third pre-pop source. Fires only when PVA produced a coverture-narrowed
+  // marital PV (tier_3 / cash_balance with coverture); for non-coverture paths
+  // and flag_only, pvaData.maritalPV is null and this block no-ops.
+  useEffect(() => {
+    if (lockedOut) return;
+    if (!pvaData?.maritalPV || pvaData.maritalPV <= 0) return;
+
+    const alreadyPrePopped = pitTaxDiscount.prePopulated.fromPVA;
+    if (!alreadyPrePopped) {
+      setPITInputs({
+        planBalance: pvaData.maritalPV,
+        planType: 'pension',
+        ...(pvaData.expectedRetirementAge ? { withdrawalStartAge: pvaData.expectedRetirementAge } : {}),
+      });
+      setPrePopulated('pitTaxDiscount', 'fromPVA');
+      setPvaBanner({ maritalPV: pvaData.maritalPV, path: pvaData.path });
+    } else if (Math.abs(pitTaxDiscount.inputs.planBalance - pvaData.maritalPV) < 0.01) {
+      setPvaBanner({ maritalPV: pvaData.maritalPV, path: pvaData.path });
+    } else {
+      setPvaBanner(null);
+    }
+  }, [
+    lockedOut,
+    pvaData?.maritalPV,
+    pvaData?.path,
+    pvaData?.expectedRetirementAge,
+    pitTaxDiscount.prePopulated.fromPVA,
+    pitTaxDiscount.inputs.planBalance,
     setPITInputs,
     setPrePopulated,
   ]);
@@ -605,6 +648,11 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
       {tool1Banner != null && (
         <InfoBanner variant="gold">
           Tax rate pre-filled from your Filing Status Optimizer results ({fmtPercent(tool1Banner, 2)}).
+        </InfoBanner>
+      )}
+      {pvaBanner && (
+        <InfoBanner variant="gold">
+          Plan balance pre-filled from Pension Valuation: {fmtCurrency(pvaBanner.maritalPV)} (marital share).
         </InfoBanner>
       )}
 

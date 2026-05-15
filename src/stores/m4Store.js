@@ -31,7 +31,7 @@ const initialPITTaxDiscount = {
   },
   results: null,
   completedAt: null,
-  prePopulated: { fromM2: false, fromTool1: false },
+  prePopulated: { fromM2: false, fromTool1: false, fromPVA: false },
 };
 
 export const useM4Store = create(
