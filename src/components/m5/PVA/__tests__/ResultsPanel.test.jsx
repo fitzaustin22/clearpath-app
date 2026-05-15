@@ -303,4 +303,25 @@ describe('ResultsPanel (§7.6.1 / §7.6.3)', () => {
     expect(screen.queryByTestId('coverture-rationale')).toBeNull();
     expect(screen.queryByTestId('tax-treatment-note')).toBeNull();
   });
+
+  // ─── Session 22 PR 2 — "Continue to Tax Discount" CTA ────────────────────
+  describe('PVA → PIT CTA (Session 22 PR 2)', () => {
+    it('TC-PVA-Results-CTA-1: renders for tier_1 (compute path) with link to /modules/m4/tax-discount', () => {
+      render(<ResultsPanel results={TIER_1_RESULTS} flags={{}} />);
+      const cta = screen.getByTestId('pva-cta-pit');
+      expect(cta).toBeInTheDocument();
+      const link = within(cta).getByRole('link', { name: /Continue to Tax Discount/ });
+      expect(link).toHaveAttribute('href', '/modules/m4/tax-discount');
+    });
+
+    it('TC-PVA-Results-CTA-2: renders for tier_3 (coverture compute path)', () => {
+      render(<ResultsPanel results={TIER_3_RESULTS} flags={{}} />);
+      expect(screen.getByTestId('pva-cta-pit')).toBeInTheDocument();
+    });
+
+    it('TC-PVA-Results-CTA-3: does NOT render for flag_only (no PV to tax-adjust)', () => {
+      render(<ResultsPanel results={FLAG_ONLY_RESULTS} flags={{}} />);
+      expect(screen.queryByTestId('pva-cta-pit')).toBeNull();
+    });
+  });
 });

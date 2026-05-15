@@ -19,6 +19,7 @@
  * consumption of the discriminated `pv` union per [R5b-16].
  */
 
+import Link from 'next/link';
 import { T } from '@/src/lib/brand/tokens';
 import { getHeadlinePV, getMaritalPV } from '@/src/lib/pensionValuation';
 import CalloutStack from './callouts/CalloutStack';
@@ -234,6 +235,42 @@ export default function ResultsPanel({ results, flags }) {
             )}
           </div>
         </>
+      )}
+
+      {!isFlagOnly && (
+        <div
+          data-testid="pva-cta-pit"
+          style={{
+            marginTop: 16,
+            padding: '14px 18px',
+            backgroundColor: T.PARCHMENT,
+            borderRadius: 8,
+            borderLeft: `4px solid ${T.GOLD}`,
+          }}
+        >
+          <Link
+            href="/modules/m4/tax-discount"
+            style={{
+              fontFamily: T.FONT_BODY,
+              fontWeight: 700,
+              fontSize: 15,
+              color: T.NAVY,
+              textDecoration: 'none',
+            }}
+          >
+            Continue to Tax Discount →
+          </Link>
+          <p
+            style={{
+              fontFamily: T.FONT_BODY,
+              fontSize: 13,
+              color: T.NAVY_55,
+              margin: '6px 0 0',
+            }}
+          >
+            Apply IRC §417(e) tax adjustment to this pension's marital share.
+          </p>
+        </div>
       )}
 
       <CalloutStack callouts={callouts} />

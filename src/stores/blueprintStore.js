@@ -2,6 +2,22 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
+/**
+ * Derive §6 sourceModule from which slots in `data` are populated.
+ *   pit only      → 'm4'
+ *   pva only      → 'm5'
+ *   pit + pva     → 'm4+m5'
+ *   neither       → null
+ */
+export function deriveSourceModule(data) {
+  const hasPit = data?.pit != null;
+  const hasPva = data?.pva != null;
+  if (hasPit && hasPva) return 'm4+m5';
+  if (hasPit) return 'm4';
+  if (hasPva) return 'm5';
+  return null;
+}
+
 const useBlueprintStore = create(
   persist(
     (set, get) => ({
@@ -17,7 +33,10 @@ const useBlueprintStore = create(
         s3: { status: 'empty', label: 'Asset Inventory', sourceModule: 'm2', data: null },
         s4: { status: 'empty', label: 'Tax Analysis', sourceModule: 'm4', data: null },
         s5: { status: 'empty', label: 'Property Division', sourceModule: 'm2+m4', data: null },
-        s6: { status: 'empty', label: 'Retirement Plan Division', sourceModule: 'm4', data: null },
+        // §6 carries multi-source data: PIT (M4) writes to data.pit, PVA (M5)
+        // writes to data.pva. sourceModule is dynamically derived via
+        // deriveSourceModule (see updateRetirementDivision / updatePensionValuation).
+        s6: { status: 'empty', label: 'Retirement Plan Division', sourceModule: null, data: { pit: null, pva: null } },
         s7: { status: 'empty', label: 'Expense Analysis', sourceModule: 'm3', data: null },
         s8: { status: 'empty', label: 'Support Analysis', sourceModule: 'm5', data: null },
         s9: { status: 'empty', label: 'Home Decision', sourceModule: 'm5', data: null },
@@ -210,29 +229,61 @@ const useBlueprintStore = create(
         lastUpdated: new Date().toISOString(),
       })),
 
-      // §6 — called by M4 PIT Tax Discount Calculator on completion
-      updateRetirementDivision: (pitData) => set(state => ({
-        sections: {
-          ...state.sections,
-          s6: {
-            ...state.sections.s6,
-            status: 'complete',
-            data: {
-              planBalance: pitData.planBalance,
-              planType: pitData.planType,
-              taxDiscountPercent: pitData.taxDiscountPercent,
-              taxDiscountDollars: pitData.taxDiscountDollars,
-              taxAdjustedValue: pitData.taxAdjustedValue,
-              traditionalDiscountDollars: pitData.traditionalDiscountDollars,
-              overage: pitData.overage,
-              n: pitData.n,
-              effectiveTaxRate: pitData.effectiveTaxRate,
-              discountRate: pitData.discountRate,
+      // §6 — Retirement Plan Division. Multi-source writers:
+      //   updateRetirementDivision (M4 PIT)  → data.pit
+      //   updatePensionValuation   (M5 PVA)  → data.pva
+      // sourceModule is dynamically derived from which slots are populated.
+      updateRetirementDivision: (pitData) => set(state => {
+        const nextData = {
+          ...state.sections.s6.data,
+          pit: {
+            planBalance: pitData.planBalance,
+            planType: pitData.planType,
+            taxDiscountPercent: pitData.taxDiscountPercent,
+            taxDiscountDollars: pitData.taxDiscountDollars,
+            taxAdjustedValue: pitData.taxAdjustedValue,
+            traditionalDiscountDollars: pitData.traditionalDiscountDollars,
+            overage: pitData.overage,
+            n: pitData.n,
+            effectiveTaxRate: pitData.effectiveTaxRate,
+            discountRate: pitData.discountRate,
+          },
+        };
+        return {
+          sections: {
+            ...state.sections,
+            s6: {
+              ...state.sections.s6,
+              status: 'complete',
+              sourceModule: deriveSourceModule(nextData),
+              data: nextData,
             },
           },
-        },
-        lastUpdated: new Date().toISOString(),
-      })),
+          lastUpdated: new Date().toISOString(),
+        };
+      }),
+
+      // §6 PVA writer — called by M5 PVA orchestrator on every result update.
+      // For flag_only paths, pvaData carries `{ path: 'flag_only', headlinePV: null,
+      // maritalPV: null }` to record that a pension exists but isn't valued.
+      updatePensionValuation: (pvaData) => set(state => {
+        const nextData = {
+          ...state.sections.s6.data,
+          pva: pvaData,
+        };
+        return {
+          sections: {
+            ...state.sections,
+            s6: {
+              ...state.sections.s6,
+              status: 'complete',
+              sourceModule: deriveSourceModule(nextData),
+              data: nextData,
+            },
+          },
+          lastUpdated: new Date().toISOString(),
+        };
+      }),
 
       // §7 — called by M3 Budget Modeler on completion
       // categories shape: Array<{ name: string, current: number, projected: number, change: number }>
@@ -298,7 +349,7 @@ const useBlueprintStore = create(
           s3: { status: 'empty', label: 'Asset Inventory', sourceModule: 'm2', data: null },
           s4: { status: 'empty', label: 'Tax Analysis', sourceModule: 'm4', data: null },
           s5: { status: 'empty', label: 'Property Division', sourceModule: 'm2+m4', data: null },
-          s6: { status: 'empty', label: 'Retirement Plan Division', sourceModule: 'm4', data: null },
+          s6: { status: 'empty', label: 'Retirement Plan Division', sourceModule: null, data: { pit: null, pva: null } },
           s7: { status: 'empty', label: 'Expense Analysis', sourceModule: 'm3', data: null },
           s8: { status: 'empty', label: 'Support Analysis', sourceModule: 'm5', data: null },
           s9: { status: 'empty', label: 'Home Decision', sourceModule: 'm5', data: null },
