@@ -68,7 +68,7 @@ const CROSS_SCENARIO = {
   realDollar:
     'All figures are in real dollars (today’s dollar terms; inflation neutralized). Cross-scenario comparisons are apples-to-apples.',
   saleTiming:
-    "Sell-now liquid cash at the 3-year horizon includes the equity from the year-0 sale event. Deferred-sale liquid cash at a horizon before the trigger year does not include sale proceeds — the home hasn’t been sold yet at that point.",
+    "Sell-now liquid cash at the 3-year horizon includes the equity from the year-0 sale event. Deferred-sale liquid cash at a horizon before the trigger year does not include sale proceeds — the home hasn't been sold yet at that point.",
   brokerage:
     'Liquid cash projections include any non-retirement brokerage at face value. Selling brokerage to access the cash would trigger capital-gains tax that reduces the realizable amount; this drag is not modeled in v1. If you expect to liquidate brokerage to fund post-divorce expenses, your effective liquid cash is somewhat lower than shown — discuss with your CDFA.',
   retirement:
