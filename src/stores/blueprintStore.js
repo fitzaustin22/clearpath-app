@@ -285,6 +285,37 @@ const useBlueprintStore = create(
         };
       }),
 
+      // §9 — Home Decision (HDA, spec §10.6). Dedicated single-source section:
+      // sourceModule is the static 'm5' (preserved via ...state.sections.s9 spread).
+      // deriveSourceModule is NOT used for §9 — only §6 (multi-source) needs it.
+      // Last-write-wins: each call fully overwrites s9.data with the new payload.
+      //
+      // NOTE: spec §10.6 types `scenarios` as ScenarioOutput[] but the HDA lib's
+      // calculateHomeDecision returns `scenarios` as an object {keepAndRefi, sellNow,
+      // deferredSale}. This action is shape-agnostic and persists the payload as-is;
+      // the array-vs-object reconciliation is the PR-3 orchestrator's concern.
+      updateHomeDecision: ({ scenarios, userSelection, selectionTimestamp, metadata }) => {
+        // Status: null userSelection → partial; any selection value → complete
+        const status = userSelection == null ? 'partial' : 'complete';
+        set(state => ({
+          sections: {
+            ...state.sections,
+            s9: {
+              ...state.sections.s9,
+              status,
+              data: {
+                scenarios,
+                userSelection,
+                selectionTimestamp: selectionTimestamp ?? null,
+                metadata,
+              },
+            },
+          },
+          lastUpdated: new Date().toISOString(),
+        }));
+        return { status };
+      },
+
       // §7 — called by M3 Budget Modeler on completion
       // categories shape: Array<{ name: string, current: number, projected: number, change: number }>
       updateExpenseAnalysis: (budgetData) => set(state => ({
