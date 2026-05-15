@@ -95,18 +95,20 @@ function Row({ label, value }) {
 export default function S6RetirementDivision({ data, status }) {
   const [showComparison, setShowComparison] = useState(false);
   if (!data) return null;
+  const pit = data.pit;
+  if (!pit) return null;
 
-  const pitPercent = formatPercent(data.taxDiscountPercent);
-  const traditionalPercent = formatPercent(data.effectiveTaxRate);
-  const overage = data.overage || 0;
+  const pitPercent = formatPercent(pit.taxDiscountPercent);
+  const traditionalPercent = formatPercent(pit.effectiveTaxRate);
+  const overage = pit.overage || 0;
 
   return (
     <div>
       <section>
-        <div style={bodyStyle}>Plan: {planTypeLabel(data.planType)}</div>
+        <div style={bodyStyle}>Plan: {planTypeLabel(pit.planType)}</div>
         <div style={{ ...labelStyle, marginTop: 16 }}>PLAN BALANCE AT DIVISION</div>
         <div style={{ ...keyFigureStyle(), marginTop: 4 }}>
-          {currency(data.planBalance)}
+          {currency(pit.planBalance)}
         </div>
       </section>
 
@@ -114,14 +116,14 @@ export default function S6RetirementDivision({ data, status }) {
         <Row label="Tax Discount Method" value="Point in Time (Sutherland)" />
         <Row
           label="Tax Discount"
-          value={`${pitPercent} (${currency(data.taxDiscountDollars)})`}
+          value={`${pitPercent} (${currency(pit.taxDiscountDollars)})`}
         />
       </section>
 
       <section style={{ marginTop: 24 }}>
         <div style={labelStyle}>TAX-ADJUSTED PLAN VALUE</div>
         <div style={{ ...keyFigureStyle(GOLD), marginTop: 4 }}>
-          {currency(data.taxAdjustedValue)}
+          {currency(pit.taxAdjustedValue)}
         </div>
       </section>
 
@@ -145,11 +147,11 @@ export default function S6RetirementDivision({ data, status }) {
           <div id="s6-traditional-method-comparison" style={{ marginTop: 12 }}>
             <Row
               label="Traditional Tax Discount"
-              value={`${traditionalPercent} (${currency(data.traditionalDiscountDollars)})`}
+              value={`${traditionalPercent} (${currency(pit.traditionalDiscountDollars)})`}
             />
             <Row
               label="Point in Time Tax Discount"
-              value={`${pitPercent} (${currency(data.taxDiscountDollars)})`}
+              value={`${pitPercent} (${currency(pit.taxDiscountDollars)})`}
             />
             <div
               style={{
@@ -175,9 +177,9 @@ export default function S6RetirementDivision({ data, status }) {
       </p>
 
       <div style={{ ...labelStyle, marginTop: 24 }}>
-        Assumptions: n = {data.n} years to withdrawal midpoint,{' '}
-        {formatPercent(data.effectiveTaxRate)} effective rate,{' '}
-        {formatPercent(data.discountRate)} discount rate
+        Assumptions: n = {pit.n} years to withdrawal midpoint,{' '}
+        {formatPercent(pit.effectiveTaxRate)} effective rate,{' '}
+        {formatPercent(pit.discountRate)} discount rate
       </div>
     </div>
   );

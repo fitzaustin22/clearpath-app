@@ -33,6 +33,7 @@ const MODULE_NAMES = {
   m6: 'Module 6',
   m7: 'Module 7',
   'm2+m4': 'Modules 2 and 4',
+  'm4+m5': 'Modules 4 and 5',
 };
 
 const SECTION_RENDERERS = {
