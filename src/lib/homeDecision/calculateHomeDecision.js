@@ -81,6 +81,7 @@ function buildMetadata(inputs, { keepAndRefi, sellNow, deferredSale }) {
     // ── Theme C: Refi qualification per scenario (Keep & refi only) ──
     verdictTier: keepAndRefi.metadata.verdictTier,
     bindingConstraint: keepAndRefi.metadata.bindingConstraint,
+    shortfall: keepAndRefi.metadata.shortfall,
     refiRateProvenance: inputs.refiRateProvenance,
     refiRate: inputs.refiRate,
     closingCostsSource: inputs.closingCostsSource,

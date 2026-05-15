@@ -19,6 +19,11 @@ export const REFI_RATE_BY_CREDIT_BAND = {
   poor: 0.0800,
 };
 
+// Build date of the banded refi-rate defaults per §9.6.3 (Q-11). The
+// RefiRateInput 90-day staleness warning is computed against this date.
+// Update when REFI_RATE_BY_CREDIT_BAND values are revised.
+export const BANDED_REFI_RATE_BUILD_DATE = '2026-05-15';
+
 // 2D credit × LTV PMI lookup matrix per §9.6.5 (Q-13).
 // BPMI (borrower-paid PMI) assumption per v1 lock; LPMI deferred to v1.1.
 // `poor` credit forces verdict red upstream per §9.6.2 — no PMI lookup.
