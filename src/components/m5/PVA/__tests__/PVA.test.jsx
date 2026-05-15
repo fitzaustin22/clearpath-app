@@ -16,6 +16,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import PVA from '../PVA.jsx';
 import { useM2Store } from '@/src/stores/m2Store';
 import { useM5Store } from '@/src/stores/m5Store';
+import useBlueprintStore from '@/src/stores/blueprintStore';
 import { SEED_VARIANTS } from '../__fixtures__/seedVariants.js';
 
 function seedM2(items) {
@@ -28,6 +29,8 @@ beforeEach(() => {
   localStorage.clear();
   useM2Store.persist?.rehydrate?.();
   useM5Store.persist?.rehydrate?.();
+  useBlueprintStore.persist?.rehydrate?.();
+  useBlueprintStore.getState().resetBlueprint();
   seedM2([]);
   useM5Store.setState((state) => ({
     pensionValuation: { ...state.pensionValuation, assets: {} },
@@ -165,5 +168,76 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
     expect(screen.getByTestId('callout-vesting_status_callout')).toBeInTheDocument();
     expect(screen.getByTestId('callout-form_of_benefit_callout')).toBeInTheDocument();
     expect(screen.getByTestId('callout-liability_disclaimer')).toBeInTheDocument();
+  });
+
+  // ─── Session 22 PR 2 — PVA → Blueprint §6 write trigger ────────────────
+  describe('PVA → Blueprint §6 write (Session 22 PR 2)', () => {
+    it('TC-PVA-Blueprint-1: tier_1 result triggers updatePensionValuation with headlinePV (no marital narrowing)', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.tier1_canonical} />);
+      const s6 = useBlueprintStore.getState().sections.s6;
+      expect(s6.data.pva).not.toBeNull();
+      expect(s6.data.pva.path).toBe('tier_1');
+      expect(typeof s6.data.pva.headlinePV).toBe('number');
+      expect(s6.data.pva.headlinePV).toBeGreaterThan(0);
+      // Tier 1 has no coverture → maritalPV null per [R5b-16].
+      expect(s6.data.pva.maritalPV).toBeNull();
+      expect(s6.sourceModule).toBe('m5');
+    });
+
+    it('TC-PVA-Blueprint-2: tier_3 result includes both headlinePV + maritalPV + coverturePercent', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.tier3_canonical} />);
+      const s6 = useBlueprintStore.getState().sections.s6;
+      expect(s6.data.pva).not.toBeNull();
+      expect(s6.data.pva.path).toBe('tier_3');
+      expect(typeof s6.data.pva.headlinePV).toBe('number');
+      expect(typeof s6.data.pva.maritalPV).toBe('number');
+      expect(s6.data.pva.maritalPV).toBeGreaterThan(0);
+      expect(s6.data.pva.maritalPV).toBeLessThanOrEqual(s6.data.pva.headlinePV);
+      expect(typeof s6.data.pva.coverturePercent).toBe('number');
+      expect(s6.data.pva.coverturePercent).toBeGreaterThan(0);
+      expect(s6.data.pva.coverturePercent).toBeLessThanOrEqual(1);
+    });
+
+    it('TC-PVA-Blueprint-3: flag_only result writes minimal slot (path only, no PV)', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.flag_only_multiemployer} />);
+      const s6 = useBlueprintStore.getState().sections.s6;
+      expect(s6.data.pva).toEqual({
+        path: 'flag_only',
+        headlinePV: null,
+        maritalPV: null,
+      });
+      expect(s6.sourceModule).toBe('m5');
+    });
+
+    it('TC-PVA-Blueprint-4: validation-error variant does NOT write to §6 (no result computed)', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.r3_validation_error} />);
+      const s6 = useBlueprintStore.getState().sections.s6;
+      expect(s6.data.pva).toBeNull();
+      expect(s6.sourceModule).toBeNull();
+    });
+
+    it('TC-PVA-Blueprint-5: PVA write coexists with prior PIT write — sourceModule becomes m4+m5', () => {
+      // Pre-seed §6 with PIT data (simulates user having completed PIT first).
+      useBlueprintStore.getState().updateRetirementDivision({
+        planBalance: 200000,
+        planType: '401k',
+        taxDiscountPercent: 0.18,
+        taxDiscountDollars: 36000,
+        taxAdjustedValue: 164000,
+        traditionalDiscountDollars: 50000,
+        overage: 14000,
+        n: 18,
+        effectiveTaxRate: 0.25,
+        discountRate: 0.05,
+      });
+
+      render(<PVA seedOverride={SEED_VARIANTS.tier3_canonical} />);
+      const s6 = useBlueprintStore.getState().sections.s6;
+      expect(s6.data.pit).not.toBeNull();
+      expect(s6.data.pit.planBalance).toBe(200000);
+      expect(s6.data.pva).not.toBeNull();
+      expect(s6.data.pva.path).toBe('tier_3');
+      expect(s6.sourceModule).toBe('m4+m5');
+    });
   });
 });

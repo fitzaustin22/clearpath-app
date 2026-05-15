@@ -31,8 +31,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useM2Store } from '@/src/stores/m2Store';
 import { useM5Store } from '@/src/stores/m5Store';
+import useBlueprintStore from '@/src/stores/blueprintStore';
 import { prePopulatePVAInputs } from '@/src/stores/prePopulate';
 import { calculatePensionValue } from '@/src/lib/pensionValuation';
+import { getHeadlinePV, getMaritalPV } from '@/src/lib/pensionValuation';
 import { T } from '@/src/lib/brand/tokens';
 import AssetPicker from './AssetPicker.jsx';
 import InputsPanel from './InputsPanel/index.jsx';
@@ -59,6 +61,7 @@ export default function PVA({ seedOverride = null }) {
   const setPVAAssetPrePopSources = useM5Store((s) => s.setPVAAssetPrePopSources);
   const setPVAAssetResults = useM5Store((s) => s.setPVAAssetResults);
   const setPVAAssetFlags = useM5Store((s) => s.setPVAAssetFlags);
+  const updatePensionValuation = useBlueprintStore((s) => s.updatePensionValuation);
 
   // Synthesize m2Store-shaped object for prePopulate. prePopulatePVAInputs
   // only reads `m2Store.maritalEstateInventory.items` (m1/m3 unused at v1).
@@ -171,6 +174,30 @@ export default function PVA({ seedOverride = null }) {
     if (!selectedAssetId || !results) return;
     setPVAAssetResults(selectedAssetId, results);
   }, [selectedAssetId, results, setPVAAssetResults]);
+
+  // ─── Sync results to Blueprint §6 (Retirement Plan Division → data.pva) ─
+  // flag_only writes a minimal slot (no PV) so PIT pre-pop correctly skips.
+  // Coverture paths (tier_3, cash_balance with coverture) populate maritalPV
+  // from the type-narrowing helper; non-coverture paths return null per [R5b-16].
+  useEffect(() => {
+    if (!results) return;
+    if (results.path === 'flag_only') {
+      updatePensionValuation({
+        path: 'flag_only',
+        headlinePV: null,
+        maritalPV: null,
+      });
+      return;
+    }
+    updatePensionValuation({
+      path: results.path,
+      headlinePV: getHeadlinePV(results),
+      maritalPV: getMaritalPV(results),
+      expectedRetirementAge: inputs?.expectedRetirementAge ?? null,
+      coverturePercent: results.coverture?.fraction ?? null,
+      citations: results.metadata?.citations ?? null,
+    });
+  }, [results, inputs?.expectedRetirementAge, updatePensionValuation]);
 
   // ─── Render (LL-17 explicit branches) ─────────────────────────────────
   return (
