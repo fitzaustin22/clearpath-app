@@ -35,8 +35,25 @@ import useBlueprintStore from '@/src/stores/blueprintStore';
 import { prePopulateHomeDecisionInputs } from '@/src/stores/prePopulate';
 import { calculateHomeDecision } from '@/src/lib/homeDecision';
 import HomeDecisionComparator from './HomeDecisionComparator.jsx';
+import HomeDecisionInputs from './HomeDecisionInputs.jsx';
+import HomeDecisionMobileSummary from './HomeDecisionMobileSummary.jsx';
+import HomeDecisionScenarioCarousel from './HomeDecisionScenarioCarousel.jsx';
 
 const SCENARIO_ORDER = ['keepAndRefi', 'sellNow', 'deferredSale'];
+
+// Inline viewport hook — mirrors the M3/M4 useBreakpoints duplication idiom
+// (Fitz Q2: 1024 desktop/mobile switch, 640 medium tier dropped; shared-util
+// extraction is a separate polish-backlog item — do NOT refactor M3/M4 here).
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(false);
+  useEffect(() => {
+    const update = () => setIsDesktop(window.innerWidth >= 1024);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+  return isDesktop;
+}
 
 export default function HomeDecisionAnalyzer() {
   // ─── m5Store HDA slice (primitive selectors per LL-9) ───────────────────
@@ -144,15 +161,34 @@ export default function HomeDecisionAnalyzer() {
   const handleInputChange = (field, value) =>
     setHomeDecisionInputs({ [field]: value });
 
+  const isDesktop = useIsDesktop();
+
+  if (isDesktop) {
+    return (
+      <HomeDecisionComparator
+        inputs={inputs}
+        onInputChange={handleInputChange}
+        scenarios={calc?.scenarios ?? null}
+        userSelection={userSelection}
+        onSelectScenario={handleSelect}
+        onSave={handleSave}
+        saveState={saveState}
+      />
+    );
+  }
   return (
-    <HomeDecisionComparator
-      inputs={inputs}
-      onInputChange={handleInputChange}
-      scenarios={calc?.scenarios ?? null}
-      userSelection={userSelection}
-      onSelectScenario={handleSelect}
-      onSave={handleSave}
-      saveState={saveState}
-    />
+    <>
+      <HomeDecisionMobileSummary scenarios={calc?.scenarios ?? null} />
+      <HomeDecisionInputs inputs={inputs} onChange={handleInputChange} />
+      <HomeDecisionScenarioCarousel
+        inputs={inputs}
+        scenarios={calc?.scenarios ?? null}
+        userSelection={userSelection}
+        onSelectScenario={handleSelect}
+        onSave={handleSave}
+        saveState={saveState}
+        onInputChange={handleInputChange}
+      />
+    </>
   );
 }
