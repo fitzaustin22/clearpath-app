@@ -24,11 +24,14 @@
  *  now         — optional Date; defaults to new Date(); injected by tests for staleness
  */
 
+import { useEffect } from 'react';
 import { T } from '@/src/lib/brand/tokens';
 import {
   REFI_RATE_BY_CREDIT_BAND,
   BANDED_REFI_RATE_BUILD_DATE,
 } from '@/src/lib/homeDecision';
+
+const BANDED_PREFIX = 'banded-default-';
 
 // ── Style objects (mirrors HomeDecisionInputs idiom: T.* tokens, no hardcoded hex) ──
 
@@ -118,6 +121,20 @@ export default function RefiRateInput({ value, creditBand, provenance, onChange,
     buildDateISO: BANDED_REFI_RATE_BUILD_DATE,
     now: effectiveNow,
   });
+
+  // Banded defaults are credit-band-specific. If the user opted into a banded
+  // default and then changes their credit band, the carried-over rate is for
+  // the wrong band — silently stale (the §9.6.3 90-day check does NOT cover
+  // band mismatch). Revert to force-input so the user re-quotes or re-opts-in.
+  useEffect(() => {
+    if (typeof provenance !== 'string' || !provenance.startsWith(BANDED_PREFIX)) return;
+    if (provenance.slice(BANDED_PREFIX.length) === creditBand) return;
+    onChange('refiRate', null);
+    onChange('refiRateProvenance', null);
+    // onChange is invoked, not observed (recreated each parent render) — its
+    // omission from deps is intentional.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [creditBand, provenance]);
 
   function handleInputChange(e) {
     const v = e.target.value;

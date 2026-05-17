@@ -103,6 +103,19 @@ function makeInitialPensionValuation() {
   return { assets: {} };
 }
 
+// Strip transient `_prePopSources` from each keyed asset slot; preserve
+// inputs/results and the pre-pop-derived `_legacy*`/`_frozen*` flags (PVA
+// reload contract — see TC-M5PVA-Slice-6).
+function stripAssetPrePopSources(assets) {
+  const out = {};
+  for (const [id, slot] of Object.entries(assets || {})) {
+    // eslint-disable-next-line no-unused-vars
+    const { _prePopSources, ...rest } = slot;
+    out[id] = rest;
+  }
+  return out;
+}
+
 // ─── Store ──────────────────────────────────────────────────────────────────
 export const useM5Store = create(
   persist(
@@ -293,6 +306,61 @@ export const useM5Store = create(
     {
       name: 'clearpath-m5',
       storage: createJSONStorage(() => localStorage),
+      // H1 fix: `_prePopSources` is transient pre-pop attribution, never user
+      // state. Persisting it locked HDA pre-pop out forever (a non-null
+      // sentinel rehydrated and the orchestrator skipped pre-pop). partialize
+      // omits it from every slice (m2Store allow-list idiom); merge resets it
+      // and strips any copy already baked into a user's localStorage (m1Store
+      // merge idiom), so affected installs self-heal without a version/migrate.
+      partialize: (state) => ({
+        homeDecision: {
+          inputs: state.homeDecision.inputs,
+          results: state.homeDecision.results,
+          metadata: state.homeDecision.metadata,
+          userSelection: state.homeDecision.userSelection,
+        },
+        supportEstimator: {
+          inputs: state.supportEstimator.inputs,
+          results: state.supportEstimator.results,
+        },
+        pensionValuation: {
+          assets: stripAssetPrePopSources(state.pensionValuation.assets),
+        },
+        qdroDecision: {
+          assets: stripAssetPrePopSources(state.qdroDecision.assets),
+        },
+      }),
+      merge: (persistedState, currentState) => {
+        const persisted = persistedState || {};
+        return {
+          ...currentState,
+          ...persisted,
+          homeDecision: {
+            ...currentState.homeDecision,
+            ...(persisted.homeDecision || {}),
+            _prePopSources: null,
+          },
+          supportEstimator: {
+            ...currentState.supportEstimator,
+            ...(persisted.supportEstimator || {}),
+            _prePopSources: null,
+          },
+          pensionValuation: {
+            ...currentState.pensionValuation,
+            ...(persisted.pensionValuation || {}),
+            assets: stripAssetPrePopSources(
+              persisted.pensionValuation?.assets ?? currentState.pensionValuation.assets,
+            ),
+          },
+          qdroDecision: {
+            ...currentState.qdroDecision,
+            ...(persisted.qdroDecision || {}),
+            assets: stripAssetPrePopSources(
+              persisted.qdroDecision?.assets ?? currentState.qdroDecision.assets,
+            ),
+          },
+        };
+      },
     },
   ),
 );

@@ -95,6 +95,11 @@ export default function HomeDecisionAnalyzer() {
     // Once _prePopSources is set the user may have edited inputs; never
     // re-seed (PVA §7.3.7 freshness gate, adapted to the single-slice shape).
     if (useM5Store.getState().homeDecision._prePopSources != null) return;
+    // H1 lockout fix: prePopulateHomeDecisionInputs returns inputs:{} until
+    // upstream M1/M2/M3 have data; writing the sentinel on an empty seed
+    // locked pre-pop out forever. Mark complete only once real data exists
+    // (the effect re-runs harmlessly via the [prePop] dep until then).
+    if (Object.keys(prePop.inputs).length === 0) return;
     // prePopulateHomeDecisionInputs returns a PARTIAL inputs subset (only the
     // sourced fields), so partial-merge preserves makeInitialHomeDecision
     // defaults — NOT replaceHomeDecisionInputs (which would wipe them).

@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import RefiRateInput, { isBandedRateStale } from '../RefiRateInput.jsx';
 import { BANDED_REFI_RATE_BUILD_DATE } from '@/src/lib/homeDecision';
 
@@ -239,5 +239,125 @@ describe('RefiRateInput', () => {
 
     expect(onChange).toHaveBeenCalledWith('refiRate', expectedRate);
     expect(onChange).toHaveBeenCalledWith('refiRateProvenance', `banded-default-${band}`);
+  });
+});
+
+// ── Band-change staleness (H1 hotfix) ──
+// A banded default is credit-band-specific. Changing the band after opting in
+// leaves refiRate/provenance pointing at the old band's rate — silently stale
+// (the 90-day check does not cover this). The effect reverts to force-input.
+
+describe('RefiRateInput band-change staleness (H1 hotfix)', () => {
+  it('clears refiRate + provenance when the band changes after a banded opt-in', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <RefiRateInput
+        value={0.07}
+        creditBand="fair"
+        provenance="banded-default-fair"
+        onChange={onChange}
+        now={daysAfterBuildDate(0)}
+      />,
+    );
+    // Matched band on first render — no clear yet.
+    expect(onChange).not.toHaveBeenCalled();
+
+    // User changes credit band Fair → Good; provenance still reflects Fair.
+    act(() => {
+      rerender(
+        <RefiRateInput
+          value={0.07}
+          creditBand="good"
+          provenance="banded-default-fair"
+          onChange={onChange}
+          now={daysAfterBuildDate(0)}
+        />,
+      );
+    });
+
+    expect(onChange).toHaveBeenCalledWith('refiRate', null);
+    expect(onChange).toHaveBeenCalledWith('refiRateProvenance', null);
+  });
+
+  it('clears immediately on mount when persisted band/provenance already mismatch', () => {
+    // Scenario A smoke: localStorage carried banded-default-fair but the user
+    // had since changed the band to good before re-entering HDA.
+    const onChange = vi.fn();
+    render(
+      <RefiRateInput
+        value={0.07}
+        creditBand="good"
+        provenance="banded-default-fair"
+        onChange={onChange}
+        now={daysAfterBuildDate(0)}
+      />,
+    );
+
+    expect(onChange).toHaveBeenCalledWith('refiRate', null);
+    expect(onChange).toHaveBeenCalledWith('refiRateProvenance', null);
+  });
+
+  it('does NOT clear when the band still matches the banded provenance', () => {
+    const onChange = vi.fn();
+    render(
+      <RefiRateInput
+        value={0.065}
+        creditBand="good"
+        provenance="banded-default-good"
+        onChange={onChange}
+        now={daysAfterBuildDate(0)}
+      />,
+    );
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('does NOT clear a user-quoted rate when the band changes', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <RefiRateInput
+        value={0.072}
+        creditBand="fair"
+        provenance="user-quoted"
+        onChange={onChange}
+        now={daysAfterBuildDate(0)}
+      />,
+    );
+    act(() => {
+      rerender(
+        <RefiRateInput
+          value={0.072}
+          creditBand="good"
+          provenance="user-quoted"
+          onChange={onChange}
+          now={daysAfterBuildDate(0)}
+        />,
+      );
+    });
+    expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('does NOT clear when there is no provenance (force-input, never opted in)', () => {
+    const onChange = vi.fn();
+    const { rerender } = render(
+      <RefiRateInput
+        value={null}
+        creditBand="fair"
+        provenance={null}
+        onChange={onChange}
+        now={daysAfterBuildDate(0)}
+      />,
+    );
+    act(() => {
+      rerender(
+        <RefiRateInput
+          value={null}
+          creditBand="good"
+          provenance={null}
+          onChange={onChange}
+          now={daysAfterBuildDate(0)}
+        />,
+      );
+    });
+    expect(onChange).not.toHaveBeenCalled();
   });
 });
