@@ -302,6 +302,104 @@ export const useM5Store = create(
             pensionValuation: { ...state.pensionValuation, assets: rest },
           };
         }),
+
+      // ─── QDRO Decision Guide setters (§8.10.1 / §8.10.2) ───────────────
+      // Object-keyed asset CRUD per the §8.10.1 locked-literal
+      // `assets[assetId]` shape. `_prePopSources` is a SIBLING of `decisions`
+      // (not nested) per the cross-tool B5b-3 convention; it is session-scoped
+      // and stripped by the existing partialize/merge (already conformant —
+      // not modified by PR1).
+      //
+      // `updateQDRODecision` here is the m5Store per-asset decisions
+      // partial-merge setter (Section 4 inventory). It is distinct from the
+      // blueprintStore Blueprint-write action of the same name (§10.8), which
+      // is deferred to PR5 per Q-A5 and is NOT added in PR1.
+
+      addQDROAsset: (assetId, init = {}) =>
+        set((state) => ({
+          qdroDecision: {
+            ...state.qdroDecision,
+            assets: {
+              ...state.qdroDecision.assets,
+              [assetId]: {
+                userRole: null,
+                planType: null,
+                planName: null,
+                employer: null,
+                decisions: {},
+                pvSource: null,
+                _prePopSources: {},
+                metadata: { formulaId: null, citations: [], qdroPacketGeneratedAt: null },
+                ...init,
+              },
+            },
+          },
+        })),
+
+      updateQDRODecision: (assetId, partial) =>
+        set((state) => ({
+          qdroDecision: {
+            ...state.qdroDecision,
+            assets: {
+              ...state.qdroDecision.assets,
+              [assetId]: {
+                ...state.qdroDecision.assets[assetId],
+                decisions: {
+                  ...state.qdroDecision.assets[assetId]?.decisions,
+                  ...partial,
+                },
+              },
+            },
+          },
+        })),
+
+      setQDROClassifiers: (assetId, { userRole, planType }) =>
+        set((state) => ({
+          qdroDecision: {
+            ...state.qdroDecision,
+            assets: {
+              ...state.qdroDecision.assets,
+              [assetId]: {
+                ...state.qdroDecision.assets[assetId],
+                userRole,
+                planType,
+              },
+            },
+          },
+        })),
+
+      removeQDROAsset: (assetId) =>
+        set((state) => {
+          const assets = { ...state.qdroDecision.assets };
+          delete assets[assetId];
+          return { qdroDecision: { ...state.qdroDecision, assets } };
+        }),
+
+      // Q-A3: consumes the `prePopulateQDROInputs` object-keyed return map and
+      // folds new asset slots into the slice. Per §8.3.4 an already-present
+      // assetId is preserved (user override survives wizard re-runs) — never
+      // reseeded. Missing/empty map is a safe no-op.
+      seedQDROAssetsFromM2: (prePopResult) =>
+        set((state) => {
+          const incoming = prePopResult?.assets;
+          if (!incoming || typeof incoming !== 'object') return {};
+          const nextAssets = { ...state.qdroDecision.assets };
+          for (const [assetId, prePop] of Object.entries(incoming)) {
+            if (nextAssets[assetId]) continue;
+            nextAssets[assetId] = {
+              userRole: null,
+              planType: null,
+              planName: null,
+              employer: null,
+              decisions: {},
+              pvSource: null,
+              _prePopSources: {},
+              metadata: { formulaId: null, citations: [], qdroPacketGeneratedAt: null },
+              ...prePop,
+            };
+          }
+          return { qdroDecision: { ...state.qdroDecision, assets: nextAssets } };
+        }),
     }),
     {
       name: 'clearpath-m5',
