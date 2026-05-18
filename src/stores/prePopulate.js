@@ -168,9 +168,66 @@ export function prePopulatePVAInputs({ m1Store, m2Store, m3Store, assetId }) {
   };
 }
 
-// TODO §13 step 4 (QDG implementation) — fill per §8.10.7 (M2 two-category pre-pop).
-export function prePopulateQDROInputs(_) {
-  return {};
+/**
+ * QDRO Decision Guide pre-pop — §13 step 4; M2 two-category pre-pop per §8.3.4.
+ *
+ * §8.3.4 two-category rule:
+ *   - `category === 'pensions'`   → DB-side default `planType: 'private_db'`,
+ *                                   provenance source `m2.pensionClaim`
+ *   - `category === 'retirement'` → DC default `planType: 'dc'`,
+ *                                   provenance source `m2.retirementAsset`
+ * Category-default radio with override available (no explicit subType hint
+ * in the v1 M2 schema). User override does NOT write back to M2 — §8 holds
+ * the working copy in `m5Store.qdroDecision.assets[assetId]`.
+ *
+ * Q-A3 return contract (consumed by `seedQDROAssetsFromM2`):
+ *   { assets: { [assetId]: { planType, planName, employer, _prePopSources } } }
+ * assetId = the M2 item id. `_prePopSources` per-field provenance per §10.7 /
+ * §8.10.1: `{ [field]: { source, timestamp } | null }`.
+ *
+ * m1Store/m3Store unused — only M2 drives QDRO pre-pop (§8.3.4). Accepted for
+ * §6.5.7 cross-tool signature symmetry (mirrors prePopulatePVAInputs).
+ *
+ * @param {{m1Store: any, m2Store: any, m3Store: any}} stores
+ * @returns {{assets: object}}
+ */
+export function prePopulateQDROInputs({ m1Store, m2Store, m3Store }) {
+  void m1Store;
+  void m3Store;
+
+  const items = m2Store?.maritalEstateInventory?.items ?? [];
+  const assets = {};
+
+  for (const item of items) {
+    let planType;
+    let source;
+    if (item.category === 'pensions') {
+      planType = 'private_db';
+      source = 'm2.pensionClaim';
+    } else if (item.category === 'retirement') {
+      planType = 'dc';
+      source = 'm2.retirementAsset';
+    } else {
+      continue;
+    }
+
+    const planName = item.label || item.planName || item.subcategory || null;
+    const employer = item.employer ?? null;
+    const stamp = () => ({ source, timestamp: new Date().toISOString() });
+
+    assets[item.id] = {
+      planType,
+      planName,
+      employer,
+      _prePopSources: {
+        planType: stamp(),
+        planName: planName !== null ? stamp() : null,
+        employer: employer !== null ? stamp() : null,
+      },
+    };
+  }
+
+  return { assets };
 }
 
 /**
