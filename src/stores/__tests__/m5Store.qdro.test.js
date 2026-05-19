@@ -92,6 +92,83 @@ describe('setQDROClassifiers (§8.2 / §8.3 classifiers)', () => {
   });
 });
 
+describe('setQDROFlagOnlyAnswers (§8.5.6 / §8.10.2 flag-only starter Qs)', () => {
+  it('creates decisions.starterQuestionResponses in the locked §8.10.2 array shape', () => {
+    useM5Store.getState().addQDROAsset('f1', { planType: 'gov_civilian', userRole: 'alternatePayee' });
+    useM5Store.getState().setQDROFlagOnlyAnswers('f1', { gov_civilian_q1: 'marital fraction' });
+    expect(useM5Store.getState().qdroDecision.assets.f1.decisions).toEqual({
+      starterQuestionResponses: [{ questionId: 'gov_civilian_q1', response: 'marital fraction' }],
+    });
+  });
+
+  it('partial-merge: a new questionId is appended without dropping prior responses', () => {
+    useM5Store.getState().addQDROAsset('f1', { planType: 'military' });
+    useM5Store.getState().setQDROFlagOnlyAnswers('f1', { military_q1: 'yes 10/10' });
+    useM5Store.getState().setQDROFlagOnlyAnswers('f1', { military_q2: 'disposable per USFSPA' });
+    expect(useM5Store.getState().qdroDecision.assets.f1.decisions.starterQuestionResponses).toEqual([
+      { questionId: 'military_q1', response: 'yes 10/10' },
+      { questionId: 'military_q2', response: 'disposable per USFSPA' },
+    ]);
+  });
+
+  it('updating an existing questionId replaces only its response — does NOT null siblings (carried-debt-#2 anti-bug)', () => {
+    useM5Store.getState().addQDROAsset('f1', { planType: 'state_municipal' });
+    useM5Store.getState().setQDROFlagOnlyAnswers('f1', { state_municipal_q1: 'A', state_municipal_q2: 'B' });
+    useM5Store.getState().setQDROFlagOnlyAnswers('f1', { state_municipal_q1: 'A-revised' });
+    expect(useM5Store.getState().qdroDecision.assets.f1.decisions.starterQuestionResponses).toEqual([
+      { questionId: 'state_municipal_q1', response: 'A-revised' },
+      { questionId: 'state_municipal_q2', response: 'B' },
+    ]);
+  });
+
+  it('upserts every questionId supplied in a single call', () => {
+    useM5Store.getState().addQDROAsset('f1', { planType: 'gov_civilian' });
+    useM5Store.getState().setQDROFlagOnlyAnswers('f1', {
+      gov_civilian_q1: '1',
+      gov_civilian_q2: '2',
+      gov_civilian_q3: '3',
+    });
+    expect(useM5Store.getState().qdroDecision.assets.f1.decisions.starterQuestionResponses).toEqual([
+      { questionId: 'gov_civilian_q1', response: '1' },
+      { questionId: 'gov_civilian_q2', response: '2' },
+      { questionId: 'gov_civilian_q3', response: '3' },
+    ]);
+  });
+
+  it('does not clobber userRole / planType / pvSource / metadata / _prePopSources', () => {
+    useM5Store.getState().addQDROAsset('f1', { planType: 'gov_civilian', userRole: 'participant' });
+    useM5Store.getState().setQDROFlagOnlyAnswers('f1', { gov_civilian_q1: 'x' });
+    const slot = useM5Store.getState().qdroDecision.assets.f1;
+    expect(slot.planType).toBe('gov_civilian');
+    expect(slot.userRole).toBe('participant');
+    expect(slot.pvSource).toBeNull();
+    expect(slot._prePopSources).toEqual({});
+    expect(slot.metadata).toEqual({ formulaId: null, citations: [], qdroPacketGeneratedAt: null });
+  });
+
+  it('does not clobber a sibling asset', () => {
+    useM5Store.getState().addQDROAsset('f1', { planType: 'gov_civilian' });
+    useM5Store.getState().addQDROAsset('f2', { planType: 'military' });
+    useM5Store.getState().setQDROFlagOnlyAnswers('f1', { gov_civilian_q1: 'x' });
+    expect(useM5Store.getState().qdroDecision.assets.f2.decisions).toEqual({});
+    expect(useM5Store.getState().qdroDecision.assets.f1.decisions.starterQuestionResponses).toEqual([
+      { questionId: 'gov_civilian_q1', response: 'x' },
+    ]);
+  });
+
+  it('persists across rehydrate via existing partialize (decisions preserved, _prePopSources stripped)', () => {
+    useM5Store.getState().addQDROAsset('f1', { planType: 'military', userRole: 'alternatePayee' });
+    useM5Store.getState().setQDROFlagOnlyAnswers('f1', { military_q1: 'yes', military_q3: 'SBP yes' });
+    const slot = readPersisted()?.state?.qdroDecision?.assets?.f1;
+    expect(slot).toBeDefined();
+    expect(slot.decisions.starterQuestionResponses).toEqual([
+      { questionId: 'military_q1', response: 'yes' },
+      { questionId: 'military_q3', response: 'SBP yes' },
+    ]);
+    expect(slot).not.toHaveProperty('_prePopSources');
+  });
+});
+
 describe('removeQDROAsset (§8.10.1 key deletion)', () => {
   it('deletes the asset by key, leaving siblings intact', () => {
     useM5Store.getState().addQDROAsset('a1', { planType: 'dc' });

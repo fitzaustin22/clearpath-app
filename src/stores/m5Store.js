@@ -368,6 +368,41 @@ export const useM5Store = create(
           },
         })),
 
+      // §8.5.6 / §8.10.2 — flag-only starter-Q capture. `answers` is a
+      // partial `{ [questionId]: response }` map; each pair is upserted by
+      // questionId into the locked `Array<{ questionId, response }>` at
+      // `decisions.starterQuestionResponses`. Entries for questionIds not in
+      // `answers` are preserved — per-question partial-merge, never the
+      // sibling-nulling full-replace failure mode. Empty array is allowed
+      // per §8.10.2 (flag-only branches frequently defer to the attorney).
+      setQDROFlagOnlyAnswers: (assetId, answers) =>
+        set((state) => {
+          const slot = state.qdroDecision.assets[assetId];
+          const next = (slot?.decisions?.starterQuestionResponses ?? []).map((e) => ({
+            ...e,
+          }));
+          for (const [questionId, response] of Object.entries(answers || {})) {
+            const i = next.findIndex((e) => e.questionId === questionId);
+            if (i === -1) next.push({ questionId, response });
+            else next[i] = { questionId, response };
+          }
+          return {
+            qdroDecision: {
+              ...state.qdroDecision,
+              assets: {
+                ...state.qdroDecision.assets,
+                [assetId]: {
+                  ...slot,
+                  decisions: {
+                    ...slot?.decisions,
+                    starterQuestionResponses: next,
+                  },
+                },
+              },
+            },
+          };
+        }),
+
       removeQDROAsset: (assetId) =>
         set((state) => {
           const assets = { ...state.qdroDecision.assets };
