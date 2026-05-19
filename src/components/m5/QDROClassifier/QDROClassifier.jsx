@@ -31,6 +31,7 @@ import QDROEmptyState from './QDROEmptyState.jsx';
 import QDROProgressHeader from './QDROProgressHeader.jsx';
 import QDROMixedPerspectiveBanner from './QDROMixedPerspectiveBanner.jsx';
 import QDROAssetCard from './QDROAssetCard.jsx';
+import { QDGNotLegalOrder } from './callouts';
 
 // §8.1.4 — the two M2 categories that feed the QDRO flow.
 const QDRO_M2_CATEGORIES = new Set(['pensions', 'retirement']);
@@ -100,6 +101,7 @@ export default function QDROClassifier() {
         gap: '1rem',
       }}
     >
+      <QDGNotLegalOrder />
       {showEmptyState ? (
         <QDROEmptyState onAddAsset={handleAddAsset} />
       ) : orderedIds.length > 0 ? (

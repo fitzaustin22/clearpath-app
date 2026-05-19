@@ -326,3 +326,107 @@ describe('QDROAssetCard — completion state (Q-C7)', () => {
     expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
   });
 });
+
+describe('QDROAssetCard — inline branch capture (Q-B1 / Q-B2)', () => {
+  it('does not render branch capture when neither classifier is set', () => {
+    seedAsset('a1', asset());
+    render(<QDROAssetCard assetId="a1" />);
+    expect(screen.queryByTestId('qdro-branch-dc')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('qdro-branch-ira')).not.toBeInTheDocument();
+  });
+
+  it('does not render branch capture when only userRole is set (Q-B2 needs both)', () => {
+    seedAsset('a1', asset({ userRole: 'participant' }));
+    render(<QDROAssetCard assetId="a1" />);
+    expect(screen.queryByTestId('qdro-branch-dc')).not.toBeInTheDocument();
+  });
+
+  it('does not render branch capture when only planType is set (Q-B2 needs both)', () => {
+    seedAsset('a1', asset({ planType: 'dc' }));
+    render(<QDROAssetCard assetId="a1" />);
+    expect(screen.queryByTestId('qdro-branch-dc')).not.toBeInTheDocument();
+  });
+
+  it('renders the DC branch capture inline once both classifiers are set', () => {
+    seedAsset('a1', asset({ userRole: 'participant', planType: 'dc' }));
+    render(<QDROAssetCard assetId="a1" />);
+    expect(screen.getByTestId('qdro-branch-dc')).toBeInTheDocument();
+  });
+
+  it('renders the IRA branch capture inline once both classifiers are set', () => {
+    seedAsset('a1', asset({ userRole: 'alternatePayee', planType: 'ira' }));
+    render(<QDROAssetCard assetId="a1" />);
+    expect(screen.getByTestId('qdro-branch-ira')).toBeInTheDocument();
+  });
+
+  it('renders branch capture INSIDE the same WizardCard (Q-B1 inline)', () => {
+    seedAsset('a1', asset({ userRole: 'participant', planType: 'dc' }));
+    render(<QDROAssetCard assetId="a1" />);
+    const card = screen.getByTestId('wizard-card');
+    expect(card).toContainElement(screen.getByTestId('qdro-branch-dc'));
+  });
+
+  it('flag-only planType surfaces the consult-specialist callout inline', () => {
+    seedAsset(
+      'a1',
+      asset({ userRole: 'alternatePayee', planType: 'gov_civilian' }),
+    );
+    render(<QDROAssetCard assetId="a1" />);
+    expect(screen.getByTestId('qdg-consult-specialist')).toBeInTheDocument();
+  });
+});
+
+describe('QDROAssetCard — qdg_attorney_review_required conditional (Q-B7)', () => {
+  it('does not show the attorney-review callout before any decision is captured', () => {
+    seedAsset('a1', asset({ userRole: 'alternatePayee', planType: 'dc' }));
+    render(<QDROAssetCard assetId="a1" />);
+    expect(
+      screen.queryByTestId('qdg-attorney-review-required'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('does NOT show it for participant-DC carrying only the auto receiptMethod:null (Q-B7 exclusion)', () => {
+    seedAsset(
+      'a1',
+      asset({
+        userRole: 'participant',
+        planType: 'dc',
+        decisions: { receiptMethod: null },
+      }),
+    );
+    render(<QDROAssetCard assetId="a1" />);
+    expect(
+      screen.queryByTestId('qdg-attorney-review-required'),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the attorney-review callout once a real decision is captured', () => {
+    seedAsset(
+      'a1',
+      asset({
+        userRole: 'participant',
+        planType: 'dc',
+        decisions: { allocationType: 'percentage' },
+      }),
+    );
+    render(<QDROAssetCard assetId="a1" />);
+    expect(
+      screen.getByTestId('qdg-attorney-review-required'),
+    ).toBeInTheDocument();
+  });
+
+  it('treats a chosen valuationDate type as a captured decision', () => {
+    seedAsset(
+      'a1',
+      asset({
+        userRole: 'participant',
+        planType: 'dc',
+        decisions: { valuationDate: { type: 'divorce', date: null } },
+      }),
+    );
+    render(<QDROAssetCard assetId="a1" />);
+    expect(
+      screen.getByTestId('qdg-attorney-review-required'),
+    ).toBeInTheDocument();
+  });
+});

@@ -203,6 +203,31 @@ describe('QDROClassifier — asset-list layout (Q-C1/Q-C3)', () => {
   });
 });
 
+describe('QDROClassifier — qdg_not_legal_order top-of-page callout (Q-B7 / §8.9.1)', () => {
+  it('renders the not-legal-order callout at tool entry when assets exist', () => {
+    seedM2([{ id: 'pen1', category: 'pensions', label: 'P' }]);
+    render(<QDROClassifier />);
+    expect(screen.getByTestId('qdg-not-legal-order')).toBeInTheDocument();
+  });
+
+  it('renders the not-legal-order callout even in the empty state', () => {
+    seedM2([]);
+    seedQDRO({});
+    render(<QDROClassifier />);
+    expect(screen.getByTestId('qdg-not-legal-order')).toBeInTheDocument();
+  });
+
+  it('places the callout above the asset list (top-of-page, Q-B7)', () => {
+    seedM2([{ id: 'pen1', category: 'pensions', label: 'P' }]);
+    render(<QDROClassifier />);
+    const callout = screen.getByTestId('qdg-not-legal-order');
+    const card = screen.getByTestId('qdro-asset-card');
+    expect(callout.compareDocumentPosition(card)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+});
+
 describe('QDROClassifier — barrel', () => {
   it('re-exports QDROClassifier (default + named) and the subcomponents', () => {
     expect(barrel.default).toBe(QDROClassifier);
@@ -212,5 +237,15 @@ describe('QDROClassifier — barrel', () => {
     expect(typeof barrel.QDROMixedPerspectiveBanner).toBe('function');
     expect(typeof barrel.QDROAssetCard).toBe('function');
     expect(typeof barrel.QDROStillNotSureDiagnostic).toBe('function');
+  });
+
+  it('re-exports the PR3 branch-capture + education + callout components', () => {
+    expect(typeof barrel.QDROBranchCapture).toBe('function');
+    expect(typeof barrel.QDROBranchDC).toBe('function');
+    expect(typeof barrel.QDROBranchIRA).toBe('function');
+    expect(typeof barrel.QDROWhyThisMatters).toBe('function');
+    expect(typeof barrel.QDGNotLegalOrder).toBe('function');
+    expect(typeof barrel.QDGAttorneyReviewRequired).toBe('function');
+    expect(typeof barrel.QDGConsultSpecialist).toBe('function');
   });
 });
