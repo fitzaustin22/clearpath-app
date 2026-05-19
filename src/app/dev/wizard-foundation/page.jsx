@@ -13,10 +13,15 @@ import WizardCard from '@/src/components/wizard/WizardCard';
 import WizardSection from '@/src/components/wizard/WizardSection';
 import WizardField from '@/src/components/wizard/WizardField';
 import WizardProgress from '@/src/components/wizard/WizardProgress';
+import WizardRadio from '@/src/components/wizard/WizardRadio';
+import WizardDate from '@/src/components/wizard/WizardDate';
 
-function Section({ title, description, children }) {
+function Section({ id, title, description, children }) {
   return (
-    <section className="mb-12 pb-8 border-b border-gray-200">
+    <section
+      id={id}
+      className="mb-12 pb-8 border-b border-gray-200 scroll-mt-6"
+    >
       <h2
         className="text-[#1B2A4A] mb-1"
         style={{
@@ -46,6 +51,66 @@ function FieldDemo(props) {
   );
 }
 
+function RadioDemo({ initialValue = '', ...props }) {
+  const [val, setVal] = useState(initialValue);
+  return (
+    <WizardRadio {...props} value={val} onChange={(_field, next) => setVal(next)} />
+  );
+}
+
+function DateDemo({ initialValue = '', ...props }) {
+  const [val, setVal] = useState(initialValue);
+  return (
+    <WizardDate {...props} value={val} onChange={(_field, next) => setVal(next)} />
+  );
+}
+
+// QDRO §8.3.2 6-way plan-type classifier — the canonical stacked example.
+const PLAN_TYPES = [
+  {
+    value: 'private_db',
+    label: 'Defined Benefit (DB)',
+    description:
+      'Employer pension where the benefit is formula-driven (years of service × accrual rate).',
+    tooltipContent:
+      'Common in public-sector and legacy private employers. Divided by a QDRO using a coverture fraction.',
+  },
+  {
+    value: 'private_dc',
+    label: 'Defined Contribution (DC)',
+    description:
+      'Account-balance plan such as a 401(k), 403(b), or Thrift Savings Plan.',
+  },
+  {
+    value: 'ira',
+    label: 'IRA (traditional or Roth)',
+    description:
+      'Held outside an employer; divided by a transfer incident to divorce, not a QDRO.',
+  },
+  {
+    value: 'government',
+    label: 'State / local government pension',
+    description:
+      'A public system such as VRS — divided by a plan-specific DRO, not a private-plan QDRO.',
+  },
+  {
+    value: 'federal',
+    label: 'Federal (FERS / CSRS)',
+    description:
+      'Federal civil-service retirement, divided by a Court Order Acceptable for Processing.',
+    tooltipContent:
+      'OPM administers FERS/CSRS division under its own COAP rules — distinct from ERISA QDROs.',
+  },
+  {
+    value: 'military',
+    label: 'Military retired pay',
+    description:
+      'Uniformed-services pension governed by the USFSPA; the 10/10 rule affects direct payment.',
+    tooltipContent:
+      'Direct payment from DFAS needs 10 years of marriage overlapping 10 years of service.',
+  },
+];
+
 export default function WizardFoundationDevPage() {
   return (
     <div className="max-w-5xl mx-auto p-6" style={{ backgroundColor: '#FAF8F2' }}>
@@ -65,7 +130,27 @@ export default function WizardFoundationDevPage() {
         in the wizard polish PR.
       </p>
 
+      <nav
+        className="mb-8 flex flex-wrap gap-x-4 gap-y-1 text-sm"
+        style={{ color: '#4A5876' }}
+      >
+        {[
+          ['progress', 'Progress'],
+          ['card', 'Card'],
+          ['section', 'Section'],
+          ['field', 'Field'],
+          ['radio-stacked', 'Radio · stacked'],
+          ['radio-segmented', 'Radio · segmented'],
+          ['date', 'Date'],
+        ].map(([href, label]) => (
+          <a key={href} href={`#${href}`} className="underline">
+            {label}
+          </a>
+        ))}
+      </nav>
+
       <Section
+        id="progress"
         title="WizardProgress"
         description="Three-part bar above the card. Edge cases clamp the fill to 0–100%."
       >
@@ -79,6 +164,7 @@ export default function WizardFoundationDevPage() {
       </Section>
 
       <Section
+        id="card"
         title="WizardCard"
         description="Empty, single-section, and three-section compositions."
       >
@@ -127,6 +213,7 @@ export default function WizardFoundationDevPage() {
       </Section>
 
       <Section
+        id="section"
         title="WizardSection"
         description="first (no top border) vs. not-first (top divider); single field and a 2-col grid."
       >
@@ -150,6 +237,7 @@ export default function WizardFoundationDevPage() {
       </Section>
 
       <Section
+        id="field"
         title="WizardField"
         description="All documented states. The focused state needs interaction — click or Tab into any field to see the gold focus ring."
       >
@@ -205,6 +293,113 @@ export default function WizardFoundationDevPage() {
               {/* Focused state: not statically renderable — click/Tab into
                   any field above to verify the T.GOLD border + 3px
                   T.GOLD_FOCUS_RING (Q-5/Q-7). */}
+            </div>
+          </WizardSection>
+        </WizardCard>
+      </Section>
+
+      <Section
+        id="radio-stacked"
+        title="WizardRadio — stacked"
+        description="Vertical list with a mandatory per-option description and an optional info tooltip. Click a row or use arrow keys; hover an unselected row for the T.GOLD_TINT_SUBTLE wash."
+      >
+        <WizardCard>
+          <WizardSection title="6-way plan-type classifier (QDRO §8.3.2)" first>
+            <RadioDemo
+              field="planType"
+              legend="What kind of retirement plan is this?"
+              options={PLAN_TYPES}
+            />
+          </WizardSection>
+          <WizardSection title="Error state (group-level, W11)">
+            <RadioDemo
+              field="acctHolder"
+              legend="How is the account held?"
+              error="Please choose how the account is held."
+              options={[
+                {
+                  value: 'joint',
+                  label: 'Jointly titled',
+                  description: 'Both spouses are named on the account.',
+                },
+                {
+                  value: 'sole',
+                  label: 'Sole title',
+                  description:
+                    'Titled to one spouse only (may still be marital property).',
+                },
+              ]}
+            />
+          </WizardSection>
+          <WizardSection title="Disabled state (Q-2 — no opacity)">
+            <WizardRadio
+              field="planTypeLocked"
+              value="private_dc"
+              onChange={() => {}}
+              disabled
+              legend="Plan type (locked while reviewing)"
+              options={PLAN_TYPES.slice(0, 3)}
+            />
+          </WizardSection>
+        </WizardCard>
+      </Section>
+
+      <Section
+        id="radio-segmented"
+        title="WizardRadio — segmented"
+        description="Pill container with a filled selected cell; no per-option description or tooltip. For binary or short-list toggles."
+      >
+        <WizardCard>
+          <WizardSection title="Binary perspective toggle" first>
+            <RadioDemo
+              field="perspective"
+              variant="segmented"
+              legend="Whose retirement are we dividing?"
+              initialValue="participant"
+              options={[
+                { value: 'participant', label: 'Participant' },
+                { value: 'alternate', label: 'Alternate payee' },
+              ]}
+            />
+          </WizardSection>
+          <WizardSection title="Three-option short-list">
+            <RadioDemo
+              field="divisionMethod"
+              variant="segmented"
+              legend="Division method"
+              options={[
+                { value: 'shared', label: 'Shared interest' },
+                { value: 'separate', label: 'Separate interest' },
+                { value: 'unsure', label: 'Not sure yet' },
+              ]}
+            />
+          </WizardSection>
+        </WizardCard>
+      </Section>
+
+      <Section
+        id="date"
+        title="WizardDate"
+        description="Native date input, chrome-matched to WizardField. ISO 8601 storage; gold-accented native picker. Empty, pre-filled, and error states."
+      >
+        <WizardCard>
+          <WizardSection title="Empty / pre-filled / error" first>
+            <div
+              style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+            >
+              <DateDemo label="Valuation date" field="valuationDate" />
+              <DateDemo
+                label="Date of separation"
+                field="separationDate"
+                initialValue="2025-09-01"
+              />
+              <WizardDate
+                label="Decree date"
+                field="decreeDate"
+                value=""
+                onChange={() => {}}
+                error="Required to compute the marital coverture fraction."
+              />
             </div>
           </WizardSection>
         </WizardCard>
