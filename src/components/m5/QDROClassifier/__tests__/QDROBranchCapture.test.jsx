@@ -3,9 +3,10 @@
  *
  * The routing wrapper. Renders nothing until BOTH classifiers are set
  * (Q-B2). Then routes by planType: dc → QDROBranchDC; ira → QDROBranchIRA;
- * flag-only (gov_civilian/military/state_municipal) → QDGConsultSpecialist
- * (full starter-Q capture is PR4); private_db → nothing (silent, step 6);
- * anything unknown → nothing (fail closed).
+ * flag-only (gov_civilian/military/state_municipal) → QDROFlagOnlyCapture
+ * (consolidated §8.5.6 consult callout + 3 starter-Q inputs, PR4);
+ * private_db → nothing (silent, step 6); anything unknown → nothing
+ * (fail closed).
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
@@ -89,7 +90,7 @@ describe('QDROBranchCapture — planType routing (§8.4.1 / D6)', () => {
     expect(screen.queryByTestId('qdro-branch-dc')).not.toBeInTheDocument();
   });
 
-  it('routes gov_civilian → QDGConsultSpecialist (flag-only, Q-B5)', () => {
+  it('routes gov_civilian → QDROFlagOnlyCapture (consult callout + 3 starter Qs, PR4)', () => {
     seedAsset('a1', asset({ userRole: 'alternatePayee', planType: 'gov_civilian' }));
     render(
       <QDROBranchCapture
@@ -98,10 +99,13 @@ describe('QDROBranchCapture — planType routing (§8.4.1 / D6)', () => {
         planType="gov_civilian"
       />,
     );
+    expect(screen.getByTestId('qdro-flag-only-capture')).toBeInTheDocument();
+    // consolidated §8.5.6 consult-specialist copy still renders (nested)
     expect(screen.getByTestId('qdg-consult-specialist')).toBeInTheDocument();
+    expect(screen.getAllByRole('textbox')).toHaveLength(3);
   });
 
-  it('routes military → QDGConsultSpecialist (flag-only, Q-B5)', () => {
+  it('routes military → QDROFlagOnlyCapture (consult callout + 3 starter Qs, PR4)', () => {
     seedAsset('a1', asset({ userRole: 'participant', planType: 'military' }));
     render(
       <QDROBranchCapture
@@ -110,10 +114,12 @@ describe('QDROBranchCapture — planType routing (§8.4.1 / D6)', () => {
         planType="military"
       />,
     );
+    expect(screen.getByTestId('qdro-flag-only-capture')).toBeInTheDocument();
     expect(screen.getByTestId('qdg-consult-specialist')).toBeInTheDocument();
+    expect(screen.getAllByRole('textbox')).toHaveLength(3);
   });
 
-  it('routes state_municipal → QDGConsultSpecialist (flag-only, Q-B5)', () => {
+  it('routes state_municipal → QDROFlagOnlyCapture (consult callout + 3 starter Qs, PR4)', () => {
     seedAsset(
       'a1',
       asset({ userRole: 'participant', planType: 'state_municipal' }),
@@ -125,7 +131,9 @@ describe('QDROBranchCapture — planType routing (§8.4.1 / D6)', () => {
         planType="state_municipal"
       />,
     );
+    expect(screen.getByTestId('qdro-flag-only-capture')).toBeInTheDocument();
     expect(screen.getByTestId('qdg-consult-specialist')).toBeInTheDocument();
+    expect(screen.getAllByRole('textbox')).toHaveLength(3);
   });
 
   it('private_db renders nothing (silent — step 6 / PVA-dependent)', () => {
