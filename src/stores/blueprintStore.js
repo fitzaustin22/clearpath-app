@@ -69,6 +69,10 @@ const useBlueprintStore = create(
       // Shape: { id, category ('stockOptions'|'corporateIncentives'), company, grantDate, sharesGranted, vestingSchedule, strikePrice, deferredComp: true, createdAt }
       deferredCompStubs: [],
 
+      // §10.8 — QDRO Decision Guide → Blueprint write target (PR5-2). savedProjection
+      // carries a stamped copy of the QDRO projection; savedAt is the write moment.
+      qdroBlueprint: { savedProjection: null, savedAt: null },
+
       // Computed — these are functions, NOT Zustand getters
       getCompletedCount: () => Object.values(get().sections).filter(s => s.status === 'complete').length,
       getPartialCount: () => Object.values(get().sections).filter(s => s.status === 'partial').length,
@@ -337,6 +341,20 @@ const useBlueprintStore = create(
         lastUpdated: new Date().toISOString(),
       })),
 
+      // §10.8 — write the QDRO projection into the Blueprint. PR5-2/PR5-4: stamp
+      // generatedAt + savedAt with ONE timestamp; idempotent last-write-wins.
+      writeQDROToBlueprint: (projection) =>
+        set(() => {
+          const ts = new Date().toISOString();
+          return {
+            qdroBlueprint: {
+              savedProjection: { ...projection, generatedAt: ts },
+              savedAt: ts,
+            },
+            lastUpdated: ts,
+          };
+        }),
+
       // Cost basis actions
       setCostBasisEntries: (entries) => set({ costBasisEntries: entries, lastUpdated: new Date().toISOString() }),
       toggleCostBasisView: () => set(state => ({ costBasisViewEnabled: !state.costBasisViewEnabled })),
@@ -392,6 +410,7 @@ const useBlueprintStore = create(
         costBasisViewEnabled: false,
         costBasisFilingStatus: null,
         deferredCompStubs: [],
+        qdroBlueprint: { savedProjection: null, savedAt: null },
         lastUpdated: null,
       }),
     }),

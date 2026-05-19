@@ -264,3 +264,144 @@ describe('blueprintStore §9 Home Decision (HDA, §10.6)', () => {
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// §10.8 QDRO Blueprint write (PR5-2, PR5-4)
+// ---------------------------------------------------------------------------
+
+const QDRO_PROJ = {
+  perspective: 'participant',
+  assets: [
+    {
+      id: 'a1',
+      label: 'MegaCorp 401(k)',
+      planType: 'dc',
+      perspective: 'participant',
+      branchCapture: { allocationType: 'percentage' },
+      flagOnlyResponses: null,
+    },
+  ],
+  generatedAt: null,
+};
+
+const ISO_REGEX = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/;
+
+describe('blueprintStore §10.8 QDRO Blueprint write (PR5-2, PR5-4)', () => {
+  it('TC-BPSt-QDG-1: initial qdroBlueprint is { savedProjection: null, savedAt: null }', () => {
+    expect(useBlueprintStore.getState().qdroBlueprint).toEqual({
+      savedProjection: null,
+      savedAt: null,
+    });
+  });
+
+  it('TC-BPSt-QDG-2: writeQDROToBlueprint stamps generatedAt on savedProjection; original fixture generatedAt stays null', () => {
+    useBlueprintStore.getState().writeQDROToBlueprint(QDRO_PROJ);
+    const { savedProjection } = useBlueprintStore.getState().qdroBlueprint;
+
+    // savedProjection has all original fields plus a stamped generatedAt
+    expect(savedProjection).toMatchObject({
+      perspective: QDRO_PROJ.perspective,
+      assets: QDRO_PROJ.assets,
+    });
+    expect(ISO_REGEX.test(savedProjection.generatedAt)).toBe(true);
+    expect(!Number.isNaN(Date.parse(savedProjection.generatedAt))).toBe(true);
+
+    // Original fixture is untouched
+    expect(QDRO_PROJ.generatedAt).toBeNull();
+  });
+
+  it('TC-BPSt-QDG-3: after writeQDROToBlueprint, savedAt is a valid ISO 8601 string', () => {
+    useBlueprintStore.getState().writeQDROToBlueprint(QDRO_PROJ);
+    const { savedAt } = useBlueprintStore.getState().qdroBlueprint;
+    expect(ISO_REGEX.test(savedAt)).toBe(true);
+    expect(!Number.isNaN(Date.parse(savedAt))).toBe(true);
+  });
+
+  it('TC-BPSt-QDG-4: savedAt === savedProjection.generatedAt (one timestamp, reused)', () => {
+    useBlueprintStore.getState().writeQDROToBlueprint(QDRO_PROJ);
+    const { savedProjection, savedAt } = useBlueprintStore.getState().qdroBlueprint;
+    expect(savedAt).toBe(savedProjection.generatedAt);
+  });
+
+  it('TC-BPSt-QDG-5: idempotency — second write fully overwrites first; no leftover keys from A', () => {
+    const PROJ_A = { ...QDRO_PROJ, perspective: 'alternate_payee' };
+    const PROJ_B = { perspective: 'participant', assets: [], generatedAt: null };
+
+    useBlueprintStore.getState().writeQDROToBlueprint(PROJ_A);
+    useBlueprintStore.getState().writeQDROToBlueprint(PROJ_B);
+
+    const { savedProjection, savedAt } = useBlueprintStore.getState().qdroBlueprint;
+
+    // B's fields are present
+    expect(savedProjection.perspective).toBe('participant');
+    expect(savedProjection.assets).toEqual([]);
+    // A's unique field (perspective was 'alternate_payee') is gone — fully overwritten
+    expect(savedProjection.perspective).not.toBe('alternate_payee');
+    // generatedAt aligns with savedAt
+    expect(savedProjection.generatedAt).toBe(savedAt);
+    // savedProjection deep-equals { ...PROJ_B, generatedAt: savedAt }
+    expect(savedProjection).toEqual({ ...PROJ_B, generatedAt: savedAt });
+  });
+
+  it('TC-BPSt-QDG-6: writeQDROToBlueprint is a function on the store', () => {
+    expect(typeof useBlueprintStore.getState().writeQDROToBlueprint).toBe('function');
+  });
+
+  it('TC-BPSt-QDG-7: persist round-trip — qdroBlueprint survives rehydrate', () => {
+    useBlueprintStore.getState().writeQDROToBlueprint(QDRO_PROJ);
+    const { savedProjection: projBefore, savedAt: savedAtBefore } = useBlueprintStore.getState().qdroBlueprint;
+
+    useBlueprintStore.persist.rehydrate();
+
+    const { savedProjection, savedAt } = useBlueprintStore.getState().qdroBlueprint;
+    expect(savedProjection).toEqual(projBefore);
+    expect(savedAt).toBe(savedAtBefore);
+  });
+
+  it('TC-BPSt-QDG-8: existing-user migration — missing qdroBlueprint in persisted blob defaults to initial slice', () => {
+    // Ensure something is in localStorage by calling an action
+    useBlueprintStore.getState().resetBlueprint();
+
+    const raw = JSON.parse(localStorage.getItem('clearpath-blueprint'));
+    delete raw.state.qdroBlueprint;
+    localStorage.setItem('clearpath-blueprint', JSON.stringify(raw));
+
+    useBlueprintStore.persist.rehydrate();
+
+    expect(useBlueprintStore.getState().qdroBlueprint).toEqual({
+      savedProjection: null,
+      savedAt: null,
+    });
+  });
+
+  it('TC-BPSt-QDG-9: whole-state persist includes qdroBlueprint (no partialize)', () => {
+    useBlueprintStore.getState().writeQDROToBlueprint(QDRO_PROJ);
+
+    const inMemory = useBlueprintStore.getState().qdroBlueprint;
+    const persisted = JSON.parse(localStorage.getItem('clearpath-blueprint')).state.qdroBlueprint;
+
+    expect(persisted).toEqual(inMemory);
+  });
+
+  it('TC-BPSt-QDG-10: resetBlueprint clears qdroBlueprint back to initial shape', () => {
+    useBlueprintStore.getState().writeQDROToBlueprint(QDRO_PROJ);
+    // Confirm it was written
+    expect(useBlueprintStore.getState().qdroBlueprint.savedProjection).not.toBeNull();
+
+    useBlueprintStore.getState().resetBlueprint();
+    expect(useBlueprintStore.getState().qdroBlueprint).toEqual({
+      savedProjection: null,
+      savedAt: null,
+    });
+  });
+
+  it('TC-BPSt-QDG-11: sibling isolation — s6 is unchanged after writeQDROToBlueprint', () => {
+    useBlueprintStore.getState().updatePensionValuation(PVA_FIXTURE);
+    const s6Before = useBlueprintStore.getState().sections.s6;
+
+    useBlueprintStore.getState().writeQDROToBlueprint(QDRO_PROJ);
+
+    const s6After = useBlueprintStore.getState().sections.s6;
+    expect(s6After).toEqual(s6Before);
+  });
+});
