@@ -12,6 +12,13 @@
  * Stale check is memoized via useMemo([m5State]) to avoid re-running the
  * projection selector on every render when m5Store is unchanged (PR5-6).
  *
+ * Staleness is determined by normalizing ONLY the saved side: the selector
+ * (selectQDROBlueprintProjection) always returns generatedAt: null by
+ * contract, so currentProjection is passed unmodified. writeQDROToBlueprint
+ * stamps savedProjection.generatedAt with an ISO string on write; that
+ * timestamp is normalized back to null before comparison so it never
+ * produces a false "stale" signal.
+ *
  * Rules of Hooks: ALL hooks are called unconditionally before the readiness
  * guard so no hook order violation occurs.
  *
@@ -38,21 +45,6 @@ function formatSavedAt(iso) {
   }).format(new Date(iso));
 }
 
-/**
- * Returns a copy of a projection object with `generatedAt` removed.
- * Used in the stale-check so timestamp differences don&#39;t trigger false
- * positives (the selector always produces generatedAt: null; the store action
- * stamps it on write).
- *
- * @param {object|null} projection
- * @returns {object|null}
- */
-function stripGeneratedAt(projection) {
-  if (projection == null) return projection;
-  const copy = { ...projection };
-  delete copy.generatedAt;
-  return copy;
-}
 
 const buttonStyle = {
   appearance: 'none',
@@ -80,13 +72,16 @@ export default function QDGBlueprintSavedCallout() {
   );
   const isStale = useMemo(() => {
     if (savedAt === null) return false;
-    // Strip generatedAt before comparison: the selector always returns
-    // generatedAt: null, while writeQDROToBlueprint stamps it. We compare
-    // only the decision data fields to detect real changes.
-    return !isProjectionEqual(
-      stripGeneratedAt(currentProjection),
-      stripGeneratedAt(savedProjection),
-    );
+    // selectQDROBlueprintProjection always yields generatedAt: null (its
+    // contract); writeQDROToBlueprint stamps savedProjection.generatedAt.
+    // Normalize ONLY the saved side back to the selector's null sentinel so
+    // the timestamp never produces a false "stale" signal. currentProjection
+    // is passed unmodified (it is already the canonical null-generatedAt form).
+    const normalizedSaved =
+      savedProjection == null
+        ? savedProjection
+        : { ...savedProjection, generatedAt: null };
+    return !isProjectionEqual(currentProjection, normalizedSaved);
   }, [currentProjection, savedProjection, savedAt]);
 
   // Guard AFTER all hooks — do not hoist above any hook call
