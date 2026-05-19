@@ -16,6 +16,9 @@
  * (GOLD_SOFT/PARCHMENT/PARCHMENT_DEEP) — no new tokens for those.
  * Spec: Roadmap/Architecture/Wizard-Design-Spec.md (midgrade-active).
  *
+ * Extension primitives v1.1 (2026-05-18): appended GOLD_TINT_SUBTLE
+ * (radio hover bg). Additive — zero edits to existing keys.
+ *
  * FONT_* tokens reference the --font-newsreader and --font-inter CSS
  * variables exposed by next/font/google in src/app/layout.tsx, with
  * literal-name and system fallbacks for safety during font load.
@@ -40,6 +43,11 @@ export const T = {
   GOLD_SOFT:   '#D4B16A',
   GOLD_TINT:   'rgba(200, 169, 110, 0.10)',
   GOLD_BORDER: 'rgba(200, 169, 110, 0.32)',
+
+  // Wizard extension primitives v1.1 (2026-05-18): radio hover bg.
+  // GOLD_TINT (0.10) too saturated for resting-hover; PARCHMENT_DEEP
+  // reads as selection state, not hover.
+  GOLD_TINT_SUBTLE: 'rgba(200, 169, 110, 0.04)',
 
   // Wizard-foundation (2026-05-17): 3px focus ring (Q-7 / §4.7)
   GOLD_FOCUS_RING: 'rgba(200, 169, 110, 0.20)',
