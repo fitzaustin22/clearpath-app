@@ -11,9 +11,9 @@
  *
  *  - dc                                   → QDROBranchDC (Full, m2Store)
  *  - ira                                  → QDROBranchIRA (Full, m2Store)
- *  - gov_civilian/military/state_municipal→ QDGConsultSpecialist callout
- *      (flag-only — full starter-Q capture is PR4; the locked
- *      consult-specialist copy shows now per Q-B5/D4)
+ *  - gov_civilian/military/state_municipal→ QDROFlagOnlyCapture
+ *      (flag-only — the consolidated §8.5.6 consult-specialist callout
+ *      plus the 3 starter-Q free-text inputs, PR4)
  *  - private_db                           → nothing (silent — §13 step 6,
  *      PVA-dependent; out of PR3 scope)
  *  - anything else                        → nothing (fail closed)
@@ -30,7 +30,7 @@
 
 import QDROBranchDC from './QDROBranchDC.jsx';
 import QDROBranchIRA from './QDROBranchIRA.jsx';
-import { QDGConsultSpecialist } from './callouts';
+import QDROFlagOnlyCapture from './QDROFlagOnlyCapture.jsx';
 
 const FLAG_ONLY = new Set(['gov_civilian', 'military', 'state_municipal']);
 
@@ -45,7 +45,7 @@ export default function QDROBranchCapture({ assetId, userRole, planType }) {
     return <QDROBranchIRA assetId={assetId} />;
   }
   if (FLAG_ONLY.has(planType)) {
-    return <QDGConsultSpecialist planType={planType} />;
+    return <QDROFlagOnlyCapture assetId={assetId} planType={planType} />;
   }
   // private_db → §13 step 6 (PVA-dependent); unknown → fail closed.
   return null;
