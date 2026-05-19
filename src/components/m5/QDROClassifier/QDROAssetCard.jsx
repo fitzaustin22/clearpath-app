@@ -31,6 +31,20 @@ import WizardRadio from '@/src/components/wizard/WizardRadio';
 import { PLAN_TYPE_RADIO_CHOICES, routePlanType } from '@/src/lib/qdro';
 import { T } from '@/src/lib/brand/tokens';
 import QDROStillNotSureDiagnostic from './QDROStillNotSureDiagnostic.jsx';
+import QDROBranchCapture from './QDROBranchCapture.jsx';
+import { QDGAttorneyReviewRequired } from './callouts';
+
+// Q-B7 — the attorney-review callout fires once an asset carries any
+// captured decision. The auto receiptMethod:null that participant-DC
+// persists (§8.5.4.2 / A11) is a normal state, NOT a captured decision;
+// it is naturally excluded since null values do not count.
+function hasCapturedDecision(decisions) {
+  return Object.values(decisions ?? {}).some((v) => {
+    if (v == null) return false;
+    if (typeof v === 'object') return Object.values(v).some((x) => x != null);
+    return true;
+  });
+}
 
 // §8.2.2 role definitions surfaced to the user.
 const ROLE_DEFINITIONS = {
@@ -302,6 +316,18 @@ export default function QDROAssetCard({ assetId, m2Item }) {
         />
         <QDROStillNotSureDiagnostic onAccept={applyPlanTypeFromChoice} />
       </WizardSection>
+
+      {hasCapturedDecision(asset.decisions) ? (
+        <div style={{ marginTop: '16px' }}>
+          <QDGAttorneyReviewRequired />
+        </div>
+      ) : null}
+
+      <QDROBranchCapture
+        assetId={assetId}
+        userRole={asset.userRole}
+        planType={asset.planType}
+      />
       </WizardCard>
     </div>
   );
