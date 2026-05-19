@@ -7,3 +7,5 @@ export { default as QDGNotLegalOrder } from './QDGNotLegalOrder.jsx';
 export { default as QDGAttorneyReviewRequired } from './QDGAttorneyReviewRequired.jsx';
 export { default as QDGConsultSpecialist } from './QDGConsultSpecialist.jsx';
 export { default as QDGPacketReadyCallout } from './QDGPacketReadyCallout.jsx';
+export { default as QDGBlueprintSavedCallout } from './QDGBlueprintSavedCallout.jsx';
+export { default as QDROCompletionCallout } from './QDROCompletionCallout.jsx';
