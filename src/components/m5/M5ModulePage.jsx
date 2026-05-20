@@ -184,6 +184,22 @@ export default function M5ModulePage({ userTier = 'essentials' }) {
       }}
     >
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
+        {/* Back link — restored from pre-PR1 M5 page; mirrors M4 line 290–303.
+            All-tier, static <Link>, no store reads. */}
+        <Link
+          href="/dashboard"
+          style={{
+            fontFamily: T.FONT_BODY,
+            fontSize: 14,
+            color: T.NAVY_55,
+            textDecoration: 'none',
+            display: 'inline-block',
+            marginBottom: 24,
+          }}
+        >
+          ← Back to Dashboard
+        </Link>
+
         <section>
           <h1
             style={{
@@ -197,6 +213,28 @@ export default function M5ModulePage({ userTier = 'essentials' }) {
           >
             M5 — Value What Matters
           </h1>
+
+          {/* Primary CTA — View Your Blueprint. Restored from pre-PR1 M5
+              page; mirrors M4 line 334–352. All-tier per M4 comment
+              "visible for all tiers"; static <Link>, no store reads. */}
+          <Link
+            href="/blueprint"
+            style={{
+              display: 'inline-block',
+              marginTop: 20,
+              backgroundColor: T.GOLD,
+              color: T.NAVY,
+              fontFamily: T.FONT_BODY,
+              fontWeight: 700,
+              fontSize: 15,
+              padding: '12px 24px',
+              borderRadius: 8,
+              textDecoration: 'none',
+              letterSpacing: 0.3,
+            }}
+          >
+            View Your Blueprint →
+          </Link>
         </section>
 
         <section style={{ marginTop: 24 }}>

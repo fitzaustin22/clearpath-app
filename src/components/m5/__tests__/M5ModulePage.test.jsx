@@ -179,6 +179,36 @@ describe('M5ModulePage — Full-state tool grid', () => {
   });
 });
 
+// ─── Restored nav affordances (mirror M4: all-tier, static <Link>s) ─────────
+//
+// "Back to Dashboard" and "View Your Blueprint" were shipped on the
+// pre-PR1 M5ModulePage and on M4ModulePage. PR1 dropped them; the original
+// strict-M2∧M4 app-wide-convention rule excluded them (M2 omits both).
+// Override per regression-recovery rationale: anything shipped on the
+// old M5 page that is still present on a sibling module page (M4) and has
+// no behavioral conflict should not be silently dropped — restore.
+//
+// Both are static <Link>s — no store reads, no tier dependency.
+describe('M5ModulePage — restored nav affordances', () => {
+  it.each(['navigator', 'signature', 'essentials', 'free'])(
+    'renders "← Back to Dashboard" link → /dashboard for %s tier',
+    (tier) => {
+      render(<M5ModulePage userTier={tier} />);
+      const link = screen.getByRole('link', { name: /Back to Dashboard/i });
+      expect(link).toHaveAttribute('href', '/dashboard');
+    },
+  );
+
+  it.each(['navigator', 'signature', 'essentials', 'free'])(
+    'renders "View Your Blueprint" CTA → /blueprint for %s tier',
+    (tier) => {
+      render(<M5ModulePage userTier={tier} />);
+      const link = screen.getByRole('link', { name: /View Your Blueprint/i });
+      expect(link).toHaveAttribute('href', '/blueprint');
+    },
+  );
+});
+
 // ─── Locked-state tool card grid (§1.4 / §4) ────────────────────────────────
 describe('M5ModulePage — Locked-state tool grid', () => {
   it.each(['free', 'essentials'])(
