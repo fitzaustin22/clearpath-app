@@ -4,10 +4,20 @@ import { useState, useEffect, useMemo } from 'react';
 import { useM5Store } from '@/src/stores/m5Store';
 import { clearPrePopSource } from '@/src/stores/prePopulate';
 import {
-  CurrencyInput, NumberInput, SelectField, RadioGroup, Toggle,
+  CurrencyInput, NumberInput, SelectField, RadioGroup,
   Banner, PrePopBadge, SectionCard,
 } from './_fields.jsx';
 import { NAVY, MUTED, SOURCE } from '../_styles.js';
+import WizardField from '@/src/components/wizard/WizardField';
+import WizardCheckbox from '@/src/components/wizard/WizardCheckbox';
+
+function parseCurrency(s) {
+  if (s === '' || s == null) return null;
+  const cleaned = String(s).replace(/[^0-9.]/g, '');
+  if (cleaned === '') return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? Math.max(0, n) : null;
+}
 
 const STATE_OPTIONS = [
   { value: 'VA',    label: 'Virginia (VA)' },
@@ -65,41 +75,59 @@ function PartyInputs({ partyKey, label, prePopSource, onClearPrePop }) {
         }}
       >
         {label}
-        {showPrePopBadge && <PrePopBadge text="from M3 Pay Stub Decoder — review or override" />}
       </div>
 
-      <CurrencyInput
-        id={`${partyKey}-gross`}
-        label="Gross monthly income"
-        helper={
-          isPartyA
-            ? 'Pre-fills from M3 Pay Stub Decoder when available.'
-            : 'Spouse income — typically sourced from discovery, financial affidavit, or W-2 disclosure.'
-        }
-        value={party.grossMonthly}
-        onChange={onGrossChange}
-      />
+      {showPrePopBadge && (
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 2 }}>
+          <PrePopBadge text="from M3 Pay Stub Decoder — review or override" />
+        </div>
+      )}
+      <div style={{ marginBottom: 14 }}>
+        <WizardField
+          label="Gross monthly income"
+          field={`${partyKey}.grossMonthly`}
+          value={party.grossMonthly}
+          onChange={(_, v) => onGrossChange(parseCurrency(v))}
+          numeric
+          prefix="$"
+          tooltip={
+            isPartyA
+              ? 'Pre-fills from M3 Pay Stub Decoder when available.'
+              : 'Spouse income — typically sourced from discovery, financial affidavit, or W-2 disclosure.'
+          }
+          data-testid={`${partyKey}-gross`}
+        />
+      </div>
 
-      <Toggle
-        id={`${partyKey}-impute`}
-        label="Impute earning capacity for this party"
-        value={party.imputeIncome}
-        onChange={(v) => {
-          const next = { imputeIncome: v };
-          if (!v) next.imputedEarningCapacity = null;
-          updateParty(next);
-        }}
-        helper="Imputed earning capacity is the income a party could reasonably earn — derived from prior earnings, vocational expert, or attorney guidance."
-      />
+      <div style={{ marginBottom: 14 }}>
+        <WizardCheckbox
+          label="Impute earning capacity for this party"
+          field={`${partyKey}.imputeIncome`}
+          value={party.imputeIncome}
+          onChange={(_, v) => {
+            const next = { imputeIncome: v };
+            if (!v) next.imputedEarningCapacity = null;
+            updateParty(next);
+          }}
+          variant="toggle"
+          tooltip="Imputed earning capacity is the income a party could reasonably earn — derived from prior earnings, vocational expert, or attorney guidance."
+          data-testid={`${partyKey}-impute`}
+        />
+      </div>
 
       {party.imputeIncome && (
-        <CurrencyInput
-          id={`${partyKey}-imputed`}
-          label="Imputed earning capacity (monthly)"
-          helper="Used in place of actual gross at calc entry."
-          value={party.imputedEarningCapacity}
-          onChange={(v) => updateParty({ imputedEarningCapacity: v })}
-        />
+        <div style={{ marginBottom: 14 }}>
+          <WizardField
+            label="Imputed earning capacity (monthly)"
+            field={`${partyKey}.imputedEarningCapacity`}
+            value={party.imputedEarningCapacity}
+            onChange={(_, v) => updateParty({ imputedEarningCapacity: parseCurrency(v) })}
+            numeric
+            prefix="$"
+            tooltip="Used in place of actual gross at calc entry."
+            data-testid={`${partyKey}-imputed`}
+          />
+        </div>
       )}
     </div>
   );
