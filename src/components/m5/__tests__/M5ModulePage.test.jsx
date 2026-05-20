@@ -92,5 +92,63 @@ describe('M5ModulePage — tier state selection', () => {
   );
 });
 
-// Suppress lint warning about unused helper until tool-grid commit uses it.
+// ─── §1.6 verbatim tool copy (used in both states) ──────────────────────────
+const TOOL_COPY = [
+  {
+    title: 'Support Estimator',
+    line: 'Estimate state-specific child and spousal support — pendente lite or post-divorce.',
+    fullHref: '/dev/m5-support-estimator',
+  },
+  {
+    title: 'Pension Valuation Analyzer',
+    line: 'Value a defined-benefit pension at present value, with marital-portion and sensitivity ranges.',
+    fullHref: '/dev/m5/pva',
+  },
+  {
+    title: 'QDRO Decision Guide',
+    line: 'Map how each retirement account divides, and produce an attorney handoff packet.',
+    fullHref: '/modules/m5/qdro',
+  },
+  {
+    title: 'Home Decision Analyzer',
+    line: 'Compare keep, sell, and deferred-sale outcomes for the marital home across 3-, 6-, and 10-year horizons.',
+    fullHref: '/modules/m5/home-decision',
+  },
+];
+
+// ─── Full-state tool card grid (§1.4 / §4) ──────────────────────────────────
+describe('M5ModulePage — Full-state tool grid', () => {
+  it('renders all four tool cards in §2 inventory order (SE, PVA, QDRO, HDA)', () => {
+    render(<M5ModulePage userTier="navigator" />);
+    const titles = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
+    expect(titles).toEqual(TOOL_COPY.map((t) => t.title));
+  });
+
+  it.each(TOOL_COPY)(
+    'renders the verbatim §1.6 description for $title',
+    ({ line }) => {
+      render(<M5ModulePage userTier="navigator" />);
+      expect(screen.getByText(line)).toBeInTheDocument();
+    },
+  );
+
+  it.each(TOOL_COPY)(
+    'wires the "Open" button on $title to $fullHref',
+    ({ title, fullHref }) => {
+      render(<M5ModulePage userTier="navigator" />);
+      const heading = screen.getByRole('heading', { level: 2, name: title });
+      const card = heading.closest('[data-testid="m5-tool-card"]');
+      expect(card).toBeTruthy();
+      const link = within(card).getByRole('link', { name: /Open/i });
+      expect(link).toHaveAttribute('href', fullHref);
+    },
+  );
+
+  it('renders exactly four tool cards', () => {
+    render(<M5ModulePage userTier="navigator" />);
+    expect(screen.getAllByTestId('m5-tool-card')).toHaveLength(4);
+  });
+});
+
+// Suppress lint warning about helper not consumed yet.
 void m5Links;
