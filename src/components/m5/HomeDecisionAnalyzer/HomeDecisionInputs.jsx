@@ -5,6 +5,7 @@ import { T } from '@/src/lib/brand/tokens';
 import WizardField from '@/src/components/wizard/WizardField.jsx';
 import WizardSelector from '@/src/components/wizard/WizardSelector.jsx';
 import WizardCheckbox from '@/src/components/wizard/WizardCheckbox.jsx';
+import NumericFieldBridge from '@/src/components/m5/wizard-bridge/NumericFieldBridge.jsx';
 import RefiRateInput from './RefiRateInput.jsx';
 
 /**
@@ -142,14 +143,6 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
   });
   const toggle = (k) => setOpen((s) => ({ ...s, [k]: !s[k] }));
 
-  // Bridge: WizardField emits (field, rawString); preserve NumberField's
-  // null-discipline conversion before writing through to onChange.
-  const handleNumeric = (field, raw) => {
-    if (raw === '') return onChange(field, null);
-    const n = Number(raw);
-    onChange(field, Number.isFinite(n) ? n : null);
-  };
-
   // State USPS code: WizardField has no maxLength prop; preserve the old
   // TextField's auto-uppercase + 2-char cap + empty→null discipline here.
   const handleStateChange = (field, raw) => {
@@ -161,103 +154,103 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
     <div data-testid="hda-inputs" style={{ fontFamily: T.FONT_BODY }}>
       {/* ── §9.3.1 Shared inputs (always visible) ── */}
       <FieldSection title="Shared inputs" testid="hda-inputs-shared">
-        <WizardField
+        <NumericFieldBridge
           field="currentFMV"
           label="Current home value (FMV estimate)"
           tooltip="Your best estimate. For high-stakes scenarios, an appraisal may be warranted."
           prefix="$"
-          numeric
           value={inputs.currentFMV ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-currentFMV"
         />
-        <WizardField
+        <NumericFieldBridge
           field="existingMortgageBalance"
           label="Existing mortgage balance ($)"
           tooltip="Pre-populated from your M2 marital estate inventory when available."
           prefix="$"
-          numeric
           value={inputs.existingMortgageBalance ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-existingMortgageBalance"
         />
-        <WizardField
+        <NumericFieldBridge
           field="existingMortgageRate"
           label="Existing mortgage rate (% APR)"
           tooltip="Manual entry. Used for interim cashflow and deferred-sale continuity."
           suffix="%"
-          numeric
           value={inputs.existingMortgageRate ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-existingMortgageRate"
         />
-        <WizardField
+        <NumericFieldBridge
           field="existingMortgageRemainingTermMonths"
           label="Existing mortgage remaining term (months)"
           tooltip="Defaults to 360 (30 years) if unknown."
-          numeric
           value={inputs.existingMortgageRemainingTermMonths ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-existingMortgageRemainingTermMonths"
         />
-        <WizardField
+        <NumericFieldBridge
           field="monthlyPropertyTax"
           label="Monthly property tax ($)"
           tooltip="Pre-populated from M3 budget modeler when available."
           prefix="$"
-          numeric
           value={inputs.monthlyPropertyTax ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-monthlyPropertyTax"
         />
-        <WizardField
+        <NumericFieldBridge
           field="monthlyInsurance"
           label="Monthly home insurance ($)"
           tooltip="Pre-populated from M3 budget modeler when available."
           prefix="$"
-          numeric
           value={inputs.monthlyInsurance ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-monthlyInsurance"
         />
-        <WizardField
+        <NumericFieldBridge
           field="monthlyHOA"
           label="Monthly HOA ($)"
           tooltip="Default 0 if no source data."
           prefix="$"
-          numeric
           value={inputs.monthlyHOA ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-monthlyHOA"
         />
-        <WizardField
+        <NumericFieldBridge
           field="userPostDivorceGrossMonthlyIncome"
           label="Post-divorce gross monthly income ($)"
           tooltip="Pre-populated from M1 Budget Gap (household × your share %). DTI denominator."
           prefix="$"
-          numeric
           value={inputs.userPostDivorceGrossMonthlyIncome ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-userPostDivorceGrossMonthlyIncome"
         />
-        <WizardField
+        <NumericFieldBridge
           field="userTotalMonthlyDebtPayments"
           label="Other monthly debt payments ($)"
           tooltip="Non-housing debt (auto, student loans, cards). Manual entry at v1. Used for back-end DTI."
           prefix="$"
-          numeric
           value={inputs.userTotalMonthlyDebtPayments ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-userTotalMonthlyDebtPayments"
         />
-        <WizardField
+        <NumericFieldBridge
           field="startingLiquidCash"
           label="Starting liquid cash ($)"
           tooltip="Checking + savings + non-retirement brokerage. Pre-populated from M2. Retirement excluded."
           prefix="$"
-          numeric
           value={inputs.startingLiquidCash ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-startingLiquidCash"
         />
         <WizardSelector
@@ -278,31 +271,31 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
           onChange={handleStateChange}
           data-testid="hda-input-userState"
         />
-        <WizardField
+        <NumericFieldBridge
           field="homeAcquisitionYear"
           label="Home acquisition year"
           tooltip="Required for the deferred-sale ownership test and sell-now use-test calibration."
-          numeric
           value={inputs.homeAcquisitionYear ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-homeAcquisitionYear"
         />
-        <WizardField
+        <NumericFieldBridge
           field="propertyAppreciationRateReal"
           label="Real property appreciation rate (fraction)"
           tooltip="Real-dollar terms. Default 0 (≈ 2.5% nominal). 0.01 = 1% real."
-          numeric
           value={inputs.propertyAppreciationRateReal ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-propertyAppreciationRateReal"
         />
-        <WizardField
+        <NumericFieldBridge
           field="spouseEquityShare"
           label="Spouse equity share (fraction 0–1)"
           tooltip="Default 0.5 (equal split). 0.5 = spouse receives 50% of net equity."
-          numeric
           value={inputs.spouseEquityShare ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-spouseEquityShare"
         />
       </FieldSection>
@@ -314,14 +307,14 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
         expanded={open.keepAndRefi}
         onToggle={() => toggle('keepAndRefi')}
       >
-        <WizardField
+        <NumericFieldBridge
           field="buyoutAmount"
           label="Buyout amount ($)"
           tooltip="Defaults to (FMV − mortgage) × spouse equity share if left blank. Override per settlement."
           prefix="$"
-          numeric
           value={inputs.buyoutAmount ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-buyoutAmount"
         />
         <RefiRateInput
@@ -330,13 +323,13 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
           provenance={inputs.refiRateProvenance}
           onChange={onChange}
         />
-        <WizardField
+        <NumericFieldBridge
           field="refiClosingCostsPercent"
           label="Refi closing costs (fraction)"
           tooltip="State-aware default (2–5%). 0.03 = 3%. Distinct from sale closing costs."
-          numeric
           value={inputs.refiClosingCostsPercent ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-refiClosingCostsPercent"
         />
         <WizardSelector
@@ -356,22 +349,22 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
         expanded={open.sellNow}
         onToggle={() => toggle('sellNow')}
       >
-        <WizardField
+        <NumericFieldBridge
           field="realtorCommissionPercent"
           label="Realtor commission (fraction)"
           tooltip="Default 0.05 (5%). Shared with deferred-sale per the v1 store schema."
-          numeric
           value={inputs.realtorCommissionPercent ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-realtorCommissionPercent"
         />
-        <WizardField
+        <NumericFieldBridge
           field="saleClosingCostsPercent"
           label="Sale closing costs (fraction)"
           tooltip="Default 0.02 (2%). Shared with deferred-sale per the v1 store schema."
-          numeric
           value={inputs.saleClosingCostsPercent ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-saleClosingCostsPercent"
         />
         <WizardSelector
@@ -384,13 +377,13 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
           placeholder="— select —"
           data-testid="hda-input-expectedFilingStatusAtSellNow"
         />
-        <WizardField
+        <NumericFieldBridge
           field="userMovedOutYearsAgo"
           label="Years since you moved out"
           tooltip="Default 0 (currently occupying). Fractional allowed. >3 at sale triggers a §121 use-test callout."
-          numeric
           value={inputs.userMovedOutYearsAgo ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-userMovedOutYearsAgo"
         />
       </Accordion>
@@ -401,34 +394,36 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
         expanded={open.deferredSale}
         onToggle={() => toggle('deferredSale')}
       >
-        <WizardField
+        <NumericFieldBridge
           field="occupancyYears"
           label="Years until trigger sale"
           tooltip="Typically: youngest child's high-school graduation year − current year."
-          numeric
           value={inputs.occupancyYears ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-occupancyYears"
         />
-        <WizardField
+        <NumericFieldBridge
           field="interimCostSharePct"
           label="Your interim cost share (%)"
           tooltip="Percent 0–100 (50 = 50%). Interim costs = mortgage P&I + tax + insurance + HOA."
           suffix="%"
-          numeric
           value={inputs.interimCostSharePct ?? ''}
-          onChange={handleNumeric}
+          onChange={onChange}
+          parser="number"
           data-testid="hda-input-interimCostSharePct"
         />
-        <WizardCheckbox
-          field="stressTestUserPays100Pct"
-          variant="checkbox"
-          label="Stress test: assume I pay 100% of interim costs"
-          tooltip="Runs a parallel projection assuming you cover all interim costs."
-          value={inputs.stressTestUserPays100Pct}
-          onChange={onChange}
-          data-testid="hda-input-stressTestUserPays100Pct"
-        />
+        <div data-testid="hda-stress-test-row" style={{ marginBottom: 14 }}>
+          <WizardCheckbox
+            field="stressTestUserPays100Pct"
+            variant="checkbox"
+            label="Stress test: assume I pay 100% of interim costs"
+            tooltip="Runs a parallel projection assuming you cover all interim costs."
+            value={inputs.stressTestUserPays100Pct}
+            onChange={onChange}
+            data-testid="hda-input-stressTestUserPays100Pct"
+          />
+        </div>
         <WizardSelector
           field="deferredSaleMortgageContinuity"
           label="Mortgage continuity at deferred sale"
