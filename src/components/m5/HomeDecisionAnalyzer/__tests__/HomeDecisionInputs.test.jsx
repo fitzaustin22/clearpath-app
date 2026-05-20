@@ -180,9 +180,8 @@ describe('HomeDecisionInputs', () => {
         />,
       );
       fireEvent.click(screen.getByTestId('hda-scenario-keepAndRefi-toggle'));
-      fireEvent.change(screen.getByTestId('hda-input-refiRate'), {
-        target: { value: '0.0725' },
-      });
+      const rateInput = screen.getByTestId('hda-input-refiRate').querySelector('input');
+      fireEvent.change(rateInput, { target: { value: '0.0725' } });
       expect(onChange).toHaveBeenCalledWith('refiRate', 0.0725);
       expect(onChange).toHaveBeenCalledWith('refiRateProvenance', 'user-quoted');
     });

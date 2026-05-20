@@ -438,12 +438,15 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
         expanded={open.keepAndRefi}
         onToggle={() => toggle('keepAndRefi')}
       >
-        <NumberField
-          id="hda-input-buyoutAmount"
+        <WizardField
+          field="buyoutAmount"
           label="Buyout amount ($)"
-          helper="Defaults to (FMV − mortgage) × spouse equity share if left blank. Override per settlement."
-          value={inputs.buyoutAmount}
-          onChange={(v) => onChange('buyoutAmount', v)}
+          tooltip="Defaults to (FMV − mortgage) × spouse equity share if left blank. Override per settlement."
+          prefix="$"
+          numeric
+          value={inputs.buyoutAmount ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-buyoutAmount"
         />
         <RefiRateInput
           value={inputs.refiRate}
@@ -451,23 +454,23 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
           provenance={inputs.refiRateProvenance}
           onChange={onChange}
         />
-        <NumberField
-          id="hda-input-refiClosingCostsPercent"
+        <WizardField
+          field="refiClosingCostsPercent"
           label="Refi closing costs (fraction)"
-          helper="State-aware default (2–5%). 0.03 = 3%. Distinct from sale closing costs."
-          value={inputs.refiClosingCostsPercent}
-          onChange={(v) => onChange('refiClosingCostsPercent', v)}
-          min={0}
-          step={0.005}
+          tooltip="State-aware default (2–5%). 0.03 = 3%. Distinct from sale closing costs."
+          numeric
+          value={inputs.refiClosingCostsPercent ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-refiClosingCostsPercent"
         />
-        <SelectField
-          id="hda-input-refiTerm"
+        <WizardSelector
+          field="refiTerm"
           label="Refi term"
-          helper="v1 lock: 30-year fixed conventional only."
+          tooltip="v1 lock: 30-year fixed conventional only."
           value={inputs.refiTerm ?? '30-year'}
-          onChange={(v) => onChange('refiTerm', v ?? '30-year')}
+          onChange={onChange}
           options={REFI_TERM_OPTIONS}
-          allowEmpty={false}
+          data-testid="hda-input-refiTerm"
         />
       </Accordion>
 

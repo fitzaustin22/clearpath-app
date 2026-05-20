@@ -30,39 +30,11 @@ import {
   REFI_RATE_BY_CREDIT_BAND,
   BANDED_REFI_RATE_BUILD_DATE,
 } from '@/src/lib/homeDecision';
+import WizardField from '@/src/components/wizard/WizardField.jsx';
 
 const BANDED_PREFIX = 'banded-default-';
 
 // ── Style objects (mirrors HomeDecisionInputs idiom: T.* tokens, no hardcoded hex) ──
-
-const LABEL_STYLE = {
-  display: 'block',
-  fontFamily: T.FONT_BODY,
-  fontSize: 14,
-  fontWeight: 600,
-  color: T.NAVY,
-  marginBottom: 6,
-};
-
-const INPUT_STYLE = {
-  width: '100%',
-  padding: '10px 12px',
-  fontFamily: T.FONT_BODY,
-  fontSize: 16,
-  color: T.NAVY,
-  border: `1px solid ${T.NAVY_12}`,
-  borderRadius: 6,
-  backgroundColor: T.CARD,
-  outline: 'none',
-  boxSizing: 'border-box',
-};
-
-const HELPER_STYLE = {
-  fontFamily: T.FONT_BODY,
-  fontSize: 13,
-  color: T.NAVY_55,
-  margin: '6px 0 0',
-};
 
 const FIELD_WRAP = { marginBottom: 14 };
 
@@ -136,13 +108,12 @@ export default function RefiRateInput({ value, creditBand, provenance, onChange,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creditBand, provenance]);
 
-  function handleInputChange(e) {
-    const v = e.target.value;
-    if (v === '') {
+  function handleRateChange(field, raw) {
+    if (raw === '') {
       // Null discipline: empty string → null, never coerce to 0.
       onChange('refiRate', null);
     } else {
-      const n = Number(v);
+      const n = Number(raw);
       onChange('refiRate', Number.isFinite(n) ? n : null);
     }
     // Dual-write provenance on every user keystroke.
@@ -158,26 +129,15 @@ export default function RefiRateInput({ value, creditBand, provenance, onChange,
 
   return (
     <div style={FIELD_WRAP}>
-      <label htmlFor="hda-input-refiRate" style={LABEL_STYLE}>
-        Refi rate (APR)
-      </label>
-
-      <input
-        id="hda-input-refiRate"
+      <WizardField
+        field="refiRate"
+        label="Refi rate (APR)"
+        tooltip="Decimal form: 0.0625 = 6.25% APR. Enter your lender-quoted rate."
+        numeric
+        value={value ?? ''}
+        onChange={handleRateChange}
         data-testid="hda-input-refiRate"
-        type="number"
-        inputMode="decimal"
-        min={0}
-        step="any"
-        placeholder="Enter your quoted rate (% APR)"
-        value={value == null ? '' : value}
-        onChange={handleInputChange}
-        style={INPUT_STYLE}
       />
-
-      <p style={HELPER_STYLE}>
-        Decimal form: 0.0625 = 6.25% APR. Enter your lender-quoted rate.
-      </p>
 
       {/* Opt-in link: only render when creditBand is one of the 4 valid bands */}
       {VALID_CREDIT_BANDS.has(creditBand) && (
