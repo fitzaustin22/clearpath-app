@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { Lock } from 'lucide-react';
 import { T } from '@/src/lib/brand/tokens';
 import { hasAccess } from '@/src/lib/plans';
 
@@ -49,7 +50,7 @@ function useIsDesktop() {
   return isDesktop;
 }
 
-function ToolCard({ title, line, href }) {
+function ToolCard({ title, line, href, locked }) {
   return (
     <div
       data-testid="m5-tool-card"
@@ -62,8 +63,24 @@ function ToolCard({ title, line, href }) {
         flexDirection: 'column',
         gap: 12,
         boxShadow: T.SHADOW_CARD,
+        opacity: locked ? 0.55 : 1,
+        position: 'relative',
       }}
     >
+      {locked && (
+        <div
+          data-testid="m5-tool-card-lock"
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            top: 16,
+            right: 16,
+            color: T.NAVY_55,
+          }}
+        >
+          <Lock size={18} />
+        </div>
+      )}
       <h2
         style={{
           fontFamily: T.FONT_DISPLAY,
@@ -72,6 +89,7 @@ function ToolCard({ title, line, href }) {
           color: T.NAVY,
           margin: 0,
           lineHeight: 1.3,
+          paddingRight: locked ? 28 : 0,
         }}
       >
         {title}
@@ -89,22 +107,39 @@ function ToolCard({ title, line, href }) {
         {line}
       </p>
       <div>
-        <Link
-          href={href}
-          style={{
-            display: 'inline-block',
-            backgroundColor: T.NAVY,
-            color: T.CARD,
-            fontFamily: T.FONT_BODY,
-            fontWeight: 600,
-            fontSize: 14,
-            padding: '8px 18px',
-            borderRadius: 6,
-            textDecoration: 'none',
-          }}
-        >
-          Open
-        </Link>
+        {locked ? (
+          <span
+            style={{
+              display: 'inline-block',
+              backgroundColor: T.NAVY_12,
+              color: T.NAVY_55,
+              fontFamily: T.FONT_BODY,
+              fontWeight: 600,
+              fontSize: 14,
+              padding: '8px 18px',
+              borderRadius: 6,
+            }}
+          >
+            Locked
+          </span>
+        ) : (
+          <Link
+            href={href}
+            style={{
+              display: 'inline-block',
+              backgroundColor: T.NAVY,
+              color: T.CARD,
+              fontFamily: T.FONT_BODY,
+              fontWeight: 600,
+              fontSize: 14,
+              padding: '8px 18px',
+              borderRadius: 6,
+              textDecoration: 'none',
+            }}
+          >
+            Open
+          </Link>
+        )}
       </div>
     </div>
   );
@@ -161,42 +196,41 @@ export default function M5ModulePage({ userTier = 'essentials' }) {
           </p>
         </section>
 
-        {isFullAccess && (
-          <section style={{ marginTop: 40 }}>
-            <div style={gridStyle}>
-              {TOOLS.map((tool) => (
-                <ToolCard
-                  key={tool.id}
-                  title={tool.title}
-                  line={tool.line}
-                  href={tool.href}
-                />
-              ))}
-            </div>
-          </section>
-        )}
+        <section style={{ marginTop: 40 }}>
+          <div style={gridStyle}>
+            {TOOLS.map((tool) => (
+              <ToolCard
+                key={tool.id}
+                title={tool.title}
+                line={tool.line}
+                href={tool.href}
+                locked={!isFullAccess}
+              />
+            ))}
+          </div>
 
-        {!isFullAccess && (
-          <section style={{ marginTop: 32 }}>
-            <Link
-              href="/upgrade"
-              style={{
-                display: 'inline-block',
-                backgroundColor: T.GOLD,
-                color: T.NAVY,
-                fontFamily: T.FONT_BODY,
-                fontWeight: 700,
-                fontSize: 15,
-                padding: '12px 24px',
-                borderRadius: 8,
-                textDecoration: 'none',
-                letterSpacing: 0.3,
-              }}
-            >
-              Unlock with Full Access
-            </Link>
-          </section>
-        )}
+          {!isFullAccess && (
+            <div style={{ marginTop: 24 }}>
+              <Link
+                href="/upgrade"
+                style={{
+                  display: 'inline-block',
+                  backgroundColor: T.GOLD,
+                  color: T.NAVY,
+                  fontFamily: T.FONT_BODY,
+                  fontWeight: 700,
+                  fontSize: 15,
+                  padding: '12px 24px',
+                  borderRadius: 8,
+                  textDecoration: 'none',
+                  letterSpacing: 0.3,
+                }}
+              >
+                Unlock with Full Access
+              </Link>
+            </div>
+          )}
+        </section>
 
         <footer
           role="contentinfo"

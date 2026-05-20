@@ -150,5 +150,57 @@ describe('M5ModulePage — Full-state tool grid', () => {
   });
 });
 
-// Suppress lint warning about helper not consumed yet.
-void m5Links;
+// ─── Locked-state tool card grid (§1.4 / §4) ────────────────────────────────
+describe('M5ModulePage — Locked-state tool grid', () => {
+  it.each(['free', 'essentials'])(
+    'renders all four tool cards (greyed) for %s',
+    (tier) => {
+      render(<M5ModulePage userTier={tier} />);
+      expect(screen.getAllByTestId('m5-tool-card')).toHaveLength(4);
+      for (const { title } of TOOL_COPY) {
+        expect(screen.getByRole('heading', { level: 2, name: title })).toBeInTheDocument();
+      }
+    },
+  );
+
+  it.each(TOOL_COPY)(
+    'renders the same verbatim line for $title in Locked state',
+    ({ line }) => {
+      render(<M5ModulePage userTier="essentials" />);
+      expect(screen.getByText(line)).toBeInTheDocument();
+    },
+  );
+
+  it('Locked cards are not clickable — no Open links inside the cards', () => {
+    render(<M5ModulePage userTier="essentials" />);
+    for (const card of screen.getAllByTestId('m5-tool-card')) {
+      expect(within(card).queryByRole('link', { name: /Open/i })).toBeNull();
+    }
+  });
+
+  it('Locked cards render a lock icon', () => {
+    render(<M5ModulePage userTier="essentials" />);
+    const cards = screen.getAllByTestId('m5-tool-card');
+    expect(cards).toHaveLength(4);
+    for (const card of cards) {
+      expect(within(card).getByTestId('m5-tool-card-lock')).toBeInTheDocument();
+    }
+  });
+
+  it('Full state has no lock icons', () => {
+    render(<M5ModulePage userTier="navigator" />);
+    expect(screen.queryAllByTestId('m5-tool-card-lock')).toHaveLength(0);
+  });
+
+  it('Locked grid surfaces a single "Unlock with Full Access" button linking to /upgrade', () => {
+    render(<M5ModulePage userTier="essentials" />);
+    const upsell = screen.getByRole('link', { name: /Unlock with Full Access/i });
+    expect(upsell).toHaveAttribute('href', '/upgrade');
+  });
+
+  it('Locked cards do not link to any tool route', () => {
+    render(<M5ModulePage userTier="essentials" />);
+    const links = m5Links();
+    expect(links).toHaveLength(0);
+  });
+});
