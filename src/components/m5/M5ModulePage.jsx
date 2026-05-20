@@ -10,14 +10,14 @@ const EDU_PARAGRAPH =
   "Some of the most consequential assets in a divorce can't be valued at face — a pension, the marital home, a support obligation, the mechanics of dividing a retirement account without triggering tax or penalty. Each takes real analysis to understand what it's actually worth and how a given choice plays out over time. The four tools in this module give you CDFA-grade valuations and decision frameworks for exactly these assets, so you negotiate from clarity rather than guesswork.";
 
 // §1.6 verbatim tool inventory — order locked per §2 (SE, PVA, QDRO, HDA).
-// SE and PVA routes carried as debt — currently /dev/* (Clerk-gated), to be
-// migrated to /modules/m5/* in a follow-up. Do not rename in PR1.
+// PVA route still carried as debt at /dev/* (Clerk-gated); SE moved to
+// /modules/m5/support-estimator in PR-B.
 const TOOLS = [
   {
     id: 'support-estimator',
     title: 'Support Estimator',
     line: 'Estimate state-specific child and spousal support — pendente lite or post-divorce.',
-    href: '/dev/m5-support-estimator',
+    href: '/modules/m5/support-estimator',
   },
   {
     id: 'pension-valuation',

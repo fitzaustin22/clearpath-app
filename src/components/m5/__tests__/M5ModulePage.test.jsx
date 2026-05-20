@@ -126,7 +126,7 @@ const TOOL_COPY = [
   {
     title: 'Support Estimator',
     line: 'Estimate state-specific child and spousal support — pendente lite or post-divorce.',
-    fullHref: '/dev/m5-support-estimator',
+    fullHref: '/modules/m5/support-estimator',
   },
   {
     title: 'Pension Valuation Analyzer',
