@@ -4,7 +4,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { useM5Store } from '@/src/stores/m5Store';
 import { clearPrePopSource } from '@/src/stores/prePopulate';
 import {
-  CurrencyInput,
   Banner, PrePopBadge, SectionCard,
 } from './_fields.jsx';
 import { NAVY, MUTED, SOURCE } from '../_styles.js';
@@ -298,31 +297,51 @@ function FullWorksheetCascade() {
         >
           {label}
         </div>
-        <CurrencyInput
-          id={`${partyKey}-fed-tax`}
-          label="Federal income tax (monthly)"
-          value={cascade.fedTax}
-          onChange={(v) => updateCascade({ fedTax: v ?? 0 })}
-        />
-        <CurrencyInput
-          id={`${partyKey}-state-tax`}
-          label="State income tax (monthly)"
-          value={cascade.stateTax}
-          onChange={(v) => updateCascade({ stateTax: v ?? 0 })}
-        />
-        <CurrencyInput
-          id={`${partyKey}-fica`}
-          label="FICA — Social Security + Medicare (monthly)"
-          helper="Baseline 7.65% of gross; override if alternative withholding applies."
-          value={cascade.fica}
-          onChange={(v) => updateCascade({ fica: v ?? 0 })}
-        />
-        <CurrencyInput
-          id={`${partyKey}-other-deductions`}
-          label="Other mandatory deductions (monthly)"
-          value={cascade.otherDeductions}
-          onChange={(v) => updateCascade({ otherDeductions: v ?? 0 })}
-        />
+        <div style={{ marginBottom: 14 }}>
+          <WizardField
+            label="Federal income tax (monthly)"
+            field={`${partyKey}.fedTax`}
+            value={cascade.fedTax}
+            onChange={(_, v) => updateCascade({ fedTax: parseCurrency(v) ?? 0 })}
+            numeric
+            prefix="$"
+            data-testid={`${partyKey}-fed-tax`}
+          />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <WizardField
+            label="State income tax (monthly)"
+            field={`${partyKey}.stateTax`}
+            value={cascade.stateTax}
+            onChange={(_, v) => updateCascade({ stateTax: parseCurrency(v) ?? 0 })}
+            numeric
+            prefix="$"
+            data-testid={`${partyKey}-state-tax`}
+          />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <WizardField
+            label="FICA — Social Security + Medicare (monthly)"
+            field={`${partyKey}.fica`}
+            value={cascade.fica}
+            onChange={(_, v) => updateCascade({ fica: parseCurrency(v) ?? 0 })}
+            numeric
+            prefix="$"
+            tooltip="Baseline 7.65% of gross; override if alternative withholding applies."
+            data-testid={`${partyKey}-fica`}
+          />
+        </div>
+        <div style={{ marginBottom: 14 }}>
+          <WizardField
+            label="Other mandatory deductions (monthly)"
+            field={`${partyKey}.otherDeductions`}
+            value={cascade.otherDeductions}
+            onChange={(_, v) => updateCascade({ otherDeductions: parseCurrency(v) ?? 0 })}
+            numeric
+            prefix="$"
+            data-testid={`${partyKey}-other-deductions`}
+          />
+        </div>
         <div
           style={{
             padding: '10px 12px',
