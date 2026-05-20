@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { T } from '@/src/lib/brand/tokens';
 import WizardField from '@/src/components/wizard/WizardField.jsx';
 import WizardSelector from '@/src/components/wizard/WizardSelector.jsx';
+import WizardCheckbox from '@/src/components/wizard/WizardCheckbox.jsx';
 import RefiRateInput from './RefiRateInput.jsx';
 
 /**
@@ -525,40 +526,42 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
         expanded={open.deferredSale}
         onToggle={() => toggle('deferredSale')}
       >
-        <NumberField
-          id="hda-input-occupancyYears"
+        <WizardField
+          field="occupancyYears"
           label="Years until trigger sale"
-          helper="Typically: youngest child's high-school graduation year − current year."
-          value={inputs.occupancyYears}
-          onChange={(v) => onChange('occupancyYears', v)}
-          min={0}
-          step={0.5}
+          tooltip="Typically: youngest child's high-school graduation year − current year."
+          numeric
+          value={inputs.occupancyYears ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-occupancyYears"
         />
-        <NumberField
-          id="hda-input-interimCostSharePct"
+        <WizardField
+          field="interimCostSharePct"
           label="Your interim cost share (%)"
-          helper="Percent 0–100 (50 = 50%). Interim costs = mortgage P&I + tax + insurance + HOA."
-          value={inputs.interimCostSharePct}
-          onChange={(v) => onChange('interimCostSharePct', v)}
-          min={0}
-          max={100}
-          step={1}
+          tooltip="Percent 0–100 (50 = 50%). Interim costs = mortgage P&I + tax + insurance + HOA."
+          suffix="%"
+          numeric
+          value={inputs.interimCostSharePct ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-interimCostSharePct"
         />
-        <CheckboxField
-          id="hda-input-stressTestUserPays100Pct"
+        <WizardCheckbox
+          field="stressTestUserPays100Pct"
+          variant="checkbox"
           label="Stress test: assume I pay 100% of interim costs"
-          helper="Runs a parallel projection assuming you cover all interim costs."
-          checked={inputs.stressTestUserPays100Pct}
-          onChange={(v) => onChange('stressTestUserPays100Pct', v)}
+          tooltip="Runs a parallel projection assuming you cover all interim costs."
+          value={inputs.stressTestUserPays100Pct}
+          onChange={onChange}
+          data-testid="hda-input-stressTestUserPays100Pct"
         />
-        <SelectField
-          id="hda-input-deferredSaleMortgageContinuity"
+        <WizardSelector
+          field="deferredSaleMortgageContinuity"
           label="Mortgage continuity at deferred sale"
-          helper="Default: refinance at current rate. Assumable for FHA/VA/USDA edge cases."
+          tooltip="Default: refinance at current rate. Assumable for FHA/VA/USDA edge cases."
           value={inputs.deferredSaleMortgageContinuity ?? 'refi-at-current'}
-          onChange={(v) => onChange('deferredSaleMortgageContinuity', v ?? 'refi-at-current')}
+          onChange={onChange}
           options={MORTGAGE_CONTINUITY_OPTIONS}
-          allowEmpty={false}
+          data-testid="hda-input-deferredSaleMortgageContinuity"
         />
       </Accordion>
     </div>

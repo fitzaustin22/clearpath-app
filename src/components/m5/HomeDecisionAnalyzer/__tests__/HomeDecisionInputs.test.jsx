@@ -131,7 +131,10 @@ describe('HomeDecisionInputs', () => {
     const onChange = vi.fn();
     render(<HomeDecisionInputs inputs={baseInputs} onChange={onChange} />);
     fireEvent.click(screen.getByTestId('hda-scenario-deferredSale-toggle'));
-    fireEvent.click(screen.getByTestId('hda-input-stressTestUserPays100Pct'));
+    const checkbox = screen
+      .getByTestId('hda-input-stressTestUserPays100Pct')
+      .querySelector('input');
+    fireEvent.click(checkbox);
     expect(onChange).toHaveBeenCalledWith('stressTestUserPays100Pct', true);
   });
 
