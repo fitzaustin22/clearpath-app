@@ -114,18 +114,16 @@ describe('HomeDecisionInputs', () => {
   it('SelectField writes the selected enum value', () => {
     const onChange = vi.fn();
     render(<HomeDecisionInputs inputs={baseInputs} onChange={onChange} />);
-    fireEvent.change(screen.getByTestId('hda-input-userCreditScoreBand'), {
-      target: { value: 'fair' },
-    });
+    const select = screen.getByTestId('hda-input-userCreditScoreBand').querySelector('select');
+    fireEvent.change(select, { target: { value: 'fair' } });
     expect(onChange).toHaveBeenCalledWith('userCreditScoreBand', 'fair');
   });
 
   it('userState text field uppercases the USPS code', () => {
     const onChange = vi.fn();
     render(<HomeDecisionInputs inputs={baseInputs} onChange={onChange} />);
-    fireEvent.change(screen.getByTestId('hda-input-userState'), {
-      target: { value: 'va' },
-    });
+    const input = screen.getByTestId('hda-input-userState').querySelector('input');
+    fireEvent.change(input, { target: { value: 'va' } });
     expect(onChange).toHaveBeenCalledWith('userState', 'VA');
   });
 

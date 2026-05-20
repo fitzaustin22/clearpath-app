@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { T } from '@/src/lib/brand/tokens';
 import WizardField from '@/src/components/wizard/WizardField.jsx';
+import WizardSelector from '@/src/components/wizard/WizardSelector.jsx';
 import RefiRateInput from './RefiRateInput.jsx';
 
 /**
@@ -273,6 +274,13 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
     onChange(field, Number.isFinite(n) ? n : null);
   };
 
+  // State USPS code: WizardField has no maxLength prop; preserve the old
+  // TextField's auto-uppercase + 2-char cap + empty→null discipline here.
+  const handleStateChange = (field, raw) => {
+    const upper = (raw || '').toUpperCase().slice(0, 2);
+    onChange(field, upper || null);
+  };
+
   return (
     <div data-testid="hda-inputs" style={{ fontFamily: T.FONT_BODY }}>
       {/* ── §9.3.1 Shared inputs (always visible) ── */}
@@ -376,21 +384,23 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
           onChange={handleNumeric}
           data-testid="hda-input-startingLiquidCash"
         />
-        <SelectField
-          id="hda-input-userCreditScoreBand"
+        <WizardSelector
+          field="userCreditScoreBand"
           label="Credit score band"
-          helper="Drives the qualification verdict, banded refi-rate estimate, and PMI lookup."
-          value={inputs.userCreditScoreBand}
-          onChange={(v) => onChange('userCreditScoreBand', v)}
+          tooltip="Drives the qualification verdict, banded refi-rate estimate, and PMI lookup."
+          value={inputs.userCreditScoreBand ?? ''}
+          onChange={onChange}
           options={CREDIT_BAND_OPTIONS}
+          placeholder="— select —"
+          data-testid="hda-input-userCreditScoreBand"
         />
-        <TextField
-          id="hda-input-userState"
+        <WizardField
+          field="userState"
           label="State (USPS code)"
-          helper="Drives the state-aware refi closing-cost default."
-          value={inputs.userState}
-          onChange={(v) => onChange('userState', v)}
-          maxLength={2}
+          tooltip="Drives the state-aware refi closing-cost default."
+          value={inputs.userState ?? ''}
+          onChange={handleStateChange}
+          data-testid="hda-input-userState"
         />
         <WizardField
           field="homeAcquisitionYear"
