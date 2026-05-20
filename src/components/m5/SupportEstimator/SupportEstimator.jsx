@@ -113,7 +113,7 @@ function buildResultsPanelData(results, inputs, rawPrePopSources) {
 // `?seed=<variant>` URL param populates m5Store with fixture-derived inputs
 // + faked results to trigger that variant without exercising the calc engine.
 // Eliminated from production via NODE_ENV gate; intended for visual-iteration
-// against the /dev/m5-support-estimator route.
+// against the /modules/m5/support-estimator route.
 
 const SEED_PARTY_BASE = {
   grossMonthly: null,

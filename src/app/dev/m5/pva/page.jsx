@@ -10,10 +10,8 @@
  * production build of this route would render the bare orchestrator with
  * no seed shortcut.
  *
- * Pattern mirrors `/dev/m5-support-estimator/page.jsx`:
- *   - `export const dynamic = 'force-dynamic';`
- *   - `useSearchParams` consumer wrapped in `<Suspense>` to satisfy Next 16
- *     static-rendering CSR-bailout requirement.
+ * Pattern: force-dynamic dev page with `useSearchParams` consumer wrapped in
+ * `<Suspense>` to satisfy Next 16 static-rendering CSR-bailout requirement.
  */
 
 export const dynamic = 'force-dynamic';
