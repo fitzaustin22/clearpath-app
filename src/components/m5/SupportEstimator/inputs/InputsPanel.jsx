@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useM5Store } from '@/src/stores/m5Store';
 import { clearPrePopSource } from '@/src/stores/prePopulate';
 import {
-  CurrencyInput, NumberInput,
+  CurrencyInput,
   Banner, PrePopBadge, SectionCard,
 } from './_fields.jsx';
 import { NAVY, MUTED, SOURCE } from '../_styles.js';
@@ -176,36 +176,56 @@ function AddOnsForParty({ partyKey, label, parentingErrorActive }) {
       >
         {label}
       </div>
-      <CurrencyInput
-        id={`${partyKey}-hi`}
-        label="Health insurance premium (monthly)"
-        value={party.healthInsurance}
-        onChange={(v) => update({ healthInsurance: v ?? 0 })}
-      />
-      <CurrencyInput
-        id={`${partyKey}-childcare`}
-        label="Childcare cost (monthly)"
-        value={party.childcare}
-        onChange={(v) => update({ childcare: v ?? 0 })}
-      />
-      <NumberInput
-        id={`${partyKey}-nights`}
-        label="Parenting time (overnights per year)"
-        helper="0–365. Total across both parties cannot exceed 365."
-        value={party.parentingTimeNights}
-        onChange={(v) => update({ parentingTimeNights: v == null ? 0 : Math.max(0, Math.min(365, v)) })}
-        min={0}
-        max={365}
-        step={1}
-        errorText={nightsError}
-      />
-      <CurrencyInput
-        id={`${partyKey}-other-support`}
-        label="Other support obligations (monthly)"
-        helper="Existing child support or spousal support orders."
-        value={party.otherSupportObligations}
-        onChange={(v) => update({ otherSupportObligations: v ?? 0 })}
-      />
+      <div style={{ marginBottom: 14 }}>
+        <WizardField
+          label="Health insurance premium (monthly)"
+          field={`${partyKey}.healthInsurance`}
+          value={party.healthInsurance}
+          onChange={(_, v) => update({ healthInsurance: parseCurrency(v) ?? 0 })}
+          numeric
+          prefix="$"
+          data-testid={`${partyKey}-hi`}
+        />
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <WizardField
+          label="Childcare cost (monthly)"
+          field={`${partyKey}.childcare`}
+          value={party.childcare}
+          onChange={(_, v) => update({ childcare: parseCurrency(v) ?? 0 })}
+          numeric
+          prefix="$"
+          data-testid={`${partyKey}-childcare`}
+        />
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <WizardField
+          label="Parenting time"
+          field={`${partyKey}.parentingTimeNights`}
+          value={party.parentingTimeNights}
+          onChange={(_, v) => {
+            const n = parseNumOrNull(v);
+            update({ parentingTimeNights: n == null ? 0 : Math.max(0, Math.min(365, n)) });
+          }}
+          numeric
+          suffix="overnights/yr"
+          tooltip="0–365. Total across both parties cannot exceed 365."
+          error={nightsError}
+          data-testid={`${partyKey}-nights`}
+        />
+      </div>
+      <div style={{ marginBottom: 14 }}>
+        <WizardField
+          label="Other support obligations (monthly)"
+          field={`${partyKey}.otherSupportObligations`}
+          value={party.otherSupportObligations}
+          onChange={(_, v) => update({ otherSupportObligations: parseCurrency(v) ?? 0 })}
+          numeric
+          prefix="$"
+          tooltip="Existing child support or spousal support orders."
+          data-testid={`${partyKey}-other-support`}
+        />
+      </div>
     </div>
   );
 }
