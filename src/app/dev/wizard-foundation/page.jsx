@@ -15,6 +15,8 @@ import WizardField from '@/src/components/wizard/WizardField';
 import WizardProgress from '@/src/components/wizard/WizardProgress';
 import WizardRadio from '@/src/components/wizard/WizardRadio';
 import WizardDate from '@/src/components/wizard/WizardDate';
+import WizardSelector from '@/src/components/wizard/WizardSelector';
+import WizardCheckbox from '@/src/components/wizard/WizardCheckbox';
 
 function Section({ id, title, description, children }) {
   return (
@@ -64,6 +66,37 @@ function DateDemo({ initialValue = '', ...props }) {
     <WizardDate {...props} value={val} onChange={(_field, next) => setVal(next)} />
   );
 }
+
+function SelectorDemo({ initialValue = '', ...props }) {
+  const [val, setVal] = useState(initialValue);
+  return (
+    <WizardSelector
+      {...props}
+      value={val}
+      onChange={(_field, next) => setVal(next)}
+    />
+  );
+}
+
+function CheckboxDemo({ initialValue = false, ...props }) {
+  const [val, setVal] = useState(initialValue);
+  return (
+    <WizardCheckbox
+      {...props}
+      value={val}
+      onChange={(_field, next) => setVal(next)}
+    />
+  );
+}
+
+// IRS filing-status canonical option set — used by the WizardSelector demos.
+const FILING_OPTIONS = [
+  { value: 'single', label: 'Single' },
+  { value: 'mfj', label: 'Married filing jointly' },
+  { value: 'mfs', label: 'Married filing separately' },
+  { value: 'hoh', label: 'Head of household' },
+  { value: 'qw', label: 'Qualifying surviving spouse' },
+];
 
 // QDRO §8.3.2 6-way plan-type classifier — the canonical stacked example.
 const PLAN_TYPES = [
@@ -142,6 +175,9 @@ export default function WizardFoundationDevPage() {
           ['radio-stacked', 'Radio · stacked'],
           ['radio-segmented', 'Radio · segmented'],
           ['date', 'Date'],
+          ['selector', 'Selector'],
+          ['checkbox', 'Checkbox · checkbox'],
+          ['checkbox-toggle', 'Checkbox · toggle'],
         ].map(([href, label]) => (
           <a key={href} href={`#${href}`} className="underline">
             {label}
@@ -399,6 +435,198 @@ export default function WizardFoundationDevPage() {
                 value=""
                 onChange={() => {}}
                 error="Required to compute the marital coverture fraction."
+              />
+            </div>
+          </WizardSection>
+        </WizardCard>
+      </Section>
+
+      <Section
+        id="selector"
+        title="WizardSelector"
+        description="Styled native <select> chrome-matched to WizardField. Placeholder option (disabled, empty value) is opt-in. The native picker is the dropdown — no custom JS listbox."
+      >
+        <WizardCard>
+          <WizardSection title="With and without placeholder" first>
+            <div
+              style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+            >
+              <SelectorDemo
+                label="Filing status (with placeholder)"
+                field="filingStatusWithPlaceholder"
+                placeholder="Choose a filing status..."
+                options={FILING_OPTIONS}
+              />
+              <SelectorDemo
+                label="Filing status (no placeholder, default-selected)"
+                field="filingStatusNoPlaceholder"
+                initialValue="single"
+                options={FILING_OPTIONS}
+              />
+            </div>
+          </WizardSection>
+          <WizardSection title="With provenance badge">
+            <SelectorDemo
+              label="Filing status"
+              field="filingStatusFromM4"
+              initialValue="mfj"
+              prefilledFrom="M4"
+              options={FILING_OPTIONS}
+            />
+          </WizardSection>
+          <WizardSection title="With tooltip">
+            <SelectorDemo
+              label="Filing status"
+              field="filingStatusWithTooltip"
+              placeholder="Choose..."
+              tooltip="Filing status as of December 31 of the tax year. See IRS Publication 501."
+              options={FILING_OPTIONS}
+            />
+          </WizardSection>
+          <WizardSection title="Error state">
+            <WizardSelector
+              label="Filing status"
+              field="filingStatusError"
+              value=""
+              onChange={() => {}}
+              placeholder="Choose..."
+              error="Required for the post-divorce tax projection."
+              options={FILING_OPTIONS}
+            />
+          </WizardSection>
+          <WizardSection title="Disabled state">
+            <WizardSelector
+              label="Filing status (locked)"
+              field="filingStatusDisabled"
+              value="hoh"
+              onChange={() => {}}
+              disabled
+              options={FILING_OPTIONS}
+            />
+          </WizardSection>
+        </WizardCard>
+      </Section>
+
+      <Section
+        id="checkbox"
+        title="WizardCheckbox — checkbox variant"
+        description="Default variant. Square 18px marker, navy border + gold checkmark when checked. Label renders to the right of the control (documented anatomy deviation)."
+      >
+        <WizardCard>
+          <WizardSection title="Checked / unchecked" first>
+            <div
+              style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
+            >
+              <CheckboxDemo
+                label="I have a QDRO already drafted"
+                field="hasDraftUnchecked"
+                initialValue={false}
+              />
+              <CheckboxDemo
+                label="I have a QDRO already drafted"
+                field="hasDraftChecked"
+                initialValue={true}
+              />
+            </div>
+          </WizardSection>
+          <WizardSection title="With tooltip">
+            <CheckboxDemo
+              label="The plan is administered by a third party"
+              field="thirdPartyAdmin"
+              tooltip="Many private DC plans use a TPA (e.g. Fidelity, Empower) — they typically pre-approve QDRO model orders."
+            />
+          </WizardSection>
+          <WizardSection title="With provenance badge">
+            <CheckboxDemo
+              label="Plan covers married-couple beneficiary by default"
+              field="defaultBeneficiary"
+              initialValue={true}
+              prefilledFrom="M5"
+            />
+          </WizardSection>
+          <WizardSection title="Disabled state">
+            <div
+              style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
+            >
+              <WizardCheckbox
+                label="Locked & unchecked"
+                field="disabledUnchecked"
+                value={false}
+                onChange={() => {}}
+                disabled
+              />
+              <WizardCheckbox
+                label="Locked & checked"
+                field="disabledChecked"
+                value={true}
+                onChange={() => {}}
+                disabled
+              />
+            </div>
+          </WizardSection>
+          <WizardSection title="Error state">
+            <WizardCheckbox
+              label="I acknowledge the QDRO drafting fee"
+              field="ackFee"
+              value={false}
+              onChange={() => {}}
+              error="Required to continue."
+            />
+          </WizardSection>
+        </WizardCard>
+      </Section>
+
+      <Section
+        id="checkbox-toggle"
+        title="WizardCheckbox — toggle variant"
+        description="Switch-style boolean. Track is T.GOLD when checked, T.LINE_STRONG when unchecked; thumb is white. Same controlled API as the checkbox variant — pass variant='toggle'."
+      >
+        <WizardCard>
+          <WizardSection title="Checked / unchecked" first>
+            <div
+              style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
+            >
+              <CheckboxDemo
+                label="Auto-update from M2 when value changes"
+                field="autoUpdateOff"
+                variant="toggle"
+                initialValue={false}
+              />
+              <CheckboxDemo
+                label="Auto-update from M2 when value changes"
+                field="autoUpdateOn"
+                variant="toggle"
+                initialValue={true}
+              />
+            </div>
+          </WizardSection>
+          <WizardSection title="With tooltip">
+            <CheckboxDemo
+              label="Show advanced QDRO assumptions"
+              field="showAdvanced"
+              variant="toggle"
+              tooltip="Reveals optional fields: coverture fraction, gain/loss adjustments, and survivor-benefit election."
+            />
+          </WizardSection>
+          <WizardSection title="Disabled / error states">
+            <div
+              style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}
+            >
+              <WizardCheckbox
+                label="Locked toggle (disabled)"
+                field="toggleDisabled"
+                value={true}
+                onChange={() => {}}
+                variant="toggle"
+                disabled
+              />
+              <WizardCheckbox
+                label="Toggle in error state"
+                field="toggleError"
+                value={false}
+                onChange={() => {}}
+                variant="toggle"
+                error="You must opt in to continue."
               />
             </div>
           </WizardSection>
