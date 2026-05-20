@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { T } from '@/src/lib/brand/tokens';
+import WizardField from '@/src/components/wizard/WizardField.jsx';
 import RefiRateInput from './RefiRateInput.jsx';
 
 /**
@@ -264,91 +265,116 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
   });
   const toggle = (k) => setOpen((s) => ({ ...s, [k]: !s[k] }));
 
+  // Bridge: WizardField emits (field, rawString); preserve NumberField's
+  // null-discipline conversion before writing through to onChange.
+  const handleNumeric = (field, raw) => {
+    if (raw === '') return onChange(field, null);
+    const n = Number(raw);
+    onChange(field, Number.isFinite(n) ? n : null);
+  };
+
   return (
     <div data-testid="hda-inputs" style={{ fontFamily: T.FONT_BODY }}>
       {/* ── §9.3.1 Shared inputs (always visible) ── */}
       <FieldSection title="Shared inputs" testid="hda-inputs-shared">
-        <NumberField
-          id="hda-input-currentFMV"
+        <WizardField
+          field="currentFMV"
           label="Current home value (FMV estimate)"
-          helper="Your best estimate. For high-stakes scenarios, an appraisal may be warranted."
-          value={inputs.currentFMV}
-          onChange={(v) => onChange('currentFMV', v)}
-          min={0}
+          tooltip="Your best estimate. For high-stakes scenarios, an appraisal may be warranted."
+          prefix="$"
+          numeric
+          value={inputs.currentFMV ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-currentFMV"
         />
-        <NumberField
-          id="hda-input-existingMortgageBalance"
+        <WizardField
+          field="existingMortgageBalance"
           label="Existing mortgage balance ($)"
-          helper="Pre-populated from your M2 marital estate inventory when available."
-          value={inputs.existingMortgageBalance}
-          onChange={(v) => onChange('existingMortgageBalance', v)}
-          min={0}
+          tooltip="Pre-populated from your M2 marital estate inventory when available."
+          prefix="$"
+          numeric
+          value={inputs.existingMortgageBalance ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-existingMortgageBalance"
         />
-        <NumberField
-          id="hda-input-existingMortgageRate"
+        <WizardField
+          field="existingMortgageRate"
           label="Existing mortgage rate (% APR)"
-          helper="Manual entry. Used for interim cashflow and deferred-sale continuity."
-          value={inputs.existingMortgageRate}
-          onChange={(v) => onChange('existingMortgageRate', v)}
-          min={0}
-          step={0.01}
+          tooltip="Manual entry. Used for interim cashflow and deferred-sale continuity."
+          suffix="%"
+          numeric
+          value={inputs.existingMortgageRate ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-existingMortgageRate"
         />
-        <NumberField
-          id="hda-input-existingMortgageRemainingTermMonths"
+        <WizardField
+          field="existingMortgageRemainingTermMonths"
           label="Existing mortgage remaining term (months)"
-          helper="Defaults to 360 (30 years) if unknown."
-          value={inputs.existingMortgageRemainingTermMonths}
-          onChange={(v) => onChange('existingMortgageRemainingTermMonths', v)}
-          min={0}
-          step={1}
+          tooltip="Defaults to 360 (30 years) if unknown."
+          numeric
+          value={inputs.existingMortgageRemainingTermMonths ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-existingMortgageRemainingTermMonths"
         />
-        <NumberField
-          id="hda-input-monthlyPropertyTax"
+        <WizardField
+          field="monthlyPropertyTax"
           label="Monthly property tax ($)"
-          helper="Pre-populated from M3 budget modeler when available."
-          value={inputs.monthlyPropertyTax}
-          onChange={(v) => onChange('monthlyPropertyTax', v)}
-          min={0}
+          tooltip="Pre-populated from M3 budget modeler when available."
+          prefix="$"
+          numeric
+          value={inputs.monthlyPropertyTax ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-monthlyPropertyTax"
         />
-        <NumberField
-          id="hda-input-monthlyInsurance"
+        <WizardField
+          field="monthlyInsurance"
           label="Monthly home insurance ($)"
-          helper="Pre-populated from M3 budget modeler when available."
-          value={inputs.monthlyInsurance}
-          onChange={(v) => onChange('monthlyInsurance', v)}
-          min={0}
+          tooltip="Pre-populated from M3 budget modeler when available."
+          prefix="$"
+          numeric
+          value={inputs.monthlyInsurance ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-monthlyInsurance"
         />
-        <NumberField
-          id="hda-input-monthlyHOA"
+        <WizardField
+          field="monthlyHOA"
           label="Monthly HOA ($)"
-          helper="Default 0 if no source data."
-          value={inputs.monthlyHOA}
-          onChange={(v) => onChange('monthlyHOA', v)}
-          min={0}
+          tooltip="Default 0 if no source data."
+          prefix="$"
+          numeric
+          value={inputs.monthlyHOA ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-monthlyHOA"
         />
-        <NumberField
-          id="hda-input-userPostDivorceGrossMonthlyIncome"
+        <WizardField
+          field="userPostDivorceGrossMonthlyIncome"
           label="Post-divorce gross monthly income ($)"
-          helper="Pre-populated from M1 Budget Gap (household × your share %). DTI denominator."
-          value={inputs.userPostDivorceGrossMonthlyIncome}
-          onChange={(v) => onChange('userPostDivorceGrossMonthlyIncome', v)}
-          min={0}
+          tooltip="Pre-populated from M1 Budget Gap (household × your share %). DTI denominator."
+          prefix="$"
+          numeric
+          value={inputs.userPostDivorceGrossMonthlyIncome ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-userPostDivorceGrossMonthlyIncome"
         />
-        <NumberField
-          id="hda-input-userTotalMonthlyDebtPayments"
+        <WizardField
+          field="userTotalMonthlyDebtPayments"
           label="Other monthly debt payments ($)"
-          helper="Non-housing debt (auto, student loans, cards). Manual entry at v1. Used for back-end DTI."
-          value={inputs.userTotalMonthlyDebtPayments}
-          onChange={(v) => onChange('userTotalMonthlyDebtPayments', v)}
-          min={0}
+          tooltip="Non-housing debt (auto, student loans, cards). Manual entry at v1. Used for back-end DTI."
+          prefix="$"
+          numeric
+          value={inputs.userTotalMonthlyDebtPayments ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-userTotalMonthlyDebtPayments"
         />
-        <NumberField
-          id="hda-input-startingLiquidCash"
+        <WizardField
+          field="startingLiquidCash"
           label="Starting liquid cash ($)"
-          helper="Checking + savings + non-retirement brokerage. Pre-populated from M2. Retirement excluded."
-          value={inputs.startingLiquidCash}
-          onChange={(v) => onChange('startingLiquidCash', v)}
-          min={0}
+          tooltip="Checking + savings + non-retirement brokerage. Pre-populated from M2. Retirement excluded."
+          prefix="$"
+          numeric
+          value={inputs.startingLiquidCash ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-startingLiquidCash"
         />
         <SelectField
           id="hda-input-userCreditScoreBand"
@@ -366,31 +392,32 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
           onChange={(v) => onChange('userState', v)}
           maxLength={2}
         />
-        <NumberField
-          id="hda-input-homeAcquisitionYear"
+        <WizardField
+          field="homeAcquisitionYear"
           label="Home acquisition year"
-          helper="Required for the deferred-sale ownership test and sell-now use-test calibration."
-          value={inputs.homeAcquisitionYear}
-          onChange={(v) => onChange('homeAcquisitionYear', v)}
-          step={1}
+          tooltip="Required for the deferred-sale ownership test and sell-now use-test calibration."
+          numeric
+          value={inputs.homeAcquisitionYear ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-homeAcquisitionYear"
         />
-        <NumberField
-          id="hda-input-propertyAppreciationRateReal"
+        <WizardField
+          field="propertyAppreciationRateReal"
           label="Real property appreciation rate (fraction)"
-          helper="Real-dollar terms. Default 0 (≈ 2.5% nominal). 0.01 = 1% real."
-          value={inputs.propertyAppreciationRateReal}
-          onChange={(v) => onChange('propertyAppreciationRateReal', v)}
-          step={0.005}
+          tooltip="Real-dollar terms. Default 0 (≈ 2.5% nominal). 0.01 = 1% real."
+          numeric
+          value={inputs.propertyAppreciationRateReal ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-propertyAppreciationRateReal"
         />
-        <NumberField
-          id="hda-input-spouseEquityShare"
+        <WizardField
+          field="spouseEquityShare"
           label="Spouse equity share (fraction 0–1)"
-          helper="Default 0.5 (equal split). 0.5 = spouse receives 50% of net equity."
-          value={inputs.spouseEquityShare}
-          onChange={(v) => onChange('spouseEquityShare', v)}
-          min={0}
-          max={1}
-          step={0.01}
+          tooltip="Default 0.5 (equal split). 0.5 = spouse receives 50% of net equity."
+          numeric
+          value={inputs.spouseEquityShare ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-spouseEquityShare"
         />
       </FieldSection>
 

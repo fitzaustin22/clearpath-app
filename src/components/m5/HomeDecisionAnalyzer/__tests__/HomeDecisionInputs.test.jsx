@@ -93,9 +93,8 @@ describe('HomeDecisionInputs', () => {
   it('NumberField writes a numeric value through onChange', () => {
     const onChange = vi.fn();
     render(<HomeDecisionInputs inputs={baseInputs} onChange={onChange} />);
-    fireEvent.change(screen.getByTestId('hda-input-currentFMV'), {
-      target: { value: '650000' },
-    });
+    const input = screen.getByTestId('hda-input-currentFMV').querySelector('input');
+    fireEvent.change(input, { target: { value: '650000' } });
     expect(onChange).toHaveBeenCalledWith('currentFMV', 650000);
   });
 
@@ -107,9 +106,8 @@ describe('HomeDecisionInputs', () => {
         onChange={onChange}
       />,
     );
-    fireEvent.change(screen.getByTestId('hda-input-currentFMV'), {
-      target: { value: '' },
-    });
+    const input = screen.getByTestId('hda-input-currentFMV').querySelector('input');
+    fireEvent.change(input, { target: { value: '' } });
     expect(onChange).toHaveBeenCalledWith('currentFMV', null);
   });
 
@@ -154,8 +152,12 @@ describe('HomeDecisionInputs', () => {
         onChange={vi.fn()}
       />,
     );
-    expect(screen.getByTestId('hda-input-currentFMV')).toHaveValue(700000);
-    expect(screen.getByTestId('hda-input-spouseEquityShare')).toHaveValue(0.6);
+    expect(
+      screen.getByTestId('hda-input-currentFMV').querySelector('input'),
+    ).toHaveValue('700000');
+    expect(
+      screen.getByTestId('hda-input-spouseEquityShare').querySelector('input'),
+    ).toHaveValue('0.6');
   });
 
   describe('RefiRateInput integration wiring', () => {
