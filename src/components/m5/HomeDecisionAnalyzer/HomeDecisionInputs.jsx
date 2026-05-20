@@ -480,40 +480,42 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
         expanded={open.sellNow}
         onToggle={() => toggle('sellNow')}
       >
-        <NumberField
-          id="hda-input-realtorCommissionPercent"
+        <WizardField
+          field="realtorCommissionPercent"
           label="Realtor commission (fraction)"
-          helper="Default 0.05 (5%). Shared with deferred-sale per the v1 store schema."
-          value={inputs.realtorCommissionPercent}
-          onChange={(v) => onChange('realtorCommissionPercent', v)}
-          min={0}
-          step={0.005}
+          tooltip="Default 0.05 (5%). Shared with deferred-sale per the v1 store schema."
+          numeric
+          value={inputs.realtorCommissionPercent ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-realtorCommissionPercent"
         />
-        <NumberField
-          id="hda-input-saleClosingCostsPercent"
+        <WizardField
+          field="saleClosingCostsPercent"
           label="Sale closing costs (fraction)"
-          helper="Default 0.02 (2%). Shared with deferred-sale per the v1 store schema."
-          value={inputs.saleClosingCostsPercent}
-          onChange={(v) => onChange('saleClosingCostsPercent', v)}
-          min={0}
-          step={0.005}
+          tooltip="Default 0.02 (2%). Shared with deferred-sale per the v1 store schema."
+          numeric
+          value={inputs.saleClosingCostsPercent ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-saleClosingCostsPercent"
         />
-        <SelectField
-          id="hda-input-expectedFilingStatusAtSellNow"
+        <WizardSelector
+          field="expectedFilingStatusAtSellNow"
           label="Expected filing status at sale"
-          helper="Optional override. Defaults from your M4 divorce-year filing status. Captures sale-slippage cases."
-          value={inputs.expectedFilingStatusAtSellNow}
-          onChange={(v) => onChange('expectedFilingStatusAtSellNow', v)}
+          tooltip="Optional override. Defaults from your M4 divorce-year filing status. Captures sale-slippage cases."
+          value={inputs.expectedFilingStatusAtSellNow ?? ''}
+          onChange={onChange}
           options={FILING_STATUS_OPTIONS}
+          placeholder="— select —"
+          data-testid="hda-input-expectedFilingStatusAtSellNow"
         />
-        <NumberField
-          id="hda-input-userMovedOutYearsAgo"
+        <WizardField
+          field="userMovedOutYearsAgo"
           label="Years since you moved out"
-          helper="Default 0 (currently occupying). Fractional allowed. >3 at sale triggers a §121 use-test callout."
-          value={inputs.userMovedOutYearsAgo}
-          onChange={(v) => onChange('userMovedOutYearsAgo', v)}
-          min={0}
-          step={0.5}
+          tooltip="Default 0 (currently occupying). Fractional allowed. >3 at sale triggers a §121 use-test callout."
+          numeric
+          value={inputs.userMovedOutYearsAgo ?? ''}
+          onChange={handleNumeric}
+          data-testid="hda-input-userMovedOutYearsAgo"
         />
       </Accordion>
 
