@@ -4,12 +4,14 @@ import { useState, useEffect, useMemo } from 'react';
 import { useM5Store } from '@/src/stores/m5Store';
 import { clearPrePopSource } from '@/src/stores/prePopulate';
 import {
-  CurrencyInput, NumberInput, SelectField, RadioGroup,
+  CurrencyInput, NumberInput,
   Banner, PrePopBadge, SectionCard,
 } from './_fields.jsx';
 import { NAVY, MUTED, SOURCE } from '../_styles.js';
 import WizardField from '@/src/components/wizard/WizardField';
 import WizardCheckbox from '@/src/components/wizard/WizardCheckbox';
+import WizardSelector from '@/src/components/wizard/WizardSelector';
+import WizardRadio from '@/src/components/wizard/WizardRadio';
 
 function parseCurrency(s) {
   if (s === '' || s == null) return null;
@@ -18,6 +20,19 @@ function parseCurrency(s) {
   const n = Number(cleaned);
   return Number.isFinite(n) ? Math.max(0, n) : null;
 }
+
+function parseNumOrNull(s) {
+  if (s === '' || s == null) return null;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : null;
+}
+
+const HINT_BELOW = {
+  fontFamily: SOURCE,
+  fontSize: 13,
+  color: MUTED,
+  margin: '6px 0 0',
+};
 
 const STATE_OPTIONS = [
   { value: 'VA',    label: 'Virginia (VA)' },
@@ -29,9 +44,9 @@ const STATE_OPTIONS = [
 ];
 
 const NY_CUSTODY_OPTIONS = [
-  { value: 'kids_with_payor', label: 'Children primarily live with the higher-earning spouse' },
-  { value: 'kids_with_payee', label: 'Children primarily live with the lower-earning spouse' },
-  { value: 'shared',          label: 'Shared (roughly 50–50) custody' },
+  { value: 'kids_with_payor', label: 'With higher earner' },
+  { value: 'kids_with_payee', label: 'With lower earner' },
+  { value: 'shared',          label: 'Shared (~50/50)' },
 ];
 
 const TEMPORAL_OPTIONS = [
@@ -428,13 +443,16 @@ export function InputsPanel({ sp3Violation }) {
 
       {/* Case basics */}
       <SectionCard title="Case basics">
-        <SelectField
-          id="state"
-          label="State"
-          value={inputs.state}
-          onChange={(v) => setInputs({ state: v })}
-          options={STATE_OPTIONS}
-        />
+        <div style={{ marginBottom: 14 }}>
+          <WizardSelector
+            label="State"
+            field="state"
+            value={inputs.state}
+            onChange={(_, v) => setInputs({ state: v })}
+            options={STATE_OPTIONS}
+            data-testid="state"
+          />
+        </div>
         {isOther && (
           <Banner variant="amber">
             <strong>Your state may not be in our launch list.</strong> We'll use a national
@@ -443,56 +461,75 @@ export function InputsPanel({ sp3Violation }) {
           </Banner>
         )}
 
-        <NumberInput
-          id="num-children"
-          label="Number of children"
-          helper="Children of the marriage. 0–10."
-          value={inputs.numChildren}
-          onChange={(v) => setInputs({ numChildren: v == null ? 0 : Math.max(0, Math.min(10, v)) })}
-          min={0}
-          max={10}
-          step={1}
-        />
+        <div style={{ marginBottom: 14 }}>
+          <WizardField
+            label="Number of children"
+            field="numChildren"
+            value={inputs.numChildren}
+            onChange={(_, v) => {
+              const n = parseNumOrNull(v);
+              setInputs({ numChildren: n == null ? 0 : Math.max(0, Math.min(10, n)) });
+            }}
+            numeric
+            tooltip="Children of the marriage. 0–10."
+            data-testid="num-children"
+          />
+        </div>
 
-        <NumberInput
-          id="marriage-length"
-          label="Marriage length (years)"
-          helper="Used by NY for spousal duration schedule and MD/DC for AAML duration."
-          value={inputs.marriageLengthYears}
-          onChange={(v) => setInputs({ marriageLengthYears: v })}
-          min={0}
-          step={0.5}
-        />
+        <div style={{ marginBottom: 14 }}>
+          <WizardField
+            label="Marriage length"
+            field="marriageLengthYears"
+            value={inputs.marriageLengthYears}
+            onChange={(_, v) => setInputs({ marriageLengthYears: parseNumOrNull(v) })}
+            numeric
+            suffix="years"
+            tooltip="Used by NY for spousal duration schedule and MD/DC for AAML duration."
+            data-testid="marriage-length"
+          />
+        </div>
 
-        <RadioGroup
-          id="temporal"
-          label="Order type"
-          value={inputs.temporal}
-          onChange={(v) => setInputs({ temporal: v })}
-          options={TEMPORAL_OPTIONS}
-        />
+        <div style={{ marginBottom: 18 }}>
+          <WizardRadio
+            field="temporal"
+            legend="Order type"
+            variant="segmented"
+            value={inputs.temporal}
+            onChange={(_, v) => setInputs({ temporal: v })}
+            options={TEMPORAL_OPTIONS}
+            data-testid="temporal"
+          />
+        </div>
 
-        <RadioGroup
-          id="depth"
-          label="Calculation depth"
-          helper="Most CDFAs and attorneys prefer the Full Worksheet level of detail."
-          value={inputs.depth}
-          onChange={(v) => setInputs({ depth: v })}
-          options={DEPTH_OPTIONS}
-        />
+        <div style={{ marginBottom: 18 }}>
+          <WizardRadio
+            field="depth"
+            legend="Calculation depth"
+            variant="segmented"
+            value={inputs.depth}
+            onChange={(_, v) => setInputs({ depth: v })}
+            options={DEPTH_OPTIONS}
+            data-testid="depth"
+          />
+          <p style={HINT_BELOW}>Most CDFAs and attorneys prefer the Full Worksheet level of detail.</p>
+        </div>
       </SectionCard>
 
       {/* NY custody — conditional */}
       {showNYCustody && (
         <SectionCard title="New York custody configuration">
-          <RadioGroup
-            id="ny-custody"
-            label="Where do the children primarily live?"
-            helper="Drives Formula A vs Formula B branching."
-            value={inputs.nyCustodyConfig}
-            onChange={(v) => setInputs({ nyCustodyConfig: v })}
-            options={NY_CUSTODY_OPTIONS}
-          />
+          <div style={{ marginBottom: 18 }}>
+            <WizardRadio
+              field="nyCustodyConfig"
+              legend="Where do the children primarily live?"
+              variant="segmented"
+              value={inputs.nyCustodyConfig}
+              onChange={(_, v) => setInputs({ nyCustodyConfig: v })}
+              options={NY_CUSTODY_OPTIONS}
+              data-testid="ny-custody"
+            />
+            <p style={HINT_BELOW}>Drives Formula A vs Formula B branching.</p>
+          </div>
         </SectionCard>
       )}
 
