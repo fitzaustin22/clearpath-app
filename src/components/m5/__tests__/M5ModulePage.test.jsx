@@ -1,72 +1,96 @@
 /**
- * M5ModulePage route-wiring smoke test (HDA PR 5).
+ * M5ModulePage — module landing page tests.
  *
- * Scope is page-wiring only — these assertions pin that the M5 landing
- * page is reachable and routes correctly, NOT HDA behavior (covered by
- * the HomeDecisionAnalyzer suites). Mirrors the colocated component-test
- * convention; no server-route-file tests (the route wrappers are 6-line
- * auth scaffolds with no logic and no test precedent).
+ * Spec authority: M5-Tool-Specs.md §3 Tier Gating + §4 Module Landing Page.
+ * PR1 scope: core landing page in Full + Locked render states. Cross-module
+ * callouts and per-tool prerequisite notes deferred to PR2. PR1 reads only
+ * the user's access tier — no tool-store reads.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-import { useM5Store } from '@/src/stores/m5Store';
+import { describe, it, expect } from 'vitest';
+import { render, screen, within } from '@testing-library/react';
 import M5ModulePage from '../M5ModulePage.jsx';
 
-beforeEach(() => {
-  localStorage.clear();
-  useM5Store.persist.rehydrate();
-  // Deterministic slate: userSelection null → HDA badge "Not started".
-  useM5Store.getState().clearHomeDecision();
-});
+// ─── §1.5 verbatim educational paragraph ────────────────────────────────────
+const EDU_PARAGRAPH =
+  "Some of the most consequential assets in a divorce can't be valued at face — a pension, the marital home, a support obligation, the mechanics of dividing a retirement account without triggering tax or penalty. Each takes real analysis to understand what it's actually worth and how a given choice plays out over time. The four tools in this module give you CDFA-grade valuations and decision frameworks for exactly these assets, so you negotiate from clarity rather than guesswork.";
 
-const TOOL_TITLES = [
-  'Marital Home Decision Analyzer',
-  'Support Estimator',
-  'Present Value Analyzer',
-  'QDRO Decision Guide',
-];
-
+// ─── Helpers ────────────────────────────────────────────────────────────────
 const m5Links = () =>
   screen
     .getAllByRole('link')
-    .filter((a) => (a.getAttribute('href') || '').startsWith('/modules/m5/'));
+    .filter((a) => (a.getAttribute('href') || '').includes('m5'));
 
-describe('M5ModulePage — route wiring', () => {
-  it('renders all four M5 tool cards', () => {
+const footerLinks = () => {
+  const footer = screen.getByRole('contentinfo');
+  return within(footer).getAllByRole('link');
+};
+
+// ─── Shell (header + educational paragraph + footer) — both states ──────────
+describe('M5ModulePage — shell (Full state)', () => {
+  it('renders the module header', () => {
     render(<M5ModulePage userTier="navigator" />);
-    for (const title of TOOL_TITLES) {
-      expect(screen.getByText(title)).toBeInTheDocument();
-    }
-  });
-
-  it('links the HDA card to /modules/m5/home-decision', () => {
-    render(<M5ModulePage userTier="navigator" />);
-    const links = m5Links();
-    expect(links).toHaveLength(1);
-    expect(links[0]).toHaveAttribute('href', '/modules/m5/home-decision');
-    expect(links[0]).toHaveTextContent('Marital Home Decision Analyzer');
-  });
-
-  it('renders the three non-wired tools as non-interactive "Coming soon" cards', () => {
-    render(<M5ModulePage userTier="navigator" />);
-    expect(screen.getAllByText('Coming soon')).toHaveLength(3);
-    // Only HDA is a live tool link; the other three are inert.
-    expect(m5Links()).toHaveLength(1);
-  });
-
-  it('shows the upgrade CTA and no live tool link for a locked tier', () => {
-    render(<M5ModulePage userTier="essentials" />);
     expect(
-      screen.getByText(/full curriculum access for \$247/i),
+      screen.getByRole('heading', { name: /M5 — Value What Matters/ }),
     ).toBeInTheDocument();
-    expect(m5Links()).toHaveLength(0);
   });
 
-  it('does not show the upgrade CTA for the full-access tier', () => {
+  it('renders the §1.5 educational paragraph verbatim', () => {
     render(<M5ModulePage userTier="navigator" />);
-    expect(
-      screen.queryByText(/full curriculum access for \$247/i),
-    ).not.toBeInTheDocument();
+    expect(screen.getByText(EDU_PARAGRAPH)).toBeInTheDocument();
+  });
+
+  it('renders the footer with links to M2 (Know What You Own) and M4 (Tax Landscape)', () => {
+    render(<M5ModulePage userTier="navigator" />);
+    const links = footerLinks();
+    const m2 = links.find((a) => a.getAttribute('href') === '/modules/m2');
+    const m4 = links.find((a) => a.getAttribute('href') === '/modules/m4');
+    expect(m2).toBeTruthy();
+    expect(m2).toHaveTextContent(/Know What You Own/i);
+    expect(m4).toBeTruthy();
+    expect(m4).toHaveTextContent(/Tax Landscape/i);
   });
 });
+
+describe('M5ModulePage — shell (Locked state)', () => {
+  it('renders the module header in Locked state', () => {
+    render(<M5ModulePage userTier="essentials" />);
+    expect(
+      screen.getByRole('heading', { name: /M5 — Value What Matters/ }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the §1.5 educational paragraph verbatim in Locked state', () => {
+    render(<M5ModulePage userTier="essentials" />);
+    expect(screen.getByText(EDU_PARAGRAPH)).toBeInTheDocument();
+  });
+
+  it('renders the footer in Locked state', () => {
+    render(<M5ModulePage userTier="free" />);
+    const links = footerLinks();
+    expect(links.find((a) => a.getAttribute('href') === '/modules/m2')).toBeTruthy();
+    expect(links.find((a) => a.getAttribute('href') === '/modules/m4')).toBeTruthy();
+  });
+});
+
+// ─── Tier-state selection (hasAccess wiring) ───────────────────────────────
+describe('M5ModulePage — tier state selection', () => {
+  it.each(['navigator', 'signature'])(
+    'treats %s as Full Access (no upsell CTA)',
+    (tier) => {
+      render(<M5ModulePage userTier={tier} />);
+      expect(screen.queryByText(/Unlock with Full Access/i)).not.toBeInTheDocument();
+    },
+  );
+
+  it.each(['free', 'essentials'])(
+    'treats %s as Locked (upsell CTA visible)',
+    (tier) => {
+      render(<M5ModulePage userTier={tier} />);
+      expect(screen.getByText(/Unlock with Full Access/i)).toBeInTheDocument();
+    },
+  );
+});
+
+// Suppress lint warning about unused helper until tool-grid commit uses it.
+void m5Links;
