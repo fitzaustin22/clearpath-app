@@ -73,21 +73,50 @@ describe('M5ModulePage — shell (Locked state)', () => {
   });
 });
 
-// ─── Tier-state selection (hasAccess wiring) ───────────────────────────────
-describe('M5ModulePage — tier state selection', () => {
+// ─── Tier-state selection (hasAccess wiring, four-tier matrix) ─────────────
+//
+// Spec §3 designs the gate as `hasAccess(userTier, 'full_access')` with the
+// utility handling alias mapping. Code reality (`src/lib/plans.ts`): no
+// `'full_access'` UserTier value exists — `hasAccess` is rank-based on
+// TIER_LEVEL, where both `navigator` and `signature` map to level 2. The
+// component calls `hasAccess(userTier, 'navigator')`, which grants Full
+// Access to BOTH navigator (canonical) and signature (legacy alias) users
+// via rank comparison. These four tests pin that contract.
+//
+// The `signature → Full` case is the bug-catch: if `hasAccess` ever
+// regressed to equality-on-tier-string, this test would fail (signature !==
+// navigator) and surface the lockout immediately.
+describe('M5ModulePage — tier state selection (four-tier matrix)', () => {
   it.each(['navigator', 'signature'])(
-    'treats %s as Full Access (no upsell CTA)',
+    '%s tier renders Full state — live Open buttons + no lock icons + no upsell',
     (tier) => {
       render(<M5ModulePage userTier={tier} />);
+      // Full state: 4 cards each with a live Open link.
+      const cards = screen.getAllByTestId('m5-tool-card');
+      expect(cards).toHaveLength(4);
+      for (const card of cards) {
+        expect(within(card).getByRole('link', { name: /Open/i })).toBeInTheDocument();
+        expect(within(card).queryByTestId('m5-tool-card-lock')).toBeNull();
+      }
+      // Full state: no upsell CTA.
       expect(screen.queryByText(/Unlock with Full Access/i)).not.toBeInTheDocument();
     },
   );
 
   it.each(['free', 'essentials'])(
-    'treats %s as Locked (upsell CTA visible)',
+    '%s tier renders Locked state — lock icons + no Open buttons + upsell to /upgrade',
     (tier) => {
       render(<M5ModulePage userTier={tier} />);
-      expect(screen.getByText(/Unlock with Full Access/i)).toBeInTheDocument();
+      // Locked state: 4 cards each with a lock icon and no Open link.
+      const cards = screen.getAllByTestId('m5-tool-card');
+      expect(cards).toHaveLength(4);
+      for (const card of cards) {
+        expect(within(card).getByTestId('m5-tool-card-lock')).toBeInTheDocument();
+        expect(within(card).queryByRole('link', { name: /Open/i })).toBeNull();
+      }
+      // Locked state: upsell button to /upgrade.
+      const upsell = screen.getByRole('link', { name: /Unlock with Full Access/i });
+      expect(upsell).toHaveAttribute('href', '/upgrade');
     },
   );
 });

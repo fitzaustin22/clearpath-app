@@ -146,6 +146,24 @@ function ToolCard({ title, line, href, locked }) {
 }
 
 export default function M5ModulePage({ userTier = 'essentials' }) {
+  // Full Access gate (spec M5-Tool-Specs.md §3).
+  //
+  // Spec form: `hasAccess(userTier, 'full_access')`. Code reality: `UserTier`
+  // is `'free' | 'essentials' | 'navigator' | 'signature'` — no
+  // `'full_access'` value exists. `hasAccess` is rank-based on `TIER_LEVEL`
+  // (`signature` and `navigator` both map to level 2). Calling
+  // `hasAccess(userTier, 'navigator')` therefore grants Full Access to BOTH
+  // `navigator` (canonical) and `signature` (legacy alias) users — matching
+  // the spec's intent. This is the same call form `src/app/dashboard/page.tsx`
+  // uses to gate M5 / M4 / M6.
+  //
+  // Carried debt: spec §3 should be amended to reference `'navigator'`
+  // (the canonical Full-Access tier value), or `plans.ts` should add a
+  // capability type with `'full_access'`. Tracked as a v1.x cleanup.
+  //
+  // Regression contract: the `signature → Full state` test in
+  // `M5ModulePage.test.jsx` pins this behavior — if `hasAccess` ever
+  // regressed to tier-string equality, that test fails immediately.
   const isFullAccess = hasAccess(userTier, 'navigator');
   const isDesktop = useIsDesktop();
 
