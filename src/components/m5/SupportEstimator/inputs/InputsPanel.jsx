@@ -11,6 +11,7 @@ import WizardField from '@/src/components/wizard/WizardField';
 import WizardCheckbox from '@/src/components/wizard/WizardCheckbox';
 import WizardSelector from '@/src/components/wizard/WizardSelector';
 import WizardRadio from '@/src/components/wizard/WizardRadio';
+import WizardDate from '@/src/components/wizard/WizardDate';
 
 function parseCurrency(s) {
   if (s === '' || s == null) return null;
@@ -396,27 +397,14 @@ function AdvancedSettings() {
       </button>
       {open && (
         <div style={{ marginTop: 10 }}>
-          <label
-            htmlFor="case-effective-date"
-            style={{
-              display: 'block', fontFamily: SOURCE,
-              fontSize: 14, fontWeight: 600, color: NAVY, marginBottom: 6,
-            }}
-          >
-            Case-effective date
-          </label>
-          <input
-            id="case-effective-date"
-            type="date"
+          <WizardDate
+            label="Case-effective date"
+            field="caseEffectiveDate"
             value={inputs.caseEffectiveDate ? inputs.caseEffectiveDate.slice(0, 10) : ''}
-            onChange={(e) => setInputs({ caseEffectiveDate: e.target.value || null })}
-            style={{
-              padding: '10px 12px', fontFamily: SOURCE, fontSize: 16,
-              color: NAVY, border: '1px solid #CBD5E1', borderRadius: 6,
-              backgroundColor: '#FFFFFF', outline: 'none',
-            }}
+            onChange={(_, v) => setInputs({ caseEffectiveDate: v || null })}
+            data-testid="case-effective-date"
           />
-          <p style={{ fontFamily: SOURCE, fontSize: 13, color: MUTED, margin: '6px 0 0' }}>
+          <p style={HINT_BELOW}>
             All statutory constant lookups use this date (NY caps, NY SSR, VA schedule top, etc.).
             Default: today.
           </p>

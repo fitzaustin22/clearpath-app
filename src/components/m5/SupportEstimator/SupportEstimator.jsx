@@ -11,6 +11,7 @@ import { calculateSupport } from '@/src/lib/supportEstimator';
 import { InputsPanel } from './inputs/InputsPanel.jsx';
 import ResultsPanel from './ResultsPanel.jsx';
 import { Banner } from './inputs/_fields.jsx';
+import WizardCheckbox from '@/src/components/wizard/WizardCheckbox';
 import {
   NAVY, GOLD, WHITE, SOURCE,
 } from './_styles.js';
@@ -424,20 +425,14 @@ export function SupportEstimator({ disablePrePop = false }) {
           Calculate support estimate
         </button>
 
-        <label
-          style={{
-            display: 'inline-flex', alignItems: 'center', gap: 8,
-            fontFamily: SOURCE, fontSize: 13, color: '#6B7280',
-            cursor: 'pointer',
-          }}
-        >
-          <input
-            type="checkbox"
-            checked={partyFraming === 'persona'}
-            onChange={(e) => setPartyFraming(e.target.checked ? 'persona' : 'abstract')}
-          />
-          Use &ldquo;You&rdquo; / &ldquo;your spouse&rdquo;
-        </label>
+        <WizardCheckbox
+          label={'Use “You” / “your spouse”'}
+          field="partyFraming"
+          value={partyFraming === 'persona'}
+          onChange={(_, v) => setPartyFraming(v ? 'persona' : 'abstract')}
+          variant="checkbox"
+          data-testid="party-framing"
+        />
       </div>
 
       {!canCalculate && (
