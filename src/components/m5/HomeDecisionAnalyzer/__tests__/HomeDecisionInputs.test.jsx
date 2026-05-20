@@ -93,9 +93,8 @@ describe('HomeDecisionInputs', () => {
   it('NumberField writes a numeric value through onChange', () => {
     const onChange = vi.fn();
     render(<HomeDecisionInputs inputs={baseInputs} onChange={onChange} />);
-    fireEvent.change(screen.getByTestId('hda-input-currentFMV'), {
-      target: { value: '650000' },
-    });
+    const input = screen.getByTestId('hda-input-currentFMV').querySelector('input');
+    fireEvent.change(input, { target: { value: '650000' } });
     expect(onChange).toHaveBeenCalledWith('currentFMV', 650000);
   });
 
@@ -107,27 +106,24 @@ describe('HomeDecisionInputs', () => {
         onChange={onChange}
       />,
     );
-    fireEvent.change(screen.getByTestId('hda-input-currentFMV'), {
-      target: { value: '' },
-    });
+    const input = screen.getByTestId('hda-input-currentFMV').querySelector('input');
+    fireEvent.change(input, { target: { value: '' } });
     expect(onChange).toHaveBeenCalledWith('currentFMV', null);
   });
 
   it('SelectField writes the selected enum value', () => {
     const onChange = vi.fn();
     render(<HomeDecisionInputs inputs={baseInputs} onChange={onChange} />);
-    fireEvent.change(screen.getByTestId('hda-input-userCreditScoreBand'), {
-      target: { value: 'fair' },
-    });
+    const select = screen.getByTestId('hda-input-userCreditScoreBand').querySelector('select');
+    fireEvent.change(select, { target: { value: 'fair' } });
     expect(onChange).toHaveBeenCalledWith('userCreditScoreBand', 'fair');
   });
 
   it('userState text field uppercases the USPS code', () => {
     const onChange = vi.fn();
     render(<HomeDecisionInputs inputs={baseInputs} onChange={onChange} />);
-    fireEvent.change(screen.getByTestId('hda-input-userState'), {
-      target: { value: 'va' },
-    });
+    const input = screen.getByTestId('hda-input-userState').querySelector('input');
+    fireEvent.change(input, { target: { value: 'va' } });
     expect(onChange).toHaveBeenCalledWith('userState', 'VA');
   });
 
@@ -135,7 +131,10 @@ describe('HomeDecisionInputs', () => {
     const onChange = vi.fn();
     render(<HomeDecisionInputs inputs={baseInputs} onChange={onChange} />);
     fireEvent.click(screen.getByTestId('hda-scenario-deferredSale-toggle'));
-    fireEvent.click(screen.getByTestId('hda-input-stressTestUserPays100Pct'));
+    const checkbox = screen
+      .getByTestId('hda-input-stressTestUserPays100Pct')
+      .querySelector('input');
+    fireEvent.click(checkbox);
     expect(onChange).toHaveBeenCalledWith('stressTestUserPays100Pct', true);
   });
 
@@ -154,8 +153,12 @@ describe('HomeDecisionInputs', () => {
         onChange={vi.fn()}
       />,
     );
-    expect(screen.getByTestId('hda-input-currentFMV')).toHaveValue(700000);
-    expect(screen.getByTestId('hda-input-spouseEquityShare')).toHaveValue(0.6);
+    expect(
+      screen.getByTestId('hda-input-currentFMV').querySelector('input'),
+    ).toHaveValue('700000');
+    expect(
+      screen.getByTestId('hda-input-spouseEquityShare').querySelector('input'),
+    ).toHaveValue('0.6');
   });
 
   describe('RefiRateInput integration wiring', () => {
@@ -180,9 +183,8 @@ describe('HomeDecisionInputs', () => {
         />,
       );
       fireEvent.click(screen.getByTestId('hda-scenario-keepAndRefi-toggle'));
-      fireEvent.change(screen.getByTestId('hda-input-refiRate'), {
-        target: { value: '0.0725' },
-      });
+      const rateInput = screen.getByTestId('hda-input-refiRate').querySelector('input');
+      fireEvent.change(rateInput, { target: { value: '0.0725' } });
       expect(onChange).toHaveBeenCalledWith('refiRate', 0.0725);
       expect(onChange).toHaveBeenCalledWith('refiRateProvenance', 'user-quoted');
     });

@@ -65,10 +65,10 @@ describe('RefiRateInput', () => {
       />,
     );
 
-    const input = screen.getByTestId('hda-input-refiRate');
-    expect(input).toBeInTheDocument();
-    expect(input).toHaveValue(null); // number input with empty string → null value
-    expect(input).toHaveAttribute('placeholder', 'Enter your quoted rate (% APR)');
+    const wrapper = screen.getByTestId('hda-input-refiRate');
+    expect(wrapper).toBeInTheDocument();
+    const input = wrapper.querySelector('input');
+    expect(input).toHaveValue(''); // WizardField renders type=text; empty value
 
     expect(screen.getByTestId('hda-refiRate-optin')).toBeInTheDocument();
     expect(screen.queryByTestId('hda-refiRate-staleness')).not.toBeInTheDocument();
@@ -141,9 +141,8 @@ describe('RefiRateInput', () => {
       />,
     );
 
-    fireEvent.change(screen.getByTestId('hda-input-refiRate'), {
-      target: { value: '0.0725' },
-    });
+    const input = screen.getByTestId('hda-input-refiRate').querySelector('input');
+    fireEvent.change(input, { target: { value: '0.0725' } });
 
     expect(onChange).toHaveBeenCalledWith('refiRate', 0.0725);
     expect(onChange).toHaveBeenCalledWith('refiRateProvenance', 'user-quoted');
@@ -165,9 +164,8 @@ describe('RefiRateInput', () => {
       />,
     );
 
-    fireEvent.change(screen.getByTestId('hda-input-refiRate'), {
-      target: { value: '' },
-    });
+    const input = screen.getByTestId('hda-input-refiRate').querySelector('input');
+    fireEvent.change(input, { target: { value: '' } });
 
     expect(onChange).toHaveBeenCalledWith('refiRate', null);
   });
@@ -214,7 +212,9 @@ describe('RefiRateInput', () => {
       />,
     );
 
-    expect(screen.getByTestId('hda-input-refiRate')).toHaveValue(0.0625);
+    expect(
+      screen.getByTestId('hda-input-refiRate').querySelector('input'),
+    ).toHaveValue('0.0625');
   });
 
   // Verify opt-in works for all 4 valid credit bands

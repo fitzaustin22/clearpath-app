@@ -299,9 +299,8 @@ describe('Group 3: RefiRateInput TC-HDA-6 — input-propagation through orchestr
     );
 
     // 3d. Force-input override: type a custom rate → provenance becomes 'user-quoted'.
-    fireEvent.change(screen.getByTestId('hda-input-refiRate'), {
-      target: { value: '0.0725' },
-    });
+    const rateInput = screen.getByTestId('hda-input-refiRate').querySelector('input');
+    fireEvent.change(rateInput, { target: { value: '0.0725' } });
 
     expect(useM5Store.getState().homeDecision.inputs.refiRate).toBe(0.0725);
     expect(useM5Store.getState().homeDecision.inputs.refiRateProvenance).toBe('user-quoted');
