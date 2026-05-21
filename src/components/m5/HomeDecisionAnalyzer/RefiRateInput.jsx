@@ -30,7 +30,7 @@ import {
   REFI_RATE_BY_CREDIT_BAND,
   BANDED_REFI_RATE_BUILD_DATE,
 } from '@/src/lib/homeDecision';
-import WizardField from '@/src/components/wizard/WizardField.jsx';
+import NumericFieldBridge from '@/src/components/m5/wizard-bridge/NumericFieldBridge.jsx';
 
 const BANDED_PREFIX = 'banded-default-';
 
@@ -108,14 +108,10 @@ export default function RefiRateInput({ value, creditBand, provenance, onChange,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [creditBand, provenance]);
 
-  function handleRateChange(field, raw) {
-    if (raw === '') {
-      // Null discipline: empty string → null, never coerce to 0.
-      onChange('refiRate', null);
-    } else {
-      const n = Number(raw);
-      onChange('refiRate', Number.isFinite(n) ? n : null);
-    }
+  function handleRateChange(field, num) {
+    // NumericFieldBridge has already parsed `num` to `number | null`. Null
+    // discipline preserved: empty / non-numeric input → null, never 0.
+    onChange('refiRate', num);
     // Dual-write provenance on every user keystroke.
     onChange('refiRateProvenance', 'user-quoted');
   }
@@ -129,13 +125,13 @@ export default function RefiRateInput({ value, creditBand, provenance, onChange,
 
   return (
     <div style={FIELD_WRAP}>
-      <WizardField
+      <NumericFieldBridge
         field="refiRate"
         label="Refi rate (APR)"
         tooltip="Decimal form: 0.0625 = 6.25% APR. Enter your lender-quoted rate."
-        numeric
         value={value ?? ''}
         onChange={handleRateChange}
+        parser="number"
         data-testid="hda-input-refiRate"
       />
 

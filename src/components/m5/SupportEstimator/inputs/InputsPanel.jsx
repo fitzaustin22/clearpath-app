@@ -7,25 +7,11 @@ import {
   Banner, PrePopBadge, SectionCard,
 } from './_fields.jsx';
 import { NAVY, MUTED, SOURCE } from '../_styles.js';
-import WizardField from '@/src/components/wizard/WizardField';
 import WizardCheckbox from '@/src/components/wizard/WizardCheckbox';
 import WizardSelector from '@/src/components/wizard/WizardSelector';
 import WizardRadio from '@/src/components/wizard/WizardRadio';
 import WizardDate from '@/src/components/wizard/WizardDate';
-
-function parseCurrency(s) {
-  if (s === '' || s == null) return null;
-  const cleaned = String(s).replace(/[^0-9.]/g, '');
-  if (cleaned === '') return null;
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? Math.max(0, n) : null;
-}
-
-function parseNumOrNull(s) {
-  if (s === '' || s == null) return null;
-  const n = Number(s);
-  return Number.isFinite(n) ? n : null;
-}
+import NumericFieldBridge from '@/src/components/m5/wizard-bridge/NumericFieldBridge.jsx';
 
 const HINT_BELOW = {
   fontFamily: SOURCE,
@@ -98,12 +84,12 @@ function PartyInputs({ partyKey, label, prePopSource, onClearPrePop }) {
         </div>
       )}
       <div style={{ marginBottom: 14 }}>
-        <WizardField
+        <NumericFieldBridge
           label="Gross monthly income"
           field={`${partyKey}.grossMonthly`}
           value={party.grossMonthly}
-          onChange={(_, v) => onGrossChange(parseCurrency(v))}
-          numeric
+          onChange={(_, num) => onGrossChange(num)}
+          parser="currency"
           prefix="$"
           tooltip={
             isPartyA
@@ -132,12 +118,12 @@ function PartyInputs({ partyKey, label, prePopSource, onClearPrePop }) {
 
       {party.imputeIncome && (
         <div style={{ marginBottom: 14 }}>
-          <WizardField
+          <NumericFieldBridge
             label="Imputed earning capacity (monthly)"
             field={`${partyKey}.imputedEarningCapacity`}
             value={party.imputedEarningCapacity}
-            onChange={(_, v) => updateParty({ imputedEarningCapacity: parseCurrency(v) })}
-            numeric
+            onChange={(_, num) => updateParty({ imputedEarningCapacity: num })}
+            parser="currency"
             prefix="$"
             tooltip="Used in place of actual gross at calc entry."
             data-testid={`${partyKey}-imputed`}
@@ -177,37 +163,36 @@ function AddOnsForParty({ partyKey, label, parentingErrorActive }) {
         {label}
       </div>
       <div style={{ marginBottom: 14 }}>
-        <WizardField
+        <NumericFieldBridge
           label="Health insurance premium (monthly)"
           field={`${partyKey}.healthInsurance`}
           value={party.healthInsurance}
-          onChange={(_, v) => update({ healthInsurance: parseCurrency(v) ?? 0 })}
-          numeric
+          onChange={(_, num) => update({ healthInsurance: num ?? 0 })}
+          parser="currency"
           prefix="$"
           data-testid={`${partyKey}-hi`}
         />
       </div>
       <div style={{ marginBottom: 14 }}>
-        <WizardField
+        <NumericFieldBridge
           label="Childcare cost (monthly)"
           field={`${partyKey}.childcare`}
           value={party.childcare}
-          onChange={(_, v) => update({ childcare: parseCurrency(v) ?? 0 })}
-          numeric
+          onChange={(_, num) => update({ childcare: num ?? 0 })}
+          parser="currency"
           prefix="$"
           data-testid={`${partyKey}-childcare`}
         />
       </div>
       <div style={{ marginBottom: 14 }}>
-        <WizardField
+        <NumericFieldBridge
           label="Parenting time"
           field={`${partyKey}.parentingTimeNights`}
           value={party.parentingTimeNights}
-          onChange={(_, v) => {
-            const n = parseNumOrNull(v);
-            update({ parentingTimeNights: n == null ? 0 : Math.max(0, Math.min(365, n)) });
+          onChange={(_, num) => {
+            update({ parentingTimeNights: num == null ? 0 : Math.max(0, Math.min(365, num)) });
           }}
-          numeric
+          parser="number"
           suffix="overnights/yr"
           tooltip="0–365. Total across both parties cannot exceed 365."
           error={nightsError}
@@ -215,12 +200,12 @@ function AddOnsForParty({ partyKey, label, parentingErrorActive }) {
         />
       </div>
       <div style={{ marginBottom: 14 }}>
-        <WizardField
+        <NumericFieldBridge
           label="Other support obligations (monthly)"
           field={`${partyKey}.otherSupportObligations`}
           value={party.otherSupportObligations}
-          onChange={(_, v) => update({ otherSupportObligations: parseCurrency(v) ?? 0 })}
-          numeric
+          onChange={(_, num) => update({ otherSupportObligations: num ?? 0 })}
+          parser="currency"
           prefix="$"
           tooltip="Existing child support or spousal support orders."
           data-testid={`${partyKey}-other-support`}
@@ -299,46 +284,46 @@ function FullWorksheetCascade() {
           {label}
         </div>
         <div style={{ marginBottom: 14 }}>
-          <WizardField
+          <NumericFieldBridge
             label="Federal income tax (monthly)"
             field={`${partyKey}.fedTax`}
             value={cascade.fedTax}
-            onChange={(_, v) => updateCascade({ fedTax: parseCurrency(v) ?? 0 })}
-            numeric
+            onChange={(_, num) => updateCascade({ fedTax: num ?? 0 })}
+            parser="currency"
             prefix="$"
             data-testid={`${partyKey}-fed-tax`}
           />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <WizardField
+          <NumericFieldBridge
             label="State income tax (monthly)"
             field={`${partyKey}.stateTax`}
             value={cascade.stateTax}
-            onChange={(_, v) => updateCascade({ stateTax: parseCurrency(v) ?? 0 })}
-            numeric
+            onChange={(_, num) => updateCascade({ stateTax: num ?? 0 })}
+            parser="currency"
             prefix="$"
             data-testid={`${partyKey}-state-tax`}
           />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <WizardField
+          <NumericFieldBridge
             label="FICA — Social Security + Medicare (monthly)"
             field={`${partyKey}.fica`}
             value={cascade.fica}
-            onChange={(_, v) => updateCascade({ fica: parseCurrency(v) ?? 0 })}
-            numeric
+            onChange={(_, num) => updateCascade({ fica: num ?? 0 })}
+            parser="currency"
             prefix="$"
             tooltip="Baseline 7.65% of gross; override if alternative withholding applies."
             data-testid={`${partyKey}-fica`}
           />
         </div>
         <div style={{ marginBottom: 14 }}>
-          <WizardField
+          <NumericFieldBridge
             label="Other mandatory deductions (monthly)"
             field={`${partyKey}.otherDeductions`}
             value={cascade.otherDeductions}
-            onChange={(_, v) => updateCascade({ otherDeductions: parseCurrency(v) ?? 0 })}
-            numeric
+            onChange={(_, num) => updateCascade({ otherDeductions: num ?? 0 })}
+            parser="currency"
             prefix="$"
             data-testid={`${partyKey}-other-deductions`}
           />
@@ -489,27 +474,26 @@ export function InputsPanel({ sp3Violation }) {
         )}
 
         <div style={{ marginBottom: 14 }}>
-          <WizardField
+          <NumericFieldBridge
             label="Number of children"
             field="numChildren"
             value={inputs.numChildren}
-            onChange={(_, v) => {
-              const n = parseNumOrNull(v);
-              setInputs({ numChildren: n == null ? 0 : Math.max(0, Math.min(10, n)) });
+            onChange={(_, num) => {
+              setInputs({ numChildren: num == null ? 0 : Math.max(0, Math.min(10, num)) });
             }}
-            numeric
+            parser="number"
             tooltip="Children of the marriage. 0–10."
             data-testid="num-children"
           />
         </div>
 
         <div style={{ marginBottom: 14 }}>
-          <WizardField
+          <NumericFieldBridge
             label="Marriage length"
             field="marriageLengthYears"
             value={inputs.marriageLengthYears}
-            onChange={(_, v) => setInputs({ marriageLengthYears: parseNumOrNull(v) })}
-            numeric
+            onChange={(_, num) => setInputs({ marriageLengthYears: num })}
+            parser="number"
             suffix="years"
             tooltip="Used by NY for spousal duration schedule and MD/DC for AAML duration."
             data-testid="marriage-length"

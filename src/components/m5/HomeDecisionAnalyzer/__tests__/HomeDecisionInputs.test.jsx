@@ -6,6 +6,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import React from 'react';
 import HomeDecisionInputs from '../HomeDecisionInputs.jsx';
 
 // Minimal inputs object (subset of makeInitialHomeDecision()).
@@ -198,6 +199,60 @@ describe('HomeDecisionInputs', () => {
       );
       fireEvent.click(screen.getByTestId('hda-scenario-keepAndRefi-toggle'));
       expect(screen.queryByTestId('hda-refiRate-optin')).not.toBeInTheDocument();
+    });
+  });
+
+  // PR-FIX-1: WizardField numeric fields rejected decimals before this fix
+  // (every keystroke round-tripped through Number() → "0." displayed as "0").
+  // The integration tests below simulate one-character-at-a-time typing so
+  // the round-trip defect cannot hide behind a single coerced change event.
+  describe('decimal-input survival (PR-FIX-1)', () => {
+    function Harness({ field, initial = null }) {
+      // mini-store: mirrors how HomeDecisionAnalyzer threads onChange
+      const [inputs, setInputs] = React.useState({ ...baseInputs, [field]: initial });
+      const onChange = (k, v) => setInputs((s) => ({ ...s, [k]: v }));
+      return <HomeDecisionInputs inputs={inputs} onChange={onChange} />;
+    }
+
+    function typeChars(input, chars) {
+      let acc = input.value;
+      for (const ch of chars) {
+        acc += ch;
+        fireEvent.change(input, { target: { value: acc } });
+      }
+    }
+
+    it('keystroke-by-keystroke "0.0625" lands in a shared fraction field', () => {
+      render(<Harness field="propertyAppreciationRateReal" initial={null} />);
+      const input = screen
+        .getByTestId('hda-input-propertyAppreciationRateReal')
+        .querySelector('input');
+      typeChars(input, ['0', '.', '0', '6', '2', '5']);
+      expect(input.value).toBe('0.0625');
+    });
+
+    it('keystroke-by-keystroke "0.5" lands in spouseEquityShare', () => {
+      render(<Harness field="spouseEquityShare" initial={null} />);
+      const input = screen.getByTestId('hda-input-spouseEquityShare').querySelector('input');
+      typeChars(input, ['0', '.', '5']);
+      expect(input.value).toBe('0.5');
+    });
+
+    it('typed decimal survives in the refi rate (APR) field', () => {
+      render(<Harness field="refiRate" initial={null} />);
+      fireEvent.click(screen.getByTestId('hda-scenario-keepAndRefi-toggle'));
+      const input = screen.getByTestId('hda-input-refiRate').querySelector('input');
+      typeChars(input, ['6', '.', '2', '5']);
+      expect(input.value).toBe('6.25');
+    });
+  });
+
+  describe('Phase 3 — stress-test row spacing', () => {
+    it('wraps the stress-test checkbox in a marginBottom row to match the other field rhythm', () => {
+      render(<HomeDecisionInputs inputs={baseInputs} onChange={vi.fn()} />);
+      fireEvent.click(screen.getByTestId('hda-scenario-deferredSale-toggle'));
+      const row = screen.getByTestId('hda-stress-test-row');
+      expect(row).toHaveStyle({ marginBottom: '14px' });
     });
   });
 });
