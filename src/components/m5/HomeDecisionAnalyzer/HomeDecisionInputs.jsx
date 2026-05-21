@@ -182,6 +182,7 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
           value={inputs.existingMortgageRate ?? ''}
           onChange={onChange}
           parser="number"
+          percent
           data-testid="hda-input-existingMortgageRate"
         />
         <NumericFieldBridge

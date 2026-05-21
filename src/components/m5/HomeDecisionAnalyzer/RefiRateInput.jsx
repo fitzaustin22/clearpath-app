@@ -132,6 +132,7 @@ export default function RefiRateInput({ value, creditBand, provenance, onChange,
         value={value ?? ''}
         onChange={handleRateChange}
         parser="number"
+        percent
         data-testid="hda-input-refiRate"
       />
 

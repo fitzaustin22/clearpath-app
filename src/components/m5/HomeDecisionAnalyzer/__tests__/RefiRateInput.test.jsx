@@ -127,8 +127,9 @@ describe('RefiRateInput', () => {
     expect(warning.textContent).toContain(BANDED_REFI_RATE_BUILD_DATE);
   });
 
-  // 5. User types 0.0725 → onChange('refiRate', 0.0725) and onChange('refiRateProvenance', 'user-quoted');
+  // 5. User types 7.25 → onChange('refiRate', 0.0725) and onChange('refiRateProvenance', 'user-quoted');
   //    with provenance='user-quoted' staleness warning is absent even if date is old.
+  // PR-FIX-2: field accepts percent form; bridge writes the fraction to the store.
   it('user-typed value writes decimal and user-quoted provenance; no staleness when user-quoted', () => {
     const onChange = vi.fn();
     render(
@@ -142,7 +143,7 @@ describe('RefiRateInput', () => {
     );
 
     const input = screen.getByTestId('hda-input-refiRate').querySelector('input');
-    fireEvent.change(input, { target: { value: '0.0725' } });
+    fireEvent.change(input, { target: { value: '7.25' } });
 
     expect(onChange).toHaveBeenCalledWith('refiRate', 0.0725);
     expect(onChange).toHaveBeenCalledWith('refiRateProvenance', 'user-quoted');
@@ -200,7 +201,8 @@ describe('RefiRateInput', () => {
     expect(screen.queryByTestId('hda-refiRate-optin')).not.toBeInTheDocument();
   });
 
-  // Verify controlled value reflects the prop
+  // Verify controlled value reflects the prop, scaled to percent display.
+  // PR-FIX-2: stored fraction 0.0625 renders as "6.25" via percent mode.
   it('reflects provided decimal value in the controlled input', () => {
     render(
       <RefiRateInput
@@ -214,7 +216,7 @@ describe('RefiRateInput', () => {
 
     expect(
       screen.getByTestId('hda-input-refiRate').querySelector('input'),
-    ).toHaveValue('0.0625');
+    ).toHaveValue('6.25');
   });
 
   // Verify opt-in works for all 4 valid credit bands
