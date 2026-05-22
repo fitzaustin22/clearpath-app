@@ -177,7 +177,7 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
         <NumericFieldBridge
           field="existingMortgageRate"
           label="Existing mortgage rate (% APR)"
-          tooltip="Manual entry. Used for interim cashflow and deferred-sale continuity."
+          tooltip="Enter as a percent (e.g. 4.5 for 4.5% APR). Manual entry — used for interim cashflow and deferred-sale continuity."
           suffix="%"
           value={inputs.existingMortgageRate ?? ''}
           onChange={onChange}

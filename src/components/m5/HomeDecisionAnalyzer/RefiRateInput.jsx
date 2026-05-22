@@ -127,8 +127,9 @@ export default function RefiRateInput({ value, creditBand, provenance, onChange,
     <div style={FIELD_WRAP}>
       <NumericFieldBridge
         field="refiRate"
-        label="Refi rate (APR)"
-        tooltip="Decimal form: 0.0625 = 6.25% APR. Enter your lender-quoted rate."
+        label="Refi rate (% APR)"
+        tooltip="Enter as a percent (e.g. 6.25 for 6.25% APR) — use your lender-quoted rate."
+        suffix="%"
         value={value ?? ''}
         onChange={handleRateChange}
         parser="number"
