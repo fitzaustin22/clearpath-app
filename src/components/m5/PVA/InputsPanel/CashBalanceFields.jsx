@@ -44,9 +44,10 @@ const WHOSEPLAN_OPTIONS = [
   { value: 'Spouse', label: 'Spouse' },
 ];
 
-// expectedRetirementAge min/max preserved in parent onChange (clamp moves
-// out of the now-retired NumberField primitive).
-const clampAge = (n) => (n == null ? null : Math.max(50, Math.min(80, n)));
+// expectedRetirementAge accepts free numeric input. The previous NumberField
+// min=50/max=80 were non-enforcing HTML5 hints; an earlier per-keystroke
+// clamp here made the field untypeable from blank. Range validation belongs
+// to the engine.
 
 export default function CashBalanceFields({ inputs, onChange }) {
   const applyCoverture = inputs.applyCoverture === true;
@@ -133,7 +134,7 @@ export default function CashBalanceFields({ inputs, onChange }) {
               label="Expected retirement age"
               tooltip="Denominator end of total projected service. Required when applying coverture."
               value={inputs.expectedRetirementAge ?? ''}
-              onChange={(field, n) => onChange(field, clampAge(n))}
+              onChange={onChange}
               parser="number"
               data-testid="pva-input-expectedRetirementAge"
             />

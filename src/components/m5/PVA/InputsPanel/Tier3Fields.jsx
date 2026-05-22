@@ -63,11 +63,11 @@ const BENEFIT_SOURCE_OPTIONS = [
   { value: 'plan_estimator_or_manual_calculation', label: 'Plan estimator or manual calc' },
 ];
 
-// planNRA / expectedRetirementAge min/max preserved in parent onChange per
-// the wizard-migration playbook (previous NumberField min=50/max=80 were
-// HTML5 validation hints, not coercers; functional clamp installed here
-// so the store receives only values in the [50, 80] range).
-const clampAge = (n) => (n == null ? null : Math.max(50, Math.min(80, n)));
+// planNRA / expectedRetirementAge accept free numeric input. The previous
+// NumberField min=50/max=80 were non-enforcing HTML5 hints; an earlier
+// per-keystroke clamp here made these fields untypeable from blank (first
+// digit clamped up to 50, second appended via the controlled re-render).
+// Range validation belongs to the engine, not the input.
 
 export default function Tier3Fields({ inputs, onChange }) {
   return (
@@ -90,7 +90,7 @@ export default function Tier3Fields({ inputs, onChange }) {
           label="Plan Normal Retirement Age (NRA)"
           tooltip="Typically age 65."
           value={inputs.planNRA ?? ''}
-          onChange={(field, n) => onChange(field, clampAge(n))}
+          onChange={onChange}
           parser="number"
           data-testid="pva-input-planNRA"
         />
@@ -137,7 +137,7 @@ export default function Tier3Fields({ inputs, onChange }) {
           label="Expected retirement age"
           tooltip="Drives the denominator end (total projected service to retirement). Defaults to plan NRA."
           value={inputs.expectedRetirementAge ?? ''}
-          onChange={(field, n) => onChange(field, clampAge(n))}
+          onChange={onChange}
           parser="number"
           data-testid="pva-input-expectedRetirementAge"
         />

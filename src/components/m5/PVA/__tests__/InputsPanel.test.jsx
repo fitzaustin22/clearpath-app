@@ -189,4 +189,25 @@ describe('InputsPanel — path-conditional rendering (§7.2 / §7.3)', () => {
     fireEvent.change(input, { target: { value: '' } });
     expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.cola).toBeNull();
   });
+
+  // PR-D post-smoke regression. Earlier per-keystroke `[50, 80]` clamps on
+  // planNRA and expectedRetirementAge made these fields untypeable from blank:
+  // each first digit clamped up to 50, then the controlled re-render appended
+  // the next digit on top of the clamped display. Browser smoke confirmed.
+  // The clamps were removed; engine validates range, not the input.
+  it('TC-PVA-InputsPanel-13: planNRA accepts a sub-50 keystroke unclamped (regression)', () => {
+    seedInputs({});
+    render(<InputsPanel assetId={ASSET_ID} path="tier_1" />);
+    const input = screen.getByTestId('pva-input-planNRA').querySelector('input');
+    fireEvent.change(input, { target: { value: '12' } });
+    expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.planNRA).toBe(12);
+  });
+
+  it('TC-PVA-InputsPanel-14: expectedRetirementAge accepts a sub-50 keystroke unclamped (regression)', () => {
+    seedInputs({});
+    render(<InputsPanel assetId={ASSET_ID} path="tier_3" />);
+    const input = screen.getByTestId('pva-input-expectedRetirementAge').querySelector('input');
+    fireEvent.change(input, { target: { value: '12' } });
+    expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.expectedRetirementAge).toBe(12);
+  });
 });

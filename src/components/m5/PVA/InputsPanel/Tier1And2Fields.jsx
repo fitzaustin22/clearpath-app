@@ -45,12 +45,11 @@ const WHOSEPLAN_OPTIONS = [
   { value: 'Spouse', label: 'Spouse' },
 ];
 
-// planNRA min/max preserved in parent onChange per the wizard-migration
-// playbook (previous NumberField min=50/max=80 were HTML5 validation
-// hints, not coercers; functional clamp installed here so the store
-// receives only values in the [50, 80] range a spinner would have
-// produced).
-const clampNRA = (n) => (n == null ? null : Math.max(50, Math.min(80, n)));
+// planNRA accepts free numeric input. The previous NumberField min=50/max=80
+// were non-enforcing HTML5 hints; an earlier per-keystroke clamp here made
+// the field untypeable from blank (first digit `6` clamped up to 50, second
+// `5` appended via the controlled re-render). Range validation belongs to
+// the engine, not the input.
 
 export default function Tier1And2Fields({ tier, inputs, onChange }) {
   const title = tier === 'tier_2' ? 'Tier 2 inputs — Estimated accrued benefit' : 'Tier 1 inputs — Accrued benefit known';
@@ -79,7 +78,7 @@ export default function Tier1And2Fields({ tier, inputs, onChange }) {
           label="Plan Normal Retirement Age (NRA)"
           tooltip="Typically age 65. Defines when the deferred annuity starts."
           value={inputs.planNRA ?? ''}
-          onChange={(field, n) => onChange(field, clampNRA(n))}
+          onChange={onChange}
           parser="number"
           data-testid="pva-input-planNRA"
         />
