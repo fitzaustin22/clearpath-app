@@ -176,6 +176,8 @@ describe('HomeDecisionInputs', () => {
     });
 
     it('threads onChange: typing fires dual-write (refiRate + refiRateProvenance)', () => {
+      // PR-FIX-2: refi rate field now accepts percent form (user types 7.25
+      // for 7.25% APR); the bridge writes the fraction (0.0725) to the store.
       const onChange = vi.fn();
       render(
         <HomeDecisionInputs
@@ -185,7 +187,7 @@ describe('HomeDecisionInputs', () => {
       );
       fireEvent.click(screen.getByTestId('hda-scenario-keepAndRefi-toggle'));
       const rateInput = screen.getByTestId('hda-input-refiRate').querySelector('input');
-      fireEvent.change(rateInput, { target: { value: '0.0725' } });
+      fireEvent.change(rateInput, { target: { value: '7.25' } });
       expect(onChange).toHaveBeenCalledWith('refiRate', 0.0725);
       expect(onChange).toHaveBeenCalledWith('refiRateProvenance', 'user-quoted');
     });
@@ -245,6 +247,103 @@ describe('HomeDecisionInputs', () => {
       typeChars(input, ['6', '.', '2', '5']);
       expect(input.value).toBe('6.25');
     });
+  });
+
+  // PR-FIX-2: rate fields labeled with "%" / "APR" now accept percent form
+  // ("6.25" for 6.25% APR); the bridge writes the fraction (0.0625) to the
+  // store, which is what the engine and its 11 fixtures expect. This guards
+  // against silent 100× projection errors on keep-or-sell-the-home settlement
+  // decisions.
+  describe('PR-FIX-2 — rate fields accept percent form (store stays fraction)', () => {
+    function Harness({ field, initial = null }) {
+      const [inputs, setInputs] = React.useState({ ...baseInputs, [field]: initial });
+      const onChange = (k, v) => setInputs((s) => ({ ...s, [k]: v }));
+      return <HomeDecisionInputs inputs={inputs} onChange={onChange} />;
+    }
+
+    it('existingMortgageRate: typing "4.5" writes the fraction 0.045 to the store', () => {
+      const onChange = vi.fn();
+      render(<HomeDecisionInputs inputs={baseInputs} onChange={onChange} />);
+      const input = screen.getByTestId('hda-input-existingMortgageRate').querySelector('input');
+      fireEvent.change(input, { target: { value: '4.5' } });
+      expect(onChange).toHaveBeenCalledWith('existingMortgageRate', 0.045);
+    });
+
+    it('existingMortgageRate: a stored fraction 0.045 displays as "4.5"', () => {
+      render(
+        <HomeDecisionInputs
+          inputs={{ ...baseInputs, existingMortgageRate: 0.045 }}
+          onChange={vi.fn()}
+        />,
+      );
+      const input = screen.getByTestId('hda-input-existingMortgageRate').querySelector('input');
+      expect(input).toHaveValue('4.5');
+    });
+
+    it('existingMortgageRate: stored 0.07 displays as "7" (no IEEE float artifact)', () => {
+      render(
+        <HomeDecisionInputs
+          inputs={{ ...baseInputs, existingMortgageRate: 0.07 }}
+          onChange={vi.fn()}
+        />,
+      );
+      const input = screen.getByTestId('hda-input-existingMortgageRate').querySelector('input');
+      expect(input).toHaveValue('7');
+    });
+
+    it('refiRate: typing "6.25" through the accordion writes the fraction 0.0625', () => {
+      const onChange = vi.fn();
+      render(
+        <HomeDecisionInputs
+          inputs={{ ...baseInputs, userCreditScoreBand: 'good' }}
+          onChange={onChange}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('hda-scenario-keepAndRefi-toggle'));
+      const input = screen.getByTestId('hda-input-refiRate').querySelector('input');
+      fireEvent.change(input, { target: { value: '6.25' } });
+      expect(onChange).toHaveBeenCalledWith('refiRate', 0.0625);
+      // Regression guard for PR #33: the provenance dual-write must still fire
+      // alongside refiRate on every user keystroke.
+      expect(onChange).toHaveBeenCalledWith('refiRateProvenance', 'user-quoted');
+    });
+
+    it('refiRate: a stored fraction 0.0625 displays as "6.25"', () => {
+      render(
+        <HomeDecisionInputs
+          inputs={{ ...baseInputs, refiRate: 0.0625 }}
+          onChange={vi.fn()}
+        />,
+      );
+      fireEvent.click(screen.getByTestId('hda-scenario-keepAndRefi-toggle'));
+      const input = screen.getByTestId('hda-input-refiRate').querySelector('input');
+      expect(input).toHaveValue('6.25');
+    });
+
+    it('refiRate: an in-progress "6." survives keystroke-by-keystroke entry (decimal-fix preserved)', () => {
+      render(<Harness field="refiRate" initial={null} />);
+      fireEvent.click(screen.getByTestId('hda-scenario-keepAndRefi-toggle'));
+      const input = screen.getByTestId('hda-input-refiRate').querySelector('input');
+      typeChars(input, ['6', '.']);
+      expect(input.value).toBe('6.');
+    });
+
+    it('existingMortgageRate: keystroke-by-keystroke "4.5" round-trips stably to the displayed value', () => {
+      render(<Harness field="existingMortgageRate" initial={null} />);
+      const input = screen.getByTestId('hda-input-existingMortgageRate').querySelector('input');
+      typeChars(input, ['4', '.', '5']);
+      expect(input.value).toBe('4.5');
+    });
+
+    // Helper for the keystroke tests above — mirrors the PR-FIX-1 typeChars
+    // utility but local to this describe so the suite is self-contained.
+    function typeChars(input, chars) {
+      let acc = input.value;
+      for (const ch of chars) {
+        acc += ch;
+        fireEvent.change(input, { target: { value: acc } });
+      }
+    }
   });
 
   describe('Phase 3 — stress-test row spacing', () => {
