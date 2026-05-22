@@ -20,7 +20,22 @@
  * absent here — irrelevant in pay status (§7.3.5 spec literal).
  */
 
-import { NumberField, DateField, SelectField, FieldSection } from './_fields.jsx';
+import { FieldSection } from './_fields.jsx';
+import { T } from '@/src/lib/brand/tokens';
+import WizardSelector from '@/src/components/wizard/WizardSelector';
+import WizardDate from '@/src/components/wizard/WizardDate';
+import NumericFieldBridge from '@/src/components/m5/wizard-bridge/NumericFieldBridge.jsx';
+
+const FIELD_WRAP = { marginBottom: 14 };
+
+// WizardDate has no `tooltip` prop — helper renders as muted <p> below
+// (Visual-D fallback per PR-B SE migration).
+const HELPER_BELOW = {
+  fontFamily: T.FONT_BODY,
+  fontSize: 13,
+  color: T.NAVY_55,
+  margin: '6px 0 0',
+};
 
 const FORM_OF_BENEFIT_IN_PAY_OPTIONS = [
   { value: 'single_life', label: 'Single life' },
@@ -37,39 +52,55 @@ const WHOSEPLAN_OPTIONS = [
 export default function InPayFields({ inputs, onChange }) {
   return (
     <FieldSection title="In-pay-status inputs">
-      <SelectField
-        id="pva-input-whoseplan"
-        label="Whose plan"
-        helper="Pre-pops from the M2 pension claim."
-        value={inputs.whoseplan}
-        onChange={(v) => onChange('whoseplan', v)}
-        options={WHOSEPLAN_OPTIONS}
-        allowEmpty={false}
-      />
-      <NumberField
-        id="pva-input-monthlyBenefit"
-        label="Current monthly benefit ($/mo)"
-        helper="Pre-pops from the M2 pension claim. The active monthly benefit being paid."
-        value={inputs.monthlyBenefit}
-        onChange={(v) => onChange('monthlyBenefit', v)}
-        min={0}
-      />
-      <DateField
-        id="pva-input-benefitStartDate"
-        label="Benefit start date"
-        helper="Pre-pops from the M2 pension claim. When monthly payments began."
-        value={inputs.benefitStartDate}
-        onChange={(v) => onChange('benefitStartDate', v)}
-      />
-      <SelectField
-        id="pva-input-formOfBenefitInPay"
-        label="Form of benefit currently in pay"
-        helper="v1 PV math values the single-life stream on the participant only; survivor continuation deferred to v1.1 [R5b-19]."
-        value={inputs.formOfBenefitInPay ?? 'single_life'}
-        onChange={(v) => onChange('formOfBenefitInPay', v ?? 'single_life')}
-        options={FORM_OF_BENEFIT_IN_PAY_OPTIONS}
-        allowEmpty={false}
-      />
+      <div style={FIELD_WRAP}>
+        <WizardSelector
+          field="whoseplan"
+          label="Whose plan"
+          tooltip="Pre-pops from the M2 pension claim."
+          value={inputs.whoseplan ?? ''}
+          onChange={onChange}
+          options={WHOSEPLAN_OPTIONS}
+          data-testid="pva-input-whoseplan"
+        />
+      </div>
+
+      <div style={FIELD_WRAP}>
+        <NumericFieldBridge
+          field="monthlyBenefit"
+          label="Current monthly benefit ($/mo)"
+          tooltip="Pre-pops from the M2 pension claim. The active monthly benefit being paid."
+          value={inputs.monthlyBenefit ?? ''}
+          onChange={onChange}
+          parser="currency"
+          prefix="$"
+          data-testid="pva-input-monthlyBenefit"
+        />
+      </div>
+
+      <div style={FIELD_WRAP}>
+        <WizardDate
+          field="benefitStartDate"
+          label="Benefit start date"
+          value={inputs.benefitStartDate ?? ''}
+          onChange={onChange}
+          data-testid="pva-input-benefitStartDate"
+        />
+        <p style={HELPER_BELOW}>
+          Pre-pops from the M2 pension claim. When monthly payments began.
+        </p>
+      </div>
+
+      <div style={FIELD_WRAP}>
+        <WizardSelector
+          field="formOfBenefitInPay"
+          label="Form of benefit currently in pay"
+          tooltip="v1 PV math values the single-life stream on the participant only; survivor continuation deferred to v1.1 [R5b-19]."
+          value={inputs.formOfBenefitInPay ?? 'single_life'}
+          onChange={onChange}
+          options={FORM_OF_BENEFIT_IN_PAY_OPTIONS}
+          data-testid="pva-input-formOfBenefitInPay"
+        />
+      </div>
     </FieldSection>
   );
 }

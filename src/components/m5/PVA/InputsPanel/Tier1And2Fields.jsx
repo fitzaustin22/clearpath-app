@@ -21,7 +21,11 @@
  * @param {(field: string, value: any) => void} props.onChange
  */
 
-import { NumberField, SelectField, FieldSection } from './_fields.jsx';
+import { FieldSection } from './_fields.jsx';
+import WizardSelector from '@/src/components/wizard/WizardSelector';
+import NumericFieldBridge from '@/src/components/m5/wizard-bridge/NumericFieldBridge.jsx';
+
+const FIELD_WRAP = { marginBottom: 14 };
 
 const FORM_OF_BENEFIT_OPTIONS = [
   { value: 'single_life', label: 'Single life' },
@@ -41,59 +45,82 @@ const WHOSEPLAN_OPTIONS = [
   { value: 'Spouse', label: 'Spouse' },
 ];
 
+// planNRA min/max preserved in parent onChange per the wizard-migration
+// playbook (previous NumberField min=50/max=80 were HTML5 validation
+// hints, not coercers; functional clamp installed here so the store
+// receives only values in the [50, 80] range a spinner would have
+// produced).
+const clampNRA = (n) => (n == null ? null : Math.max(50, Math.min(80, n)));
+
 export default function Tier1And2Fields({ tier, inputs, onChange }) {
   const title = tier === 'tier_2' ? 'Tier 2 inputs — Estimated accrued benefit' : 'Tier 1 inputs — Accrued benefit known';
+  const accruedHelper =
+    tier === 'tier_2'
+      ? 'Estimated monthly benefit at NRA (from plan estimator or manual calc).'
+      : 'Accrued monthly benefit at NRA from official plan statement.';
+
   return (
     <FieldSection title={title}>
-      <SelectField
-        id="pva-input-whoseplan"
-        label="Whose plan"
-        helper="Pre-pops from the M2 pension claim."
-        value={inputs.whoseplan}
-        onChange={(v) => onChange('whoseplan', v)}
-        options={WHOSEPLAN_OPTIONS}
-        allowEmpty={false}
-      />
-      <NumberField
-        id="pva-input-planNRA"
-        label="Plan Normal Retirement Age (NRA)"
-        helper="Typically age 65. Defines when the deferred annuity starts."
-        value={inputs.planNRA}
-        onChange={(v) => onChange('planNRA', v)}
-        min={50}
-        max={80}
-        step={1}
-      />
-      <NumberField
-        id="pva-input-accruedMonthlyBenefitAtNRA"
-        label="Accrued monthly benefit at NRA ($/mo)"
-        helper={
-          tier === 'tier_2'
-            ? 'Estimated monthly benefit at NRA (from plan estimator or manual calc).'
-            : 'Accrued monthly benefit at NRA from official plan statement.'
-        }
-        value={inputs.accruedMonthlyBenefitAtNRA}
-        onChange={(v) => onChange('accruedMonthlyBenefitAtNRA', v)}
-        min={0}
-      />
-      <SelectField
-        id="pva-input-formOfBenefitOnStatement"
-        label="Form of benefit on statement"
-        helper="Defaults to single-life. Other forms surface an informational callout; v1 PV math uses single-life."
-        value={inputs.formOfBenefitOnStatement ?? 'single_life'}
-        onChange={(v) => onChange('formOfBenefitOnStatement', v ?? 'single_life')}
-        options={FORM_OF_BENEFIT_OPTIONS}
-        allowEmpty={false}
-      />
-      <SelectField
-        id="pva-input-vestingStatus"
-        label="Vesting status"
-        helper="Defaults to fully vested. Partial / not vested surfaces a callout; v1 PV math is not vesting-discounted."
-        value={inputs.vestingStatus ?? 'fully_vested'}
-        onChange={(v) => onChange('vestingStatus', v ?? 'fully_vested')}
-        options={VESTING_OPTIONS}
-        allowEmpty={false}
-      />
+      <div style={FIELD_WRAP}>
+        <WizardSelector
+          field="whoseplan"
+          label="Whose plan"
+          tooltip="Pre-pops from the M2 pension claim."
+          value={inputs.whoseplan ?? ''}
+          onChange={onChange}
+          options={WHOSEPLAN_OPTIONS}
+          data-testid="pva-input-whoseplan"
+        />
+      </div>
+
+      <div style={FIELD_WRAP}>
+        <NumericFieldBridge
+          field="planNRA"
+          label="Plan Normal Retirement Age (NRA)"
+          tooltip="Typically age 65. Defines when the deferred annuity starts."
+          value={inputs.planNRA ?? ''}
+          onChange={(field, n) => onChange(field, clampNRA(n))}
+          parser="number"
+          data-testid="pva-input-planNRA"
+        />
+      </div>
+
+      <div style={FIELD_WRAP}>
+        <NumericFieldBridge
+          field="accruedMonthlyBenefitAtNRA"
+          label="Accrued monthly benefit at NRA ($/mo)"
+          tooltip={accruedHelper}
+          value={inputs.accruedMonthlyBenefitAtNRA ?? ''}
+          onChange={onChange}
+          parser="currency"
+          prefix="$"
+          data-testid="pva-input-accruedMonthlyBenefitAtNRA"
+        />
+      </div>
+
+      <div style={FIELD_WRAP}>
+        <WizardSelector
+          field="formOfBenefitOnStatement"
+          label="Form of benefit on statement"
+          tooltip="Defaults to single-life. Other forms surface an informational callout; v1 PV math uses single-life."
+          value={inputs.formOfBenefitOnStatement ?? 'single_life'}
+          onChange={onChange}
+          options={FORM_OF_BENEFIT_OPTIONS}
+          data-testid="pva-input-formOfBenefitOnStatement"
+        />
+      </div>
+
+      <div style={FIELD_WRAP}>
+        <WizardSelector
+          field="vestingStatus"
+          label="Vesting status"
+          tooltip="Defaults to fully vested. Partial / not vested surfaces a callout; v1 PV math is not vesting-discounted."
+          value={inputs.vestingStatus ?? 'fully_vested'}
+          onChange={onChange}
+          options={VESTING_OPTIONS}
+          data-testid="pva-input-vestingStatus"
+        />
+      </div>
     </FieldSection>
   );
 }

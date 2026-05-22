@@ -18,15 +18,33 @@
  * path before dispatch to the engine.
  */
 
-import { RadioGroup, FieldSection } from './_fields.jsx';
+import { FieldSection } from './_fields.jsx';
+import { T } from '@/src/lib/brand/tokens';
+import WizardRadio from '@/src/components/wizard/WizardRadio';
 
+// Tier labels are split at the em-dash into `label` + `description` per
+// the WizardRadio stacked-variant API (the docstring asserts description
+// is mandatory — "the choice differentiator"). The user-visible words are
+// unchanged; the visual chrome now lays them out as a bold label with a
+// muted description-below per option, instead of a single em-dash-joined
+// line. Ratified by owner during PR-D Phase 1.
 const ALL_TIERS = [
-  { value: 'tier_1', label: 'Tier 1 — Accrued benefit known' },
-  { value: 'tier_2', label: 'Tier 2 — Estimated accrued benefit' },
-  { value: 'tier_3', label: 'Tier 3 — Coverture' },
+  { value: 'tier_1', label: 'Tier 1', description: 'Accrued benefit known' },
+  { value: 'tier_2', label: 'Tier 2', description: 'Estimated accrued benefit' },
+  { value: 'tier_3', label: 'Tier 3', description: 'Coverture' },
 ];
 
 const TIER_OPTIONS_FROZEN = ALL_TIERS.filter((o) => o.value !== 'tier_3');
+
+// WizardRadio has no group-level helper prop; the group-level helper copy
+// renders as a muted <p> directly under the control (Visual-D fallback
+// per PR-B SE migration).
+const HELPER_BELOW = {
+  fontFamily: T.FONT_BODY,
+  fontSize: 13,
+  color: T.NAVY_55,
+  margin: '6px 0 0',
+};
 
 export default function TierOverride({ inputs, path, frozenRoutingApplied = false, onChange }) {
   // Routing-locked paths: no override surface.
@@ -45,20 +63,22 @@ export default function TierOverride({ inputs, path, frozenRoutingApplied = fals
   // resolved path so the radio shows the active selection.
   const effective = inputs.tierOverride ?? path;
 
+  const helper = isFrozen
+    ? 'Plan is frozen — Tier 3 (coverture) is unavailable. Default Tier 1; you may override to Tier 2.'
+    : 'Default Tier 3 (coverture). You may override to Tier 1 or Tier 2 if you have an accrued-benefit anchor.';
+
   return (
     <FieldSection title="Tier selection">
-      <RadioGroup
-        id="pva-input-tierOverride"
-        label="Compute path"
-        helper={
-          isFrozen
-            ? 'Plan is frozen — Tier 3 (coverture) is unavailable. Default Tier 1; you may override to Tier 2.'
-            : 'Default Tier 3 (coverture). You may override to Tier 1 or Tier 2 if you have an accrued-benefit anchor.'
-        }
+      <WizardRadio
+        field="tierOverride"
+        legend="Compute path"
+        variant="stacked"
         value={effective}
-        onChange={(v) => onChange('tierOverride', v)}
+        onChange={onChange}
         options={options}
+        data-testid="pva-input-tierOverride"
       />
+      <p style={HELPER_BELOW}>{helper}</p>
     </FieldSection>
   );
 }

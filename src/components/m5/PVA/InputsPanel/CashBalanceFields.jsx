@@ -21,92 +21,123 @@
  *   - expectedRetirementAge   (integer | null)
  */
 
-import { NumberField, DateField, SelectField, FieldSection } from './_fields.jsx';
+import { FieldSection } from './_fields.jsx';
 import { T } from '@/src/lib/brand/tokens';
+import WizardSelector from '@/src/components/wizard/WizardSelector';
+import WizardCheckbox from '@/src/components/wizard/WizardCheckbox';
+import WizardDate from '@/src/components/wizard/WizardDate';
+import NumericFieldBridge from '@/src/components/m5/wizard-bridge/NumericFieldBridge.jsx';
+
+const FIELD_WRAP = { marginBottom: 14 };
+
+// WizardDate has no `tooltip` prop — helper renders as muted <p> below
+// (Visual-D fallback per PR-B SE migration).
+const HELPER_BELOW = {
+  fontFamily: T.FONT_BODY,
+  fontSize: 13,
+  color: T.NAVY_55,
+  margin: '6px 0 0',
+};
 
 const WHOSEPLAN_OPTIONS = [
   { value: 'Client', label: 'Client' },
   { value: 'Spouse', label: 'Spouse' },
 ];
 
+// expectedRetirementAge min/max preserved in parent onChange (clamp moves
+// out of the now-retired NumberField primitive).
+const clampAge = (n) => (n == null ? null : Math.max(50, Math.min(80, n)));
+
 export default function CashBalanceFields({ inputs, onChange }) {
   const applyCoverture = inputs.applyCoverture === true;
   return (
     <FieldSection title="Cash-balance inputs">
-      <SelectField
-        id="pva-input-whoseplan"
-        label="Whose plan"
-        helper="Pre-pops from the M2 pension claim."
-        value={inputs.whoseplan}
-        onChange={(v) => onChange('whoseplan', v)}
-        options={WHOSEPLAN_OPTIONS}
-        allowEmpty={false}
-      />
-      <NumberField
-        id="pva-input-currentAccountBalance"
-        label="Current account balance ($)"
-        helper="From the most recent plan statement. PV ≈ current balance (no commutation required for cash balance plans)."
-        value={inputs.currentAccountBalance}
-        onChange={(v) => onChange('currentAccountBalance', v)}
-        min={0}
-      />
+      <div style={FIELD_WRAP}>
+        <WizardSelector
+          field="whoseplan"
+          label="Whose plan"
+          tooltip="Pre-pops from the M2 pension claim."
+          value={inputs.whoseplan ?? ''}
+          onChange={onChange}
+          options={WHOSEPLAN_OPTIONS}
+          data-testid="pva-input-whoseplan"
+        />
+      </div>
 
-      <div style={{ marginBottom: 14 }}>
-        <label
-          htmlFor="pva-input-applyCoverture"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            fontFamily: T.FONT_BODY,
-            fontSize: 14,
-            color: T.NAVY,
-          }}
-        >
-          <input
-            id="pva-input-applyCoverture"
-            data-testid="pva-input-applyCoverture"
-            type="checkbox"
-            checked={applyCoverture}
-            onChange={(e) => onChange('applyCoverture', e.target.checked)}
-          />
-          Apply coverture (compute marital portion of balance)
-        </label>
+      <div style={FIELD_WRAP}>
+        <NumericFieldBridge
+          field="currentAccountBalance"
+          label="Current account balance ($)"
+          tooltip="From the most recent plan statement. PV ≈ current balance (no commutation required for cash balance plans)."
+          value={inputs.currentAccountBalance ?? ''}
+          onChange={onChange}
+          parser="currency"
+          prefix="$"
+          data-testid="pva-input-currentAccountBalance"
+        />
+      </div>
+
+      {/* Anomaly A migration (PR-D): the previous render was a raw
+          <input type="checkbox"> wrapped in a hand-styled <label> — the only
+          PVA field that didn't flow through _fields.jsx. Now routes through
+          WizardCheckbox variant="checkbox" per the SE/HDA precedent. */}
+      <div style={FIELD_WRAP}>
+        <WizardCheckbox
+          field="applyCoverture"
+          variant="checkbox"
+          label="Apply coverture (compute marital portion of balance)"
+          value={applyCoverture}
+          onChange={onChange}
+          data-testid="pva-input-applyCoverture"
+        />
       </div>
 
       {applyCoverture && (
         <>
-          <DateField
-            id="pva-input-dateOfHire"
-            label="Date of hire"
-            helper="Required when applying coverture."
-            value={inputs.dateOfHire}
-            onChange={(v) => onChange('dateOfHire', v)}
-          />
-          <DateField
-            id="pva-input-dateOfMarriage"
-            label="Date of marriage"
-            helper="Numerator start = max(hire, marriage)."
-            value={inputs.dateOfMarriage}
-            onChange={(v) => onChange('dateOfMarriage', v)}
-          />
-          <DateField
-            id="pva-input-maritalCutoffDate"
-            label="Marital cutoff date"
-            helper="Numerator end = min(cutoff, retirement)."
-            value={inputs.maritalCutoffDate}
-            onChange={(v) => onChange('maritalCutoffDate', v)}
-          />
-          <NumberField
-            id="pva-input-expectedRetirementAge"
-            label="Expected retirement age"
-            helper="Denominator end of total projected service. Required when applying coverture."
-            value={inputs.expectedRetirementAge}
-            onChange={(v) => onChange('expectedRetirementAge', v)}
-            min={50}
-            max={80}
-            step={1}
-          />
+          <div style={FIELD_WRAP}>
+            <WizardDate
+              field="dateOfHire"
+              label="Date of hire"
+              value={inputs.dateOfHire ?? ''}
+              onChange={onChange}
+              data-testid="pva-input-dateOfHire"
+            />
+            <p style={HELPER_BELOW}>Required when applying coverture.</p>
+          </div>
+
+          <div style={FIELD_WRAP}>
+            <WizardDate
+              field="dateOfMarriage"
+              label="Date of marriage"
+              value={inputs.dateOfMarriage ?? ''}
+              onChange={onChange}
+              data-testid="pva-input-dateOfMarriage"
+            />
+            <p style={HELPER_BELOW}>Numerator start = max(hire, marriage).</p>
+          </div>
+
+          <div style={FIELD_WRAP}>
+            <WizardDate
+              field="maritalCutoffDate"
+              label="Marital cutoff date"
+              value={inputs.maritalCutoffDate ?? ''}
+              onChange={onChange}
+              data-testid="pva-input-maritalCutoffDate"
+            />
+            <p style={HELPER_BELOW}>Numerator end = min(cutoff, retirement).</p>
+          </div>
+
+          <div style={FIELD_WRAP}>
+            <NumericFieldBridge
+              field="expectedRetirementAge"
+              label="Expected retirement age"
+              tooltip="Denominator end of total projected service. Required when applying coverture."
+              value={inputs.expectedRetirementAge ?? ''}
+              onChange={(field, n) => onChange(field, clampAge(n))}
+              parser="number"
+              data-testid="pva-input-expectedRetirementAge"
+            />
+          </div>
         </>
       )}
     </FieldSection>

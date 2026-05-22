@@ -13,7 +13,23 @@
  *   - planAdministratorOfferedLumpSum (number | null, optional comparison input)
  */
 
-import { NumberField, DateField, SelectField, FieldSection } from './_fields.jsx';
+import { FieldSection } from './_fields.jsx';
+import { T } from '@/src/lib/brand/tokens';
+import WizardSelector from '@/src/components/wizard/WizardSelector';
+import WizardDate from '@/src/components/wizard/WizardDate';
+import NumericFieldBridge from '@/src/components/m5/wizard-bridge/NumericFieldBridge.jsx';
+
+const FIELD_WRAP = { marginBottom: 14 };
+
+// Hint paragraph below WizardDate. WizardDate has no `tooltip` prop, so
+// date-helper copy renders verbatim as a muted <p> directly under the
+// input (Visual-D fallback established by PR-B SE migration #31).
+const HELPER_BELOW = {
+  fontFamily: T.FONT_BODY,
+  fontSize: 13,
+  color: T.NAVY_55,
+  margin: '6px 0 0',
+};
 
 const MORTALITY_OPTIONS = [
   { value: 'irs_417e', label: 'IRS §417(e) unisex (default)' },
@@ -21,60 +37,91 @@ const MORTALITY_OPTIONS = [
   { value: 'rp_2014', label: 'RP-2014 (alternative)' },
 ];
 
+// min/max preservation. The previous NumberField primitive accepted
+// `min` and `max` props that mapped to the native <input type="number">
+// validation attributes — those are HTML hints, not coercers, so the
+// store could (and did) receive out-of-range values. The wizard-migration
+// playbook moves clamping into the parent `onChange`; we wrap the values
+// here so the store sees the same in-range numbers as a user would
+// reasonably enter via the previous spinner controls.
+const clampBps = (n) => (n == null ? null : Math.max(0, Math.min(15000, n)));
+const clampCola = (n) => (n == null ? null : Math.max(0, Math.min(10, n)));
+
 export default function CommonFields({ inputs, onChange }) {
   return (
     <FieldSection title="Common inputs">
-      <DateField
-        id="pva-input-participantDOB"
-        label="Participant date of birth"
-        helper="Required. Drives age-based annuity-factor lookup."
-        value={inputs.participantDOB}
-        onChange={(v) => onChange('participantDOB', v)}
-      />
-      <DateField
-        id="pva-input-caseEffectiveDate"
-        label="Case effective date"
-        helper="Snapshot used for §417(e) rate lookup. Defaults from m5Store.caseEffectiveDate."
-        value={inputs.caseEffectiveDate}
-        onChange={(v) => onChange('caseEffectiveDate', v)}
-      />
-      <SelectField
-        id="pva-input-mortalityTable"
-        label="Mortality table"
-        helper="Defaults to IRS §417(e) 2026 unisex applicable mortality table."
-        value={inputs.mortalityTable ?? 'irs_417e'}
-        onChange={(v) => onChange('mortalityTable', v ?? 'irs_417e')}
-        options={MORTALITY_OPTIONS}
-        allowEmpty={false}
-      />
-      <NumberField
-        id="pva-input-discountRateBps"
-        label="Discount rate (basis points)"
-        helper="Non-canonical bps: 5234 = 5.234%. Defaults to §417(e) seg 2 at caseEffectiveDate."
-        value={inputs.discountRateBps}
-        onChange={(v) => onChange('discountRateBps', v)}
-        min={0}
-        max={15000}
-        step={1}
-      />
-      <NumberField
-        id="pva-input-cola"
-        label="COLA (%)"
-        helper="Cost-of-living adjustment on the benefit stream. Default 0%."
-        value={inputs.cola}
-        onChange={(v) => onChange('cola', v)}
-        min={0}
-        max={10}
-        step={0.1}
-      />
-      <NumberField
-        id="pva-input-planAdministratorOfferedLumpSum"
-        label="Plan-offered lump sum (optional)"
-        helper="If the plan has offered a lump-sum buyout, enter it here for comparison against the tool's PV."
-        value={inputs.planAdministratorOfferedLumpSum}
-        onChange={(v) => onChange('planAdministratorOfferedLumpSum', v)}
-        min={0}
-      />
+      <div style={FIELD_WRAP}>
+        <WizardDate
+          field="participantDOB"
+          label="Participant date of birth"
+          value={inputs.participantDOB ?? ''}
+          onChange={onChange}
+          data-testid="pva-input-participantDOB"
+        />
+        <p style={HELPER_BELOW}>Required. Drives age-based annuity-factor lookup.</p>
+      </div>
+
+      <div style={FIELD_WRAP}>
+        <WizardDate
+          field="caseEffectiveDate"
+          label="Case effective date"
+          value={inputs.caseEffectiveDate ?? ''}
+          onChange={onChange}
+          data-testid="pva-input-caseEffectiveDate"
+        />
+        <p style={HELPER_BELOW}>
+          Snapshot used for §417(e) rate lookup. Defaults from m5Store.caseEffectiveDate.
+        </p>
+      </div>
+
+      <div style={FIELD_WRAP}>
+        <WizardSelector
+          field="mortalityTable"
+          label="Mortality table"
+          tooltip="Defaults to IRS §417(e) 2026 unisex applicable mortality table."
+          value={inputs.mortalityTable ?? 'irs_417e'}
+          onChange={onChange}
+          options={MORTALITY_OPTIONS}
+          data-testid="pva-input-mortalityTable"
+        />
+      </div>
+
+      <div style={FIELD_WRAP}>
+        <NumericFieldBridge
+          field="discountRateBps"
+          label="Discount rate (basis points)"
+          tooltip="Non-canonical bps: 5234 = 5.234%. Defaults to §417(e) seg 2 at caseEffectiveDate."
+          value={inputs.discountRateBps ?? ''}
+          onChange={(field, n) => onChange(field, clampBps(n))}
+          parser="number"
+          data-testid="pva-input-discountRateBps"
+        />
+      </div>
+
+      <div style={FIELD_WRAP}>
+        <NumericFieldBridge
+          field="cola"
+          label="COLA (%)"
+          tooltip="Cost-of-living adjustment on the benefit stream. Default 0%."
+          value={inputs.cola ?? ''}
+          onChange={(field, n) => onChange(field, clampCola(n))}
+          parser="number"
+          data-testid="pva-input-cola"
+        />
+      </div>
+
+      <div style={FIELD_WRAP}>
+        <NumericFieldBridge
+          field="planAdministratorOfferedLumpSum"
+          label="Plan-offered lump sum (optional)"
+          tooltip="If the plan has offered a lump-sum buyout, enter it here for comparison against the tool's PV."
+          value={inputs.planAdministratorOfferedLumpSum ?? ''}
+          onChange={onChange}
+          parser="currency"
+          prefix="$"
+          data-testid="pva-input-planAdministratorOfferedLumpSum"
+        />
+      </div>
     </FieldSection>
   );
 }
