@@ -131,7 +131,7 @@ const TOOL_COPY = [
   {
     title: 'Pension Valuation Analyzer',
     line: 'Value a defined-benefit pension at present value, with marital-portion and sensitivity ranges.',
-    fullHref: '/dev/m5/pva',
+    fullHref: '/modules/m5/pva',
   },
   {
     title: 'QDRO Decision Guide',
