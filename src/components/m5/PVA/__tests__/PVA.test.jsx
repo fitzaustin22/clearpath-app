@@ -135,18 +135,23 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
     // 1-cycle staleness window where the m5Store flag hasn't propagated
     // and tier_3 briefly shows for frozen plans.
     render(<PVA seedOverride={SEED_VARIANTS.frozen_routing_banner} />);
-    // TierOverride is visible (planType=private_db_traditional, path=tier_1).
-    expect(screen.getByText(/Tier 1 — Accrued benefit known/)).toBeInTheDocument();
-    expect(screen.getByText(/Tier 2 — Estimated accrued benefit/)).toBeInTheDocument();
+    // PR-D: TierOverride uses WizardRadio (stacked); tier labels were split
+    // at the em-dash into `label` + `description` per the primitive's API.
+    // Assert each option's presence via the WizardRadio per-option testid.
+    // The same words remain on screen ("Tier 1" / "Accrued benefit known" etc.),
+    // they're now in two DOM elements per option instead of one em-dash-joined
+    // string, which is why the previous /Tier N — …/ regex no longer matches.
+    expect(screen.getByTestId('wizard-radio-option-tier_1')).toBeInTheDocument();
+    expect(screen.getByTestId('wizard-radio-option-tier_2')).toBeInTheDocument();
     // The Tier 3 option should NOT appear at first render for frozen seed.
-    expect(screen.queryByText(/Tier 3 — Coverture/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('wizard-radio-option-tier_3')).not.toBeInTheDocument();
   });
 
   it('TC-PVA-Orchestrator-11: non-frozen seed renders all 3 TierOverride options', () => {
     render(<PVA seedOverride={SEED_VARIANTS.tier3_canonical} />);
-    expect(screen.getByText(/Tier 1 — Accrued benefit known/)).toBeInTheDocument();
-    expect(screen.getByText(/Tier 2 — Estimated accrued benefit/)).toBeInTheDocument();
-    expect(screen.getByText(/Tier 3 — Coverture/)).toBeInTheDocument();
+    expect(screen.getByTestId('wizard-radio-option-tier_1')).toBeInTheDocument();
+    expect(screen.getByTestId('wizard-radio-option-tier_2')).toBeInTheDocument();
+    expect(screen.getByTestId('wizard-radio-option-tier_3')).toBeInTheDocument();
   });
 
   // ─── PR 3 / Phase 2 — new callout-surfacing seeds end-to-end ──────────

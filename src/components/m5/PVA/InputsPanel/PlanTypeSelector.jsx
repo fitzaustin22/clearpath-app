@@ -19,7 +19,8 @@
  * `planType` to inputs.
  */
 
-import { SelectField, FieldSection } from './_fields.jsx';
+import { FieldSection } from './_fields.jsx';
+import WizardSelector from '@/src/components/wizard/WizardSelector';
 
 const PLAN_TYPE_OPTIONS = [
   { value: 'private_db_traditional', label: 'Private DB (traditional)' },
@@ -33,13 +34,15 @@ const PLAN_TYPE_OPTIONS = [
 export default function PlanTypeSelector({ inputs, onChange }) {
   return (
     <FieldSection title="Plan type">
-      <SelectField
-        id="pva-input-planType"
+      <WizardSelector
+        field="planType"
         label="Plan type"
-        helper="Select the plan classification. Multi-employer, gov, military, and state/municipal plans cannot be valued via the standard PVA engine at v1."
-        value={inputs.planType}
-        onChange={(v) => onChange('planType', v)}
+        tooltip="Select the plan classification. Multi-employer, gov, military, and state/municipal plans cannot be valued via the standard PVA engine at v1."
+        value={inputs.planType ?? ''}
+        onChange={onChange}
         options={PLAN_TYPE_OPTIONS}
+        placeholder="— select —"
+        data-testid="pva-input-planType"
       />
     </FieldSection>
   );

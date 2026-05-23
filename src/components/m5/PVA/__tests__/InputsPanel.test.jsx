@@ -117,7 +117,10 @@ describe('InputsPanel — path-conditional rendering (§7.2 / §7.3)', () => {
   it('TC-PVA-InputsPanel-8: PlanTypeSelector renders for all paths and writes planType via setter', () => {
     seedInputs({});
     render(<InputsPanel assetId={ASSET_ID} path="tier_3" />);
-    const sel = screen.getByTestId('pva-input-planType');
+    // Post wizard-migration (PR-D): the `pva-input-planType` testid sits on
+    // the WizardSelector wrapper <div>; the native <select> is the inner
+    // element. Navigate from wrapper to control for the change event.
+    const sel = screen.getByTestId('pva-input-planType').querySelector('select');
     fireEvent.change(sel, { target: { value: 'private_db_cash_balance' } });
     expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.planType).toBe('private_db_cash_balance');
   });
@@ -125,15 +128,20 @@ describe('InputsPanel — path-conditional rendering (§7.2 / §7.3)', () => {
   it('TC-PVA-InputsPanel-9a: TierOverride visible only when planType=private_db_traditional + tier_1/2/3 path', () => {
     seedInputs({ planType: 'private_db_traditional' });
     render(<InputsPanel assetId={ASSET_ID} path="tier_3" />);
-    expect(screen.getByTestId('pva-input-tierOverride-tier_1')).toBeInTheDocument();
-    expect(screen.getByTestId('pva-input-tierOverride-tier_2')).toBeInTheDocument();
-    expect(screen.getByTestId('pva-input-tierOverride-tier_3')).toBeInTheDocument();
+    // PR-D: TierOverride now uses WizardRadio (stacked) — per-option testids
+    // come from the primitive as `wizard-radio-option-${value}`.
+    expect(screen.getByTestId('wizard-radio-option-tier_1')).toBeInTheDocument();
+    expect(screen.getByTestId('wizard-radio-option-tier_2')).toBeInTheDocument();
+    expect(screen.getByTestId('wizard-radio-option-tier_3')).toBeInTheDocument();
   });
 
   it('TC-PVA-InputsPanel-9b: TierOverride hidden when planType is non-private-DB (e.g. cash_balance subtype)', () => {
     seedInputs({ planType: 'private_db_cash_balance' });
     render(<InputsPanel assetId={ASSET_ID} path="cash_balance" />);
-    expect(screen.queryByTestId('pva-input-tierOverride-tier_1')).not.toBeInTheDocument();
+    // The entire WizardRadio root is absent when TierOverride returns null;
+    // per-option testids are absent transitively.
+    expect(screen.queryByTestId('pva-input-tierOverride')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('wizard-radio-option-tier_1')).not.toBeInTheDocument();
   });
 
   it('TC-PVA-InputsPanel-9c: TierOverride hides tier_3 when frozenRoutingApplied prop is true (R4)', () => {
@@ -142,22 +150,23 @@ describe('InputsPanel — path-conditional rendering (§7.2 / §7.3)', () => {
     // showed tier_3 before the store hydrated.
     seedInputs({ planType: 'private_db_traditional' });
     render(<InputsPanel assetId={ASSET_ID} path="tier_1" frozenRoutingApplied={true} />);
-    expect(screen.getByTestId('pva-input-tierOverride-tier_1')).toBeInTheDocument();
-    expect(screen.getByTestId('pva-input-tierOverride-tier_2')).toBeInTheDocument();
-    expect(screen.queryByTestId('pva-input-tierOverride-tier_3')).not.toBeInTheDocument();
+    expect(screen.getByTestId('wizard-radio-option-tier_1')).toBeInTheDocument();
+    expect(screen.getByTestId('wizard-radio-option-tier_2')).toBeInTheDocument();
+    expect(screen.queryByTestId('wizard-radio-option-tier_3')).not.toBeInTheDocument();
   });
 
   it('TC-PVA-InputsPanel-10a: ReceiptFormDropdown defaults to DEFAULT_RECEIPT_FORM_BY_PATH[path] when inputs.receiptForm is null', () => {
     seedInputs({});
     render(<InputsPanel assetId={ASSET_ID} path="tier_3" />);
-    const sel = screen.getByTestId('pva-input-receiptForm');
+    // PR-D: navigate from the WizardSelector wrapper to the inner <select>.
+    const sel = screen.getByTestId('pva-input-receiptForm').querySelector('select');
     expect(sel).toHaveValue('monthly_db_stream'); // default for tier_3
   });
 
   it('TC-PVA-InputsPanel-10b: ReceiptFormDropdown override writes inputs.receiptForm', () => {
     seedInputs({});
     render(<InputsPanel assetId={ASSET_ID} path="cash_balance" />);
-    const sel = screen.getByTestId('pva-input-receiptForm');
+    const sel = screen.getByTestId('pva-input-receiptForm').querySelector('select');
     expect(sel).toHaveValue('lump_sum_rollover_to_ira'); // default for cash_balance
     fireEvent.change(sel, { target: { value: 'lump_sum_cash_taxable' } });
     expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.receiptForm).toBe('lump_sum_cash_taxable');
@@ -166,7 +175,9 @@ describe('InputsPanel — path-conditional rendering (§7.2 / §7.3)', () => {
   it('TC-PVA-InputsPanel-11: discountRateBps numeric field writes value through to inputs', () => {
     seedInputs({});
     render(<InputsPanel assetId={ASSET_ID} path="tier_1" />);
-    const input = screen.getByTestId('pva-input-discountRateBps');
+    // PR-D: numeric fields route through NumericFieldBridge → WizardField;
+    // the testid sits on the bridge wrapper, the native input is inside.
+    const input = screen.getByTestId('pva-input-discountRateBps').querySelector('input');
     fireEvent.change(input, { target: { value: '5234' } });
     expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.discountRateBps).toBe(5234);
   });
@@ -174,8 +185,29 @@ describe('InputsPanel — path-conditional rendering (§7.2 / §7.3)', () => {
   it('TC-PVA-InputsPanel-12: clearing a numeric field writes null (not 0)', () => {
     seedInputs({ cola: 2.5 });
     render(<InputsPanel assetId={ASSET_ID} path="tier_1" />);
-    const input = screen.getByTestId('pva-input-cola');
+    const input = screen.getByTestId('pva-input-cola').querySelector('input');
     fireEvent.change(input, { target: { value: '' } });
     expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.cola).toBeNull();
+  });
+
+  // PR-D post-smoke regression. Earlier per-keystroke `[50, 80]` clamps on
+  // planNRA and expectedRetirementAge made these fields untypeable from blank:
+  // each first digit clamped up to 50, then the controlled re-render appended
+  // the next digit on top of the clamped display. Browser smoke confirmed.
+  // The clamps were removed; engine validates range, not the input.
+  it('TC-PVA-InputsPanel-13: planNRA accepts a sub-50 keystroke unclamped (regression)', () => {
+    seedInputs({});
+    render(<InputsPanel assetId={ASSET_ID} path="tier_1" />);
+    const input = screen.getByTestId('pva-input-planNRA').querySelector('input');
+    fireEvent.change(input, { target: { value: '12' } });
+    expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.planNRA).toBe(12);
+  });
+
+  it('TC-PVA-InputsPanel-14: expectedRetirementAge accepts a sub-50 keystroke unclamped (regression)', () => {
+    seedInputs({});
+    render(<InputsPanel assetId={ASSET_ID} path="tier_3" />);
+    const input = screen.getByTestId('pva-input-expectedRetirementAge').querySelector('input');
+    fireEvent.change(input, { target: { value: '12' } });
+    expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.expectedRetirementAge).toBe(12);
   });
 });

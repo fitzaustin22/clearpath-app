@@ -20,7 +20,8 @@
  * Hidden when `path === 'flag_only'` (no PV → no receipt form).
  */
 
-import { SelectField, FieldSection } from './_fields.jsx';
+import { FieldSection } from './_fields.jsx';
+import WizardSelector from '@/src/components/wizard/WizardSelector';
 import { DEFAULT_RECEIPT_FORM_BY_PATH } from '@/src/lib/pensionValuation';
 
 const RECEIPT_FORM_OPTIONS = [
@@ -40,14 +41,14 @@ export default function ReceiptFormDropdown({ inputs, path, onChange }) {
 
   return (
     <FieldSection title="Receipt form (M4 PIT handoff)">
-      <SelectField
-        id="pva-input-receiptForm"
+      <WizardSelector
+        field="receiptForm"
         label="How will this benefit be received"
-        helper="Drives the tax-discount calculation in M4 Point-in-Time. Defaults per compute path; override only for non-default receipt scenarios."
-        value={effective}
-        onChange={(v) => onChange('receiptForm', v)}
+        tooltip="Drives the tax-discount calculation in M4 Point-in-Time. Defaults per compute path; override only for non-default receipt scenarios."
+        value={effective ?? ''}
+        onChange={onChange}
         options={RECEIPT_FORM_OPTIONS}
-        allowEmpty={false}
+        data-testid="pva-input-receiptForm"
       />
     </FieldSection>
   );
