@@ -9,7 +9,8 @@
  *   - Cash balance: 1 BigNumber, no sensitivity (low === high)
  *   - Cash balance with coverture: 2 BigNumbers
  *   - Flag-only: no BigNumber, only the flag banner
- *   - 3 structural banners: frozen, legacy, flag-only
+ *   - 2 structural banners: frozen, flag-only
+ *   - Unconditional inventory note on compute paths
  */
 
 import { describe, it, expect } from 'vitest';
@@ -110,7 +111,6 @@ describe('ResultsPanel (§7.6.1 / §7.6.3)', () => {
     expect(screen.getByTestId('pva-sensitivity-bracket')).toBeInTheDocument();
     // No banners
     expect(screen.queryByTestId('pva-banner-frozen')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('pva-banner-legacy')).not.toBeInTheDocument();
     expect(screen.queryByTestId('pva-banner-flagonly')).not.toBeInTheDocument();
   });
 
@@ -166,15 +166,18 @@ describe('ResultsPanel (§7.6.1 / §7.6.3)', () => {
     expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
   });
 
-  it('TC-PVA-Results-10: legacy banner surfaces when flags._legacyCurrentValueDetected=true (with _legacyValue)', () => {
-    render(
-      <ResultsPanel
-        results={TIER_3_RESULTS}
-        flags={{ _legacyCurrentValueDetected: true, _legacyValue: 300000 }}
-      />,
-    );
-    expect(screen.getByTestId('pva-banner-legacy')).toBeInTheDocument();
-    expect(screen.getByText(/\$300,000/)).toBeInTheDocument();
+  it('TC-PVA-Results-10: unconditional inventory note renders on a compute path (replaces the obsolete legacy banner)', () => {
+    render(<ResultsPanel results={TIER_3_RESULTS} flags={{}} />);
+    const note = screen.getByTestId('pva-inventory-note');
+    expect(note).toBeInTheDocument();
+    expect(note).toHaveTextContent(/valued here from present-value inputs/i);
+    // And — emphatically — no AMBER legacy banner.
+    expect(screen.queryByTestId('pva-banner-legacy')).not.toBeInTheDocument();
+  });
+
+  it('TC-PVA-Results-10b: inventory note is NOT shown on flag_only (no PV to qualify)', () => {
+    render(<ResultsPanel results={FLAG_ONLY_RESULTS} flags={{}} />);
+    expect(screen.queryByTestId('pva-inventory-note')).toBeNull();
   });
 
   it('TC-PVA-Results-11: flag-only banner shows planType from results.metadata', () => {

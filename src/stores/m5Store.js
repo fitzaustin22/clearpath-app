@@ -226,8 +226,7 @@ export const useM5Store = create(
       // ─── PVA setters (§7.6.4 / §7.10.3) ────────────────────────────────
       // Object-keyed asset CRUD per the §7.6.4 locked-literal `assets[assetId]`
       // shape. Each asset slot carries `{ inputs, results, _prePopSources }`
-      // plus pre-pop derived flag fields (`_legacyCurrentValueDetected`,
-      // `_legacyValue`, `_frozenRoutingApplied`) per [R5b-18] / [R5b-5].
+      // plus the pre-pop derived `_frozenRoutingApplied` flag per [R5b-18].
       //
       // `_prePopSources` is a SIBLING of `inputs` (not nested) per the
       // cross-tool B5b-3 attribution convention shared with Support Estimator,

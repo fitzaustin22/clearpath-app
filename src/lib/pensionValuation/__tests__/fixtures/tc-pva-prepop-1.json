@@ -1,6 +1,6 @@
 {
   "tc": "TC-PVA-PrePop-1",
-  "description": "M2 accruing claim drives full pre-pop and Tier 3 default. planName + whoseplan pre-popped with provenance; no legacy or frozen flags.",
+  "description": "M2 accruing claim drives full pre-pop and Tier 3 default. description→planName + titleholder→whoseplan pre-popped with provenance; no frozen flag.",
   "inputs": {
     "m1Store": null,
     "m2Store": {
@@ -9,8 +9,8 @@
           {
             "id": "claim_abc",
             "category": "pensions",
-            "planName": "ABC Corp Pension",
-            "whoseplan": "Client",
+            "description": "ABC Corp Pension",
+            "titleholder": "self",
             "accrualStatus": "accruing"
           }
         ]
@@ -25,9 +25,8 @@
       "planName": "ABC Corp Pension",
       "whoseplan": "Client"
     },
-    "_legacyCurrentValueDetected": false,
-    "_legacyValue": null,
     "_frozenRoutingApplied": false,
     "prePopSourcesFields": ["planName", "whoseplan"]
-  }
+  },
+  "_note": "accrualStatus is synthetic — M2 does not write it. Kept so this fixture exercises the accruing→tier_3 branch."
 }

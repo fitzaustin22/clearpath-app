@@ -1,5 +1,5 @@
 /**
- * Tests for the 12 §7.9.2 callout components.
+ * Tests for the 11 §7.9.2 callout components.
  *
  * Each component renders spec-pinned copy verbatim with optional runtime
  * data interpolation. These tests assert: (a) the root testid is present;
@@ -14,7 +14,6 @@ import { render, screen } from '@testing-library/react';
 
 import MultiEmployerFlagOnly from '../MultiEmployerFlagOnly';
 import GovFlagOnly from '../GovFlagOnly';
-import LegacyCurrentvalueIgnored from '../LegacyCurrentvalueIgnored';
 import FrozenPlanTier1Routing from '../FrozenPlanTier1Routing';
 import CovertureZeroFraction from '../CovertureZeroFraction';
 import VestingStatusCallout from '../VestingStatusCallout';
@@ -56,14 +55,6 @@ describe('GovFlagOnly', () => {
     expect(container.firstChild).toBeNull();
     expect(warnSpy).toHaveBeenCalled();
     warnSpy.mockRestore();
-  });
-});
-
-describe('LegacyCurrentvalueIgnored', () => {
-  it('renders with legacyValue interpolated as currency', () => {
-    render(<LegacyCurrentvalueIgnored runtimeData={{ legacyValue: 50000 }} />);
-    expect(screen.getByText(/M2 captured a/i)).toBeInTheDocument();
-    expect(screen.getByText(/\$50,000/)).toBeInTheDocument();
   });
 });
 

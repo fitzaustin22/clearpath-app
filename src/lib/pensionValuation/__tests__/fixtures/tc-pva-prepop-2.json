@@ -1,6 +1,6 @@
 {
   "tc": "TC-PVA-PrePop-2",
-  "description": "M2 in-pay claim with FULL data routes to in_pay_status path; pre-pops planName + whoseplan + monthlyBenefit + benefitStartDate.",
+  "description": "M2 in-pay claim with FULL data routes to in_pay_status path; pre-pops description→planName + titleholder→whoseplan + monthlyBenefit + benefitStartDate.",
   "inputs": {
     "m1Store": null,
     "m2Store": {
@@ -9,8 +9,8 @@
           {
             "id": "claim_xyz",
             "category": "pensions",
-            "planName": "XYZ Retirement Fund",
-            "whoseplan": "Spouse",
+            "description": "XYZ Retirement Fund",
+            "titleholder": "spouse",
             "accrualStatus": "in_pay_status",
             "monthlyBenefit": 4200,
             "benefitStartDate": "2020-01-01"
@@ -29,8 +29,7 @@
       "monthlyBenefit": 4200,
       "benefitStartDate": "2020-01-01"
     },
-    "_legacyCurrentValueDetected": false,
-    "_legacyValue": null,
     "prePopSourcesFields": ["planName", "whoseplan", "monthlyBenefit", "benefitStartDate"]
-  }
+  },
+  "_note": "accrualStatus / monthlyBenefit / benefitStartDate are synthetic — M2 does not write them. Kept so this fixture exercises the in_pay_status branch."
 }

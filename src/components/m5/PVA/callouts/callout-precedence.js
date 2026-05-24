@@ -11,7 +11,6 @@ export { CALLOUT_PRECEDENCE } from '@/src/lib/pensionValuation';
 
 import MultiEmployerFlagOnly from './MultiEmployerFlagOnly';
 import GovFlagOnly from './GovFlagOnly';
-import LegacyCurrentvalueIgnored from './LegacyCurrentvalueIgnored';
 import FrozenPlanTier1Routing from './FrozenPlanTier1Routing';
 import CovertureZeroFraction from './CovertureZeroFraction';
 import VestingStatusCallout from './VestingStatusCallout';
@@ -25,7 +24,6 @@ import LiabilityDisclaimer from './LiabilityDisclaimer';
 export const CALLOUT_TYPE_TO_COMPONENT = Object.freeze({
   multi_employer_flag_only: MultiEmployerFlagOnly,
   gov_flag_only: GovFlagOnly,
-  legacy_currentvalue_ignored: LegacyCurrentvalueIgnored,
   frozen_plan_tier1_routing: FrozenPlanTier1Routing,
   coverture_zero_fraction: CovertureZeroFraction,
   vesting_status_callout: VestingStatusCallout,

@@ -76,24 +76,13 @@ describe('m5Store PVA slice extension (§7.6.4 / §7.10.3)', () => {
     expect(stored.results).toEqual(results);
   });
 
-  it('TC-M5PVA-Slice-4: setPVAAssetFlags merges flag fields', () => {
+  it('TC-M5PVA-Slice-4: setPVAAssetFlags merges flag fields without disturbing inputs', () => {
     useM5Store.getState().setPVAAssetInputs('a3', { planName: 'Z' });
 
-    useM5Store.getState().setPVAAssetFlags('a3', {
-      _legacyCurrentValueDetected: true,
-      _legacyValue: 300000,
-    });
-    let stored = useM5Store.getState().pensionValuation.assets['a3'];
-    expect(stored._legacyCurrentValueDetected).toBe(true);
-    expect(stored._legacyValue).toBe(300000);
-    expect(stored.inputs).toEqual({ planName: 'Z' });
-
-    // Subsequent merge adds frozen flag without losing prior flags.
     useM5Store.getState().setPVAAssetFlags('a3', { _frozenRoutingApplied: true });
-    stored = useM5Store.getState().pensionValuation.assets['a3'];
+    const stored = useM5Store.getState().pensionValuation.assets['a3'];
     expect(stored._frozenRoutingApplied).toBe(true);
-    expect(stored._legacyCurrentValueDetected).toBe(true);
-    expect(stored._legacyValue).toBe(300000);
+    expect(stored.inputs).toEqual({ planName: 'Z' });
   });
 
   it('TC-M5PVA-Slice-5: clearPVAAsset removes the keyed entry, leaves others intact', () => {

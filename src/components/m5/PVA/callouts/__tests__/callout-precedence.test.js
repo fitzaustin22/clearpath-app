@@ -7,8 +7,10 @@
  * layer re-exports it and exposes a parallel React-component map.
  *
  * Per Phase 0.7a, this shape diverges from the build prompt's array
- * strawman — the test still validates the same invariants: 12 types in
- * §7.9.1 order, complete component coverage, no extras.
+ * strawman — the test still validates the same invariants: 11 types in
+ * §7.9.1 order, complete component coverage, no extras. (Was 12 prior to
+ * removing the legacy_currentvalue_ignored callout, which is obsolete
+ * since M2 doesn't write the pre-Addendum-2 currentValue shape.)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -17,7 +19,6 @@ import { CALLOUT_PRECEDENCE, CALLOUT_TYPE_TO_COMPONENT } from '../callout-preced
 const SPEC_ORDER = [
   'multi_employer_flag_only',
   'gov_flag_only',
-  'legacy_currentvalue_ignored',
   'frozen_plan_tier1_routing',
   'coverture_zero_fraction',
   'vesting_status_callout',
@@ -30,8 +31,8 @@ const SPEC_ORDER = [
 ];
 
 describe('CALLOUT_PRECEDENCE', () => {
-  it('has exactly 12 entries', () => {
-    expect(Object.keys(CALLOUT_PRECEDENCE)).toHaveLength(12);
+  it('has exactly 11 entries', () => {
+    expect(Object.keys(CALLOUT_PRECEDENCE)).toHaveLength(11);
   });
 
   it('keys sorted by precedence value match §7.9.1 render order', () => {

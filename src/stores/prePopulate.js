@@ -58,6 +58,17 @@ export function prePopulateSupportEstimatorInputs({ m1Store, m2Store, m3Store })
 }
 
 /**
+ * Map M2's `titleholder` vocabulary to PVA's `whoseplan` binary.
+ * 'self'/'spouse' map cleanly; 'joint'/'other'/'unknown'/absent → undefined
+ * so the user picks from the WHOSEPLAN_OPTIONS dropdown (Client | Spouse).
+ */
+function mapTitleholderToWhoseplan(titleholder) {
+  if (titleholder === 'self') return 'Client';
+  if (titleholder === 'spouse') return 'Spouse';
+  return undefined;
+}
+
+/**
  * Pre-populate PVA inputs from an M2 pension claim per spec §7.10.3.
  *
  * Return-shape union:
@@ -69,8 +80,8 @@ export function prePopulateSupportEstimatorInputs({ m1Store, m2Store, m3Store })
  *     (§7.10.3 spec slice puts the guard at "caller must verify"; we centralize
  *     it inside prePopulatePVAInputs for unit-testability — orchestrator becomes
  *     a thin consumer of the return-union. Queued as spec-amendment item.)
- *   - Normal pre-pop result with `{ path, inputs, _prePopSources, _legacyCurrentValueDetected,
- *     _legacyValue, _frozenRoutingApplied }` per §7.10.3.
+ *   - Normal pre-pop result with `{ path, inputs, _prePopSources,
+ *     _frozenRoutingApplied? }` per §7.10.3.
  *
  * Path selection:
  *   - accrualStatus === 'in_pay_status' → path = 'in_pay_status' (pre-pops
@@ -79,11 +90,6 @@ export function prePopulateSupportEstimatorInputs({ m1Store, m2Store, m3Store })
  *     (UI hides Tier 3 option for frozen plans); _frozenRoutingApplied = true.
  *   - accrualStatus === 'accruing' OR absent → path = 'tier_3' default
  *     (user may override to Tier 1/2 in UI).
- *
- * Legacy detection per [R5b-5]: pre-M2-TICKET-3 entries have currentValue set
- * but no accrualStatus. Flagged via `_legacyCurrentValueDetected = true` and
- * `_legacyValue` carries the legacy currentValue forward. The calc engine
- * router surfaces `legacy_currentvalue_ignored` callout via STEP CP.4.
  *
  * m1Store/m3Store unused at v1 (deferred per P-7a); accepted for §6.5.7 cross-tool
  * signature symmetry.
@@ -114,19 +120,13 @@ export function prePopulatePVAInputs({ m1Store, m2Store, m3Store, assetId }) {
     }
   }
 
-  // Legacy currentValue detection per [R5b-5]: fires only when accrualStatus
-  // is absent (a hallmark of pre-M2-TICKET-3 entries).
-  const hasLegacyCurrentValue = claim.currentValue != null && claim.accrualStatus == null;
-
   const now = () => new Date().toISOString();
-  const baseInputs = {
-    planName: claim.planName,
-    whoseplan: claim.whoseplan,
-  };
-  const baseProvenance = {
-    planName: { source: 'm2.pensionClaim', timestamp: now() },
-    whoseplan: { source: 'm2.pensionClaim', timestamp: now() },
-  };
+  const planName = claim.description;
+  const whoseplan = mapTitleholderToWhoseplan(claim.titleholder);
+  const baseInputs = { planName, whoseplan };
+  const baseProvenance = {};
+  if (planName) baseProvenance.planName = { source: 'm2.pensionClaim', timestamp: now() };
+  if (whoseplan) baseProvenance.whoseplan = { source: 'm2.pensionClaim', timestamp: now() };
 
   if (claim.accrualStatus === 'in_pay_status') {
     return {
@@ -141,8 +141,6 @@ export function prePopulatePVAInputs({ m1Store, m2Store, m3Store, assetId }) {
         monthlyBenefit: { source: 'm2.pensionClaim', timestamp: now() },
         benefitStartDate: { source: 'm2.pensionClaim', timestamp: now() },
       },
-      _legacyCurrentValueDetected: hasLegacyCurrentValue,
-      _legacyValue: hasLegacyCurrentValue ? claim.currentValue : null,
     };
   }
 
@@ -151,19 +149,15 @@ export function prePopulatePVAInputs({ m1Store, m2Store, m3Store, assetId }) {
       path: 'tier_1',
       inputs: { ...baseInputs },
       _prePopSources: { ...baseProvenance },
-      _legacyCurrentValueDetected: hasLegacyCurrentValue,
-      _legacyValue: hasLegacyCurrentValue ? claim.currentValue : null,
       _frozenRoutingApplied: true,
     };
   }
 
-  // accruing OR legacy entry without accrualStatus → tier_3 default
+  // accruing OR no accrualStatus → tier_3 default
   return {
     path: 'tier_3',
     inputs: { ...baseInputs },
     _prePopSources: { ...baseProvenance },
-    _legacyCurrentValueDetected: hasLegacyCurrentValue,
-    _legacyValue: hasLegacyCurrentValue ? claim.currentValue : null,
     _frozenRoutingApplied: false,
   };
 }

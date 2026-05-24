@@ -57,10 +57,10 @@ describe('AssetPicker (§7.5 / §7.6.4)', () => {
 
   it('TC-PVA-AssetPicker-2: renders one button per pension claim and filters by category', () => {
     seedM2Items([
-      { id: 'pension-1', category: 'pensions', planName: 'ABC Corp Pension', whoseplan: 'Client' },
-      { id: 'pension-2', category: 'pensions', planName: 'XYZ Pension', whoseplan: 'Spouse' },
-      { id: 'cash-1', category: 'depositAccounts', label: 'Checking' },
-      { id: 'retire-1', category: 'retirement', label: '401(k)' },
+      { id: 'pension-1', category: 'pensions', description: 'ABC Corp Pension', titleholder: 'self' },
+      { id: 'pension-2', category: 'pensions', description: 'XYZ Pension', titleholder: 'spouse' },
+      { id: 'cash-1', category: 'depositAccounts', description: 'Checking' },
+      { id: 'retire-1', category: 'retirement', description: '401(k)' },
     ]);
 
     render(<AssetPicker selectedAssetId={null} onSelect={() => {}} />);
@@ -76,7 +76,7 @@ describe('AssetPicker (§7.5 / §7.6.4)', () => {
 
   it('TC-PVA-AssetPicker-3: clicking a button calls onSelect with that claim id', () => {
     seedM2Items([
-      { id: 'pension-1', category: 'pensions', planName: 'ABC Corp Pension', whoseplan: 'Client' },
+      { id: 'pension-1', category: 'pensions', description: 'ABC Corp Pension', titleholder: 'self' },
     ]);
     const onSelect = vi.fn();
 
@@ -89,8 +89,8 @@ describe('AssetPicker (§7.5 / §7.6.4)', () => {
 
   it('TC-PVA-AssetPicker-4: selected asset has aria-pressed=true and GOLD_TINT background', () => {
     seedM2Items([
-      { id: 'pension-1', category: 'pensions', planName: 'A', whoseplan: 'Client' },
-      { id: 'pension-2', category: 'pensions', planName: 'B', whoseplan: 'Spouse' },
+      { id: 'pension-1', category: 'pensions', description: 'A', titleholder: 'self' },
+      { id: 'pension-2', category: 'pensions', description: 'B', titleholder: 'spouse' },
     ]);
 
     render(<AssetPicker selectedAssetId="pension-2" onSelect={() => {}} />);
@@ -103,8 +103,8 @@ describe('AssetPicker (§7.5 / §7.6.4)', () => {
 
   it('TC-PVA-AssetPicker-5: claims with results in m5Store show "valued" marker', () => {
     seedM2Items([
-      { id: 'pension-valued', category: 'pensions', planName: 'Plan A', whoseplan: 'Client' },
-      { id: 'pension-unvalued', category: 'pensions', planName: 'Plan B', whoseplan: 'Spouse' },
+      { id: 'pension-valued', category: 'pensions', description: 'Plan A', titleholder: 'self' },
+      { id: 'pension-unvalued', category: 'pensions', description: 'Plan B', titleholder: 'spouse' },
     ]);
     seedM5Asset('pension-valued', {
       inputs: { planName: 'Plan A' },
@@ -115,5 +115,15 @@ describe('AssetPicker (§7.5 / §7.6.4)', () => {
 
     expect(screen.getByTestId('pva-asset-picker-item-pension-valued-valued')).toBeInTheDocument();
     expect(screen.queryByTestId('pva-asset-picker-item-pension-unvalued-valued')).not.toBeInTheDocument();
+  });
+
+  it('TC-PVA-AssetPicker-6: empty description falls back to "Untitled pension"', () => {
+    seedM2Items([
+      { id: 'pension-blank', category: 'pensions', description: '', titleholder: 'unknown' },
+    ]);
+
+    render(<AssetPicker selectedAssetId={null} onSelect={() => {}} />);
+
+    expect(screen.getByText(/Untitled pension/)).toBeInTheDocument();
   });
 });

@@ -89,7 +89,7 @@ function Banner({ testId, children }) {
 /**
  * @param {object} props
  * @param {object | null} props.results
- * @param {{_legacyCurrentValueDetected?: boolean, _legacyValue?: number | null, _frozenRoutingApplied?: boolean}} props.flags
+ * @param {{_frozenRoutingApplied?: boolean}} props.flags
  */
 export default function ResultsPanel({ results, flags }) {
   // Soft placeholder (§7.6.3 "Required inputs missing → 'complete inputs to see PV'")
@@ -117,7 +117,6 @@ export default function ResultsPanel({ results, flags }) {
   const isCoverturePath = results.coverture !== null && results.coverture !== undefined;
 
   const showFrozenBanner = flags?._frozenRoutingApplied === true;
-  const showLegacyBanner = flags?._legacyCurrentValueDetected === true;
   const showFlagOnlyBanner = isFlagOnly;
 
   const headlinePV = isFlagOnly ? null : getHeadlinePV(results);
@@ -160,14 +159,6 @@ export default function ResultsPanel({ results, flags }) {
       {showFrozenBanner && (
         <Banner testId="pva-banner-frozen">
           <strong>Frozen plan</strong> — defaulted to Tier 1 (no future-service projection). Per [R5b-18].
-        </Banner>
-      )}
-      {showLegacyBanner && (
-        <Banner testId="pva-banner-legacy">
-          <strong>Legacy currentValue ignored.</strong> M2 carried a pre-Addendum-2{' '}
-          <code style={{ fontFamily: T.FONT_BODY }}>currentValue</code> field
-          ({formatUSD(flags?._legacyValue)}). For DB pensions, present value differs from rollover /
-          cash-out values — PVA computes its own PV.
         </Banner>
       )}
       {showFlagOnlyBanner && (
@@ -234,6 +225,17 @@ export default function ResultsPanel({ results, flags }) {
               </>
             )}
           </div>
+          <p
+            data-testid="pva-inventory-note"
+            style={{
+              fontFamily: T.FONT_BODY,
+              fontSize: 13,
+              color: T.NAVY_55,
+              margin: '8px 0 0',
+            }}
+          >
+            This pension is valued here from present-value inputs; the figure in your inventory isn&apos;t used directly.
+          </p>
         </>
       )}
 

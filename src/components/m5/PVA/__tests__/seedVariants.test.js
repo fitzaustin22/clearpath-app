@@ -19,7 +19,6 @@ const EXPECTED_KEYS = [
   'cashbalance_canonical',
   'cashbalance_with_coverture',
   'frozen_routing_banner',
-  'legacy_currentvalue_banner',
   'flag_only_multiemployer',
   'r3_validation_error',
   // PR 3 / Phase 2 — callout-surfacing seeds via LL-22 hybrid pattern
@@ -38,7 +37,6 @@ const EXPECTED_PATH_BY_KEY = {
   cashbalance_canonical: 'cash_balance',
   cashbalance_with_coverture: 'cash_balance',
   frozen_routing_banner: 'tier_1',
-  legacy_currentvalue_banner: 'tier_3',
   flag_only_multiemployer: 'flag_only',
   r3_validation_error: null,
   vesting_partial: 'tier_1',
@@ -57,7 +55,7 @@ const NEW_CALLOUT_SEEDS = [
 ];
 
 describe('SEED_VARIANTS (§7.11 fixture wrapping)', () => {
-  it('TC-PVA-Seeds-1: exactly the 15 documented seed keys are exported', () => {
+  it('TC-PVA-Seeds-1: exactly the 14 documented seed keys are exported', () => {
     expect([...SEED_KEYS].sort()).toEqual([...EXPECTED_KEYS].sort());
   });
 
@@ -80,11 +78,6 @@ describe('SEED_VARIANTS (§7.11 fixture wrapping)', () => {
 
   it('TC-PVA-Seeds-3: frozen_routing_banner carries _frozenRoutingApplied=true', () => {
     expect(SEED_VARIANTS.frozen_routing_banner._frozenRoutingApplied).toBe(true);
-  });
-
-  it('TC-PVA-Seeds-4: legacy_currentvalue_banner carries _legacyCurrentValueDetected=true + _legacyValue', () => {
-    expect(SEED_VARIANTS.legacy_currentvalue_banner._legacyCurrentValueDetected).toBe(true);
-    expect(SEED_VARIANTS.legacy_currentvalue_banner._legacyValue).toBe(300000);
   });
 
   it('TC-PVA-Seeds-5: cashbalance_with_coverture carries applyCoverture=true to drive UI', () => {
