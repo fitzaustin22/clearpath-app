@@ -23,8 +23,7 @@
   },
   "expected": {
     "error": "in_pay_data_incomplete",
-    "missingFields": ["monthlyBenefit"],
-    "path": null
+    "missingFields": ["monthlyBenefit"]
   },
   "_note": "accrualStatus / monthlyBenefit / benefitStartDate are synthetic — M2 does not write them. Kept so this fixture exercises the in_pay_status R3 guard."
 }

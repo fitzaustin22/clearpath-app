@@ -126,4 +126,31 @@ describe('AssetPicker (§7.5 / §7.6.4)', () => {
 
     expect(screen.getByText(/Untitled pension/)).toBeInTheDocument();
   });
+
+  it('TC-PVA-AssetPicker-7: owner suffix maps titleholder → " — Client"/" — Spouse"; joint/other/unknown/absent suppress the suffix', () => {
+    seedM2Items([
+      { id: 'pen-self', category: 'pensions', description: 'Plan Self', titleholder: 'self' },
+      { id: 'pen-spouse', category: 'pensions', description: 'Plan Spouse', titleholder: 'spouse' },
+      { id: 'pen-joint', category: 'pensions', description: 'Plan Joint', titleholder: 'joint' },
+      { id: 'pen-other', category: 'pensions', description: 'Plan Other', titleholder: 'other' },
+      { id: 'pen-unknown', category: 'pensions', description: 'Plan Unknown', titleholder: 'unknown' },
+      { id: 'pen-absent', category: 'pensions', description: 'Plan Absent' },
+    ]);
+
+    render(<AssetPicker selectedAssetId={null} onSelect={() => {}} />);
+
+    const selfBtn = screen.getByTestId('pva-asset-picker-item-pen-self');
+    expect(selfBtn).toHaveTextContent('Plan Self');
+    expect(selfBtn).toHaveTextContent('— Client');
+
+    const spouseBtn = screen.getByTestId('pva-asset-picker-item-pen-spouse');
+    expect(spouseBtn).toHaveTextContent('Plan Spouse');
+    expect(spouseBtn).toHaveTextContent('— Spouse');
+
+    // Joint/other/unknown/absent: render the description but no owner suffix.
+    for (const id of ['pen-joint', 'pen-other', 'pen-unknown', 'pen-absent']) {
+      const btn = screen.getByTestId(`pva-asset-picker-item-${id}`);
+      expect(btn.textContent).not.toMatch(/— /);
+    }
+  });
 });

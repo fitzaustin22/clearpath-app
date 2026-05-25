@@ -158,7 +158,7 @@ export default function ResultsPanel({ results, flags }) {
 
       {showFrozenBanner && (
         <Banner testId="pva-banner-frozen">
-          <strong>Frozen plan</strong> — defaulted to Tier 1 (no future-service projection). Per [R5b-18].
+          <strong>Frozen plan</strong> — Tier 3 (coverture) unavailable; valued on an accrued-benefit basis. Per [R5b-18].
         </Banner>
       )}
       {showFlagOnlyBanner && (

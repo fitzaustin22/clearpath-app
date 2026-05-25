@@ -70,12 +70,13 @@ describe('m5Store partialize — _prePopSources is never persisted', () => {
     expect(se).not.toHaveProperty('_prePopSources');
   });
 
-  it('TC-M5Persist-3: pensionValuation strips per-asset _prePopSources, preserves inputs/results/_frozenRoutingApplied', () => {
+  it('TC-M5Persist-3: pensionValuation strips per-asset _prePopSources, preserves inputs/results', () => {
+    // §7.2 v2: setPVAAssetFlags is gone — routing-derived state (frozen,
+    // in-pay, tier) is computed from `inputs.accrualStatus` at render
+    // time. The persisted shape is `{ inputs, results }`, never a sibling
+    // flag slot. The H1 strip on `_prePopSources` is still the gate.
     useM5Store.getState().setPVAAssetInputs('a1', { planName: 'ABC Pension' });
     useM5Store.getState().setPVAAssetResults('a1', { path: 'tier_1', pv: { best: 100 } });
-    useM5Store.getState().setPVAAssetFlags('a1', {
-      _frozenRoutingApplied: true,
-    });
     useM5Store.getState().setPVAAssetPrePopSources('a1', {
       planName: { source: 'm2.pensionClaim', timestamp: '2026-05-16T00:00:00.000Z' },
     });
@@ -84,9 +85,7 @@ describe('m5Store partialize — _prePopSources is never persisted', () => {
     expect(slot).toBeDefined();
     expect(slot.inputs).toEqual({ planName: 'ABC Pension' });
     expect(slot.results).toEqual({ path: 'tier_1', pv: { best: 100 } });
-    // Pre-pop-derived flag IS preserved (PVA reload contract — TC-M5PVA-Slice-6).
-    expect(slot._frozenRoutingApplied).toBe(true);
-    // Only _prePopSources is stripped.
+    // _prePopSources is stripped on partialize.
     expect(slot).not.toHaveProperty('_prePopSources');
   });
 });

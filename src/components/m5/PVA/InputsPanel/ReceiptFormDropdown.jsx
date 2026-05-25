@@ -20,6 +20,7 @@
  * Hidden when `path === 'flag_only'` (no PV → no receipt form).
  */
 
+import { useEffect } from 'react';
 import { FieldSection } from './_fields.jsx';
 import WizardSelector from '@/src/components/wizard/WizardSelector';
 import { DEFAULT_RECEIPT_FORM_BY_PATH } from '@/src/lib/pensionValuation';
@@ -32,12 +33,23 @@ const RECEIPT_FORM_OPTIONS = [
 ];
 
 export default function ReceiptFormDropdown({ inputs, path, onChange }) {
+  // Defect-#2 fix (§7.2 v2): when receiptForm is null and the path has a
+  // non-null default, commit the default into the store. The effect re-fires
+  // on `path` change while receiptForm is still null (the default tracks the
+  // resolved path); once the user picks a value the effect short-circuits.
+  const defaultForPath = path != null ? (DEFAULT_RECEIPT_FORM_BY_PATH[path] ?? null) : null;
+  useEffect(() => {
+    if (inputs.receiptForm == null && defaultForPath != null) {
+      onChange('receiptForm', defaultForPath);
+    }
+  }, [inputs.receiptForm, defaultForPath, onChange]);
+
   if (path === 'flag_only') return null;
   if (!path) return null;
 
-  const defaultValue = DEFAULT_RECEIPT_FORM_BY_PATH[path] ?? null;
-  // Field shows user override if set, else default.
-  const effective = inputs.receiptForm ?? defaultValue;
+  // Field shows user override if set, else default (display fallback for the
+  // render frame before the commit effect fires).
+  const effective = inputs.receiptForm ?? defaultForPath;
 
   return (
     <FieldSection title="Receipt form (M4 PIT handoff)">

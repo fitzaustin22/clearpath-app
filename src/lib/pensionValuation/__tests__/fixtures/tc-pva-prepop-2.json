@@ -22,10 +22,10 @@
     "assetId": "claim_xyz"
   },
   "expected": {
-    "path": "in_pay_status",
     "inputs": {
       "planName": "XYZ Retirement Fund",
       "whoseplan": "Spouse",
+      "accrualStatus": "in_pay_status",
       "monthlyBenefit": 4200,
       "benefitStartDate": "2020-01-01"
     },

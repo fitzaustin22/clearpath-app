@@ -20,12 +20,11 @@
     "assetId": "claim_frozen"
   },
   "expected": {
-    "path": "tier_1",
     "inputs": {
       "planName": "Frozen DB Plan",
-      "whoseplan": "Client"
-    },
-    "_frozenRoutingApplied": true
+      "whoseplan": "Client",
+      "accrualStatus": "frozen"
+    }
   },
   "_note": "accrualStatus is synthetic — M2 does not write it. Kept so this fixture exercises the frozen→tier_1 branch."
 }

@@ -18,6 +18,7 @@
 import { useMemo } from 'react';
 import { useM2Store } from '@/src/stores/m2Store';
 import { useM5Store } from '@/src/stores/m5Store';
+import { mapTitleholderToWhoseplan } from '@/src/stores/prePopulate';
 import { T } from '@/src/lib/brand/tokens';
 
 /**
@@ -77,7 +78,11 @@ export default function AssetPicker({ selectedAssetId, onSelect }) {
           const isSelected = claim.id === selectedAssetId;
           const hasResults = !!(assetsBySlice && assetsBySlice[claim.id]?.results);
           const label = claim.description || 'Untitled pension';
-          const whoseplan = claim.whoseplan ? ` — ${claim.whoseplan}` : '';
+          // M2 writes `titleholder`, not `whoseplan` — map vocabulary to
+          // PVA's Client/Spouse binary. joint/other/unknown/absent suppress
+          // the suffix (mapper returns undefined → falsy guard hides it).
+          const ownerSuffix = mapTitleholderToWhoseplan(claim.titleholder);
+          const whoseplan = ownerSuffix ? ` — ${ownerSuffix}` : '';
           return (
             <li key={claim.id} style={{ marginBottom: '0.5rem' }}>
               <button

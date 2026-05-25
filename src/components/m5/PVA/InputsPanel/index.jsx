@@ -22,6 +22,7 @@ import { useM5Store } from '@/src/stores/m5Store';
 import { T } from '@/src/lib/brand/tokens';
 import CommonFields from './CommonFields.jsx';
 import PlanTypeSelector from './PlanTypeSelector.jsx';
+import PensionStatusSelector from './PensionStatusSelector.jsx';
 import TierOverride from './TierOverride.jsx';
 import Tier1And2Fields from './Tier1And2Fields.jsx';
 import Tier3Fields from './Tier3Fields.jsx';
@@ -34,9 +35,10 @@ import ReceiptFormDropdown from './ReceiptFormDropdown.jsx';
  * @param {object} props
  * @param {string} props.assetId
  * @param {'tier_1' | 'tier_2' | 'tier_3' | 'in_pay_status' | 'cash_balance' | 'flag_only' | null} props.path
- * @param {boolean} [props.frozenRoutingApplied]  Threaded from orchestrator's
- *   prePopResult to bypass m5Store roundtrip for visibility-critical state
- *   (TierOverride tier_3 option hiding). PR 2 Phase 2 Deviation #6 fix.
+ * @param {boolean} [props.frozenRoutingApplied]  Derived in the orchestrator
+ *   from `inputs.accrualStatus === 'frozen'` (§7.2 v2) and threaded here so
+ *   TierOverride can hide the tier_3 option on the same render the user
+ *   toggles the Pension-status control.
  */
 export default function InputsPanel({ assetId, path, frozenRoutingApplied = false }) {
   // LL-9: primitive selectors only.
@@ -45,10 +47,16 @@ export default function InputsPanel({ assetId, path, frozenRoutingApplied = fals
 
   const safeInputs = inputs ?? {};
 
-  // Partial-merge via component-level closure; setter takes whole inputs object
-  // (whole-object replace semantics per §7.6.4 setter contract).
+  // Partial-merge via the freshest store snapshot. Reading from
+  // `useM5Store.getState()` at call time (rather than closing over
+  // `safeInputs`) is the defensive fix for an effect-ordering hazard:
+  // sibling effects (e.g. ReceiptFormDropdown's path-default commit) and
+  // the PVA orchestrator's one-shot pre-pop both run after the first
+  // render commits, depth-first — so a closure over render-1 `safeInputs`
+  // would clobber data the parent effect has just written.
   const updateField = (field, value) => {
-    setPVAAssetInputs(assetId, { ...safeInputs, [field]: value });
+    const current = useM5Store.getState().pensionValuation?.assets?.[assetId]?.inputs ?? {};
+    setPVAAssetInputs(assetId, { ...current, [field]: value });
   };
 
   return (
@@ -60,6 +68,7 @@ export default function InputsPanel({ assetId, path, frozenRoutingApplied = fals
       }}
     >
       <PlanTypeSelector inputs={safeInputs} onChange={updateField} />
+      <PensionStatusSelector inputs={safeInputs} onChange={updateField} />
       <CommonFields inputs={safeInputs} onChange={updateField} />
 
       <TierOverride

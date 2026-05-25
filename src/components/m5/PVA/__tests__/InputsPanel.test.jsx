@@ -155,12 +155,15 @@ describe('InputsPanel — path-conditional rendering (§7.2 / §7.3)', () => {
     expect(screen.queryByTestId('wizard-radio-option-tier_3')).not.toBeInTheDocument();
   });
 
-  it('TC-PVA-InputsPanel-10a: ReceiptFormDropdown defaults to DEFAULT_RECEIPT_FORM_BY_PATH[path] when inputs.receiptForm is null', () => {
+  it('TC-PVA-InputsPanel-10a: ReceiptFormDropdown displays AND commits DEFAULT_RECEIPT_FORM_BY_PATH[path] when inputs.receiptForm is null (Defect-#2 fix)', () => {
     seedInputs({});
     render(<InputsPanel assetId={ASSET_ID} path="tier_3" />);
     // PR-D: navigate from the WizardSelector wrapper to the inner <select>.
     const sel = screen.getByTestId('pva-input-receiptForm').querySelector('select');
     expect(sel).toHaveValue('monthly_db_stream'); // default for tier_3
+    // §7.2 v2 Defect-#2: the displayed default is also committed to the
+    // store — a user who accepts the default still submits a real selection.
+    expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.receiptForm).toBe('monthly_db_stream');
   });
 
   it('TC-PVA-InputsPanel-10b: ReceiptFormDropdown override writes inputs.receiptForm', () => {
@@ -209,5 +212,40 @@ describe('InputsPanel — path-conditional rendering (§7.2 / §7.3)', () => {
     const input = screen.getByTestId('pva-input-expectedRetirementAge').querySelector('input');
     fireEvent.change(input, { target: { value: '12' } });
     expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.expectedRetirementAge).toBe(12);
+  });
+
+  // ─── §7.2 v2 — PensionStatusSelector + ReceiptForm commit effect ───────
+  it('TC-PVA-InputsPanel-15a: PensionStatusSelector renders 3 options for private_db_traditional', () => {
+    seedInputs({ planType: 'private_db_traditional', accrualStatus: 'accruing' });
+    render(<InputsPanel assetId={ASSET_ID} path="tier_3" />);
+    expect(screen.getByTestId('pva-input-accrualStatus')).toBeInTheDocument();
+    expect(screen.getByTestId('wizard-radio-option-accruing')).toBeInTheDocument();
+    expect(screen.getByTestId('wizard-radio-option-frozen')).toBeInTheDocument();
+    expect(screen.getByTestId('wizard-radio-option-in_pay_status')).toBeInTheDocument();
+  });
+
+  it('TC-PVA-InputsPanel-15b: PensionStatusSelector hidden for non-traditional plan types', () => {
+    seedInputs({ planType: 'private_db_cash_balance' });
+    render(<InputsPanel assetId={ASSET_ID} path="cash_balance" />);
+    expect(screen.queryByTestId('pva-input-accrualStatus')).not.toBeInTheDocument();
+  });
+
+  it('TC-PVA-InputsPanel-15c: PensionStatusSelector writes inputs.accrualStatus on selection', () => {
+    seedInputs({ planType: 'private_db_traditional', accrualStatus: 'accruing' });
+    render(<InputsPanel assetId={ASSET_ID} path="tier_3" />);
+    const frozenInput = screen
+      .getByTestId('wizard-radio-option-frozen')
+      .querySelector('input[type="radio"]');
+    fireEvent.click(frozenInput);
+    expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.accrualStatus).toBe('frozen');
+  });
+
+  it('TC-PVA-InputsPanel-16: ReceiptFormDropdown commits the path default when inputs.receiptForm is null', () => {
+    // Defect-#2 fix: the effect commits the path default into the store on
+    // first render, so a user accepting the default still submits a real
+    // selection (previously the value displayed but never reached the store).
+    seedInputs({});
+    render(<InputsPanel assetId={ASSET_ID} path="in_pay_status" />);
+    expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.receiptForm).toBe('monthly_db_stream');
   });
 });

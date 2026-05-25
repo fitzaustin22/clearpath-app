@@ -52,10 +52,11 @@ export default function TierOverride({ inputs, path, frozenRoutingApplied = fals
   if (path === 'in_pay_status' || path === 'cash_balance' || path === 'flag_only') return null;
   if (!path) return null;
 
-  // Frozen-routing visibility comes from the prop threaded through the
-  // orchestrator (prePopResult._frozenRoutingApplied), NOT from inputs —
-  // this eliminates the 1-cycle staleness window where the m5Store flag
-  // hasn't propagated yet (PR 2 Phase 2 Deviation #6).
+  // §7.2 v2: the orchestrator derives frozenRoutingApplied from
+  // `inputs.accrualStatus === 'frozen'` and threads it as a prop. The
+  // single source of truth is `inputs.accrualStatus`, so there is no
+  // staleness window — toggling the Pension-status control re-derives
+  // the prop on the same render that triggered the input write.
   const isFrozen = frozenRoutingApplied === true;
   const options = isFrozen ? TIER_OPTIONS_FROZEN : ALL_TIERS;
 
