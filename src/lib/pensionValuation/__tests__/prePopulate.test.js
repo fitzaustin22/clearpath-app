@@ -9,14 +9,13 @@ const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fix
 const loadFixture = (n) => JSON.parse(readFileSync(path.join(fixturesDir, n), 'utf-8'));
 
 describe('prePopulatePVAInputs (§7.10.3)', () => {
-  test('TC-PVA-PrePop-1: M2 accruing claim → tier_3 default; description→planName, titleholder(self)→whoseplan(Client)', () => {
+  test('TC-PVA-PrePop-1: M2 accruing claim → accrualStatus=accruing; description→planName, titleholder(self)→whoseplan(Client)', () => {
     const f = loadFixture('tc-pva-prepop-1.json');
     const result = prePopulatePVAInputs(f.inputs);
     expect(result).not.toBeNull();
-    expect(result.path).toBe('tier_3');
+    expect(result.inputs.accrualStatus).toBe('accruing');
     expect(result.inputs.planName).toBe('ABC Corp Pension');
     expect(result.inputs.whoseplan).toBe('Client');
-    expect(result._frozenRoutingApplied).toBe(false);
     expect(Object.keys(result._prePopSources).sort()).toEqual(['planName', 'whoseplan']);
     expect(result._prePopSources.planName).toMatchObject({
       source: 'm2.pensionClaim',
@@ -24,11 +23,11 @@ describe('prePopulatePVAInputs (§7.10.3)', () => {
     });
   });
 
-  test('TC-PVA-PrePop-2: M2 in-pay claim with full data → in_pay_status path; titleholder(spouse)→whoseplan(Spouse); monthlyBenefit + benefitStartDate pre-popped', () => {
+  test('TC-PVA-PrePop-2: M2 in-pay claim with full data → accrualStatus=in_pay_status; titleholder(spouse)→whoseplan(Spouse); monthlyBenefit + benefitStartDate pre-popped', () => {
     const f = loadFixture('tc-pva-prepop-2.json');
     const result = prePopulatePVAInputs(f.inputs);
     expect(result).not.toBeNull();
-    expect(result.path).toBe('in_pay_status');
+    expect(result.inputs.accrualStatus).toBe('in_pay_status');
     expect(result.inputs.planName).toBe('XYZ Retirement Fund');
     expect(result.inputs.whoseplan).toBe('Spouse');
     expect(result.inputs.monthlyBenefit).toBe(4200);
@@ -43,27 +42,29 @@ describe('prePopulatePVAInputs (§7.10.3)', () => {
     expect(result).not.toBeNull();
     expect(result.error).toBe('in_pay_data_incomplete');
     expect(result.missingFields).toEqual(['monthlyBenefit']);
-    expect(result.path).toBeNull();
+    // §7.2 v2: error return no longer carries `path`; the orchestrator's
+    // resolver returns null when an error result is present.
+    expect(result).not.toHaveProperty('path');
     // Calc engine MUST NOT be invoked when the pre-pop reports a validation error.
-    // The orchestrator (PR 2) consumes this union; here we assert the contract
-    // by confirming the return shape lacks the normal `inputs` payload.
+    // The orchestrator consumes this union; we assert the contract by confirming
+    // the return shape lacks the normal `inputs` payload.
     expect(result.inputs).toBeUndefined();
   });
 
-  test('TC-PVA-FrozenRouting-1 [R5b-18]: frozen claim → tier_1 default with _frozenRoutingApplied flag', () => {
+  test('TC-PVA-FrozenRouting-1 [R5b-18]: frozen claim → accrualStatus=frozen; orchestrator-derived frozenRoutingApplied surfaces the CP.4 callout', () => {
     const f = loadFixture('tc-pva-frozenrouting-1.json');
     const result = prePopulatePVAInputs(f.inputs);
     expect(result).not.toBeNull();
-    expect(result.path).toBe('tier_1');
-    expect(result._frozenRoutingApplied).toBe(true);
+    expect(result.inputs.accrualStatus).toBe('frozen');
 
-    // Integration: _frozenRoutingApplied flows into router CP.4 and surfaces
-    // frozen_plan_tier1_routing callout with planName.
+    // Integration: orchestrator derives frozenRoutingApplied from
+    // inputs.accrualStatus === 'frozen' and threads it into engine inputs;
+    // calc engine STEP CP.4 surfaces frozen_plan_tier1_routing with planName.
     const calcResult = calculatePensionValue({
       path: 'tier_1',
       planType: 'private_db_traditional',
       ...result.inputs,
-      _frozenRoutingApplied: result._frozenRoutingApplied,
+      _frozenRoutingApplied: result.inputs.accrualStatus === 'frozen',
       // Minimum required Tier 1 inputs:
       participantDOB: '1981-05-01',
       caseEffectiveDate: '2026-05-01',
@@ -103,6 +104,64 @@ describe('prePopulatePVAInputs (§7.10.3)', () => {
       expect(r.inputs.planName).toBe('Some Plan');
       expect(r._prePopSources).toHaveProperty('planName');
     }
+  });
+
+  test('§7.2 v2 accrualStatus total mapping: known values pass through; everything else → accruing', () => {
+    const base = (accrualStatus) => ({
+      m1Store: null,
+      m2Store: {
+        maritalEstateInventory: {
+          items: [
+            {
+              id: 'c1',
+              category: 'pensions',
+              description: 'Some Plan',
+              titleholder: 'self',
+              ...(accrualStatus !== undefined ? { accrualStatus } : {}),
+              // In-pay completeness fields so the in_pay branch doesn't trip the R3 guard:
+              monthlyBenefit: 1000,
+              benefitStartDate: '2020-01-01',
+            },
+          ],
+        },
+      },
+      m3Store: null,
+      assetId: 'c1',
+    });
+
+    expect(prePopulatePVAInputs(base('frozen')).inputs.accrualStatus).toBe('frozen');
+    expect(prePopulatePVAInputs(base('in_pay_status')).inputs.accrualStatus).toBe('in_pay_status');
+    expect(prePopulatePVAInputs(base('accruing')).inputs.accrualStatus).toBe('accruing');
+    // Absent / null / out-of-vocabulary all collapse to 'accruing'.
+    expect(prePopulatePVAInputs(base(undefined)).inputs.accrualStatus).toBe('accruing');
+    expect(prePopulatePVAInputs(base(null)).inputs.accrualStatus).toBe('accruing');
+    expect(prePopulatePVAInputs(base('bogus_value')).inputs.accrualStatus).toBe('accruing');
+  });
+
+  test('§7.2 v2 dropdown defaults: pre-pop seeds the four tool defaults at the value each <select>\'s ?? fallback uses', () => {
+    const args = {
+      m1Store: null,
+      m2Store: {
+        maritalEstateInventory: {
+          items: [
+            { id: 'c1', category: 'pensions', description: 'Some Plan', titleholder: 'self' },
+          ],
+        },
+      },
+      m3Store: null,
+      assetId: 'c1',
+    };
+    const result = prePopulatePVAInputs(args);
+    expect(result.inputs.mortalityTable).toBe('irs_417e');
+    expect(result.inputs.formOfBenefitOnStatement).toBe('single_life');
+    expect(result.inputs.vestingStatus).toBe('fully_vested');
+    expect(result.inputs.formOfBenefitInPay).toBe('single_life');
+    // Tool defaults are NOT M2-sourced — _prePopSources must not stamp them.
+    expect(result._prePopSources).not.toHaveProperty('accrualStatus');
+    expect(result._prePopSources).not.toHaveProperty('mortalityTable');
+    expect(result._prePopSources).not.toHaveProperty('formOfBenefitOnStatement');
+    expect(result._prePopSources).not.toHaveProperty('vestingStatus');
+    expect(result._prePopSources).not.toHaveProperty('formOfBenefitInPay');
   });
 
   test('null-return guard (Phase 0 approval): claim not found at assetId → returns null', () => {

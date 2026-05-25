@@ -121,12 +121,13 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
     expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
   });
 
-  // ─── PR 3 / Phase 2 — TierOverride flag-timing fix ────────────────────
+  // ─── §7.2 v2 — TierOverride visibility driven by derived frozenRoutingApplied ─
   it('TC-PVA-Orchestrator-10: frozen seed hides tier_3 option in TierOverride on first render (no store roundtrip)', () => {
-    // The flag-timing fix threads _frozenRoutingApplied as a prop directly
-    // from prePopResult to InputsPanel → TierOverride, eliminating the
-    // 1-cycle staleness window where the m5Store flag hasn't propagated
-    // and tier_3 briefly shows for frozen plans.
+    // §7.2 v2: the orchestrator derives `frozenRoutingApplied` from
+    // `inputs.accrualStatus === 'frozen'` and threads it as a prop to
+    // InputsPanel → TierOverride. With the pre-pop-seed fallback for the
+    // `inputs` value, the very first render already has the correct
+    // derived flag — tier_3 never briefly shows for a frozen plan.
     render(<PVA seedOverride={SEED_VARIANTS.frozen_routing_banner} />);
     // PR-D: TierOverride uses WizardRadio (stacked); tier labels were split
     // at the em-dash into `label` + `description` per the primitive's API.
@@ -145,6 +146,88 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
     expect(screen.getByTestId('wizard-radio-option-tier_1')).toBeInTheDocument();
     expect(screen.getByTestId('wizard-radio-option-tier_2')).toBeInTheDocument();
     expect(screen.getByTestId('wizard-radio-option-tier_3')).toBeInTheDocument();
+  });
+
+  // ─── §7.2 v2 — orchestrator resolvedPath R1–R6 coverage ────────────────
+  describe('resolvedPath rules (§7.2 v2)', () => {
+    it('TC-PVA-Resolver-R1: flag-only planType routes to flag_only (regardless of accrualStatus)', () => {
+      render(
+        <PVA
+          seedOverride={{
+            assetId: 'seed-r1',
+            inputs: {
+              planName: 'Multi-Employer (R1)',
+              whoseplan: 'Client',
+              planType: 'gov_civilian',
+              accrualStatus: 'frozen', // ignored; R1 wins
+            },
+          }}
+        />,
+      );
+      expect(screen.getByTestId('pva-banner-flagonly')).toBeInTheDocument();
+    });
+
+    it('TC-PVA-Resolver-R2: cash-balance planType routes to cash_balance', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.cashbalance_canonical} />);
+      // CashBalanceFields subpanel renders the currentAccountBalance field.
+      expect(screen.getByTestId('pva-input-currentAccountBalance')).toBeInTheDocument();
+    });
+
+    it('TC-PVA-Resolver-R3: accrualStatus=in_pay_status routes to in_pay_status', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.inpay_canonical} />);
+      // InPayFields subpanel renders the formOfBenefitInPay field.
+      expect(screen.getByTestId('pva-input-formOfBenefitInPay')).toBeInTheDocument();
+    });
+
+    it('TC-PVA-Resolver-R4: accrualStatus=frozen routes to tier_1 (tierBase)', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.frozen_routing_banner} />);
+      expect(screen.getByTestId('pva-banner-frozen')).toBeInTheDocument();
+      expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
+      // Tier 3 marital/coverture BigNumber should NOT render.
+      expect(screen.queryByTestId('pva-bignumber-marital')).not.toBeInTheDocument();
+    });
+
+    it('TC-PVA-Resolver-R5: accrualStatus=accruing routes to tier_3 default (no override)', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.tier3_canonical} />);
+      // Tier 3 marital BigNumber renders for a coverture path.
+      expect(screen.getByTestId('pva-bignumber-marital')).toBeInTheDocument();
+    });
+
+    it('TC-PVA-Resolver-R6: tierOverride within validSet wins (accruing + tier_1 override → tier_1)', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.tier1_canonical} />);
+      // tier1_canonical has accrualStatus:'accruing' + tierOverride:'tier_1'.
+      // R5 base would be tier_3; R6 swaps to tier_1.
+      expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
+      expect(screen.queryByTestId('pva-bignumber-marital')).not.toBeInTheDocument();
+      // Frozen banner must NOT render — this is non-frozen tier_1.
+      expect(screen.queryByTestId('pva-banner-frozen')).not.toBeInTheDocument();
+    });
+
+    it('TC-PVA-Resolver-R6-clamp: stale tier_3 override on frozen plan is ignored; path stays tier_1', () => {
+      // Frozen base + tierOverride='tier_3' → tier_3 ∉ validSet({tier_1,tier_2})
+      // → return tierBase (tier_1). Verifies the validSet clamp.
+      render(
+        <PVA
+          seedOverride={{
+            assetId: 'seed-r6-clamp',
+            inputs: {
+              ...SEED_VARIANTS.frozen_routing_banner.inputs,
+              tierOverride: 'tier_3', // stale override; must be clamped
+            },
+          }}
+        />,
+      );
+      expect(screen.getByTestId('pva-banner-frozen')).toBeInTheDocument();
+      expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
+      expect(screen.queryByTestId('pva-bignumber-marital')).not.toBeInTheDocument();
+    });
+
+    it('TC-PVA-Resolver-FrozenDerived: non-frozen accruing+tier_1 override does NOT surface the frozen banner', () => {
+      // Validates that frozenRoutingApplied is derived from
+      // inputs.accrualStatus alone — not from the resolved path being tier_1.
+      render(<PVA seedOverride={SEED_VARIANTS.tier1_canonical} />);
+      expect(screen.queryByTestId('pva-banner-frozen')).not.toBeInTheDocument();
+    });
   });
 
   // ─── PR 3 / Phase 2 — new callout-surfacing seeds end-to-end ──────────

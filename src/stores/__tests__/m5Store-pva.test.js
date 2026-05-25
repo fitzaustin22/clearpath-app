@@ -1,12 +1,15 @@
 /**
- * m5Store PVA slice tests (§7.6.4 / §7.10.3).
+ * m5Store PVA slice tests (§7.6.4 / §7.10.3 / §7.2 v2).
  *
- * Covers the §13 step 4 PR 2 setter extension to `pensionValuation.assets[assetId]`:
+ * Covers the per-asset setters at `pensionValuation.assets[assetId]`:
  *   - setPVAAssetInputs
  *   - setPVAAssetPrePopSources
  *   - setPVAAssetResults
- *   - setPVAAssetFlags
  *   - clearPVAAsset
+ *
+ * §7.2 v2: `setPVAAssetFlags` was removed — routing-derived state (e.g.
+ * frozen-routing) is computed reactively from `inputs.accrualStatus` in the
+ * orchestrator; the m5Store no longer owns a flag slot.
  *
  * Persistence is the existing `clearpath-m5` Zustand `persist` middleware (localStorage).
  */
@@ -76,14 +79,10 @@ describe('m5Store PVA slice extension (§7.6.4 / §7.10.3)', () => {
     expect(stored.results).toEqual(results);
   });
 
-  it('TC-M5PVA-Slice-4: setPVAAssetFlags merges flag fields without disturbing inputs', () => {
-    useM5Store.getState().setPVAAssetInputs('a3', { planName: 'Z' });
-
-    useM5Store.getState().setPVAAssetFlags('a3', { _frozenRoutingApplied: true });
-    const stored = useM5Store.getState().pensionValuation.assets['a3'];
-    expect(stored._frozenRoutingApplied).toBe(true);
-    expect(stored.inputs).toEqual({ planName: 'Z' });
-  });
+  // TC-M5PVA-Slice-4 removed: §7.2 v2 retires `setPVAAssetFlags`. The
+  // `_frozenRoutingApplied` value is now a derived (`inputs.accrualStatus
+  // === 'frozen'`) read in the PVA orchestrator — there's no store slot
+  // to merge into, so the action and its test no longer apply.
 
   it('TC-M5PVA-Slice-5: clearPVAAsset removes the keyed entry, leaves others intact', () => {
     useM5Store.getState().setPVAAssetInputs('keep', { planName: 'Keep Plan' });
@@ -98,16 +97,16 @@ describe('m5Store PVA slice extension (§7.6.4 / §7.10.3)', () => {
   });
 
   it('TC-M5PVA-Slice-6: persists across `clearpath-m5` localStorage round-trip', () => {
-    const inputs = { planName: 'Persistence Test' };
+    // §7.2 v2: the slot persists inputs/results; `accrualStatus` lives
+    // inside `inputs` and is therefore the persisted routing signal.
+    const inputs = { planName: 'Persistence Test', accrualStatus: 'frozen' };
     useM5Store.getState().setPVAAssetInputs('persist-1', inputs);
-    useM5Store.getState().setPVAAssetFlags('persist-1', { _frozenRoutingApplied: true });
 
-    // Verify it landed in localStorage under the canonical 'clearpath-m5' key.
     const raw = localStorage.getItem('clearpath-m5');
     expect(raw).not.toBeNull();
     const parsed = JSON.parse(raw);
     expect(parsed?.state?.pensionValuation?.assets?.['persist-1']?.inputs).toEqual(inputs);
-    expect(parsed?.state?.pensionValuation?.assets?.['persist-1']?._frozenRoutingApplied).toBe(true);
+    expect(parsed?.state?.pensionValuation?.assets?.['persist-1']?.inputs?.accrualStatus).toBe('frozen');
   });
 
   it('TC-M5PVA-Slice-7: setPVAAssetInputs whole-object replace overwrites prior inputs entirely', () => {

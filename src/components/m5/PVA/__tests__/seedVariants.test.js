@@ -76,8 +76,12 @@ describe('SEED_VARIANTS (§7.11 fixture wrapping)', () => {
     }
   });
 
-  it('TC-PVA-Seeds-3: frozen_routing_banner carries _frozenRoutingApplied=true', () => {
-    expect(SEED_VARIANTS.frozen_routing_banner._frozenRoutingApplied).toBe(true);
+  it('TC-PVA-Seeds-3: frozen_routing_banner expresses frozen routing via inputs.accrualStatus', () => {
+    // §7.2 v2: the orchestrator derives frozenRoutingApplied from
+    // inputs.accrualStatus === 'frozen'. The seed expresses the routing
+    // target by setting the input directly, not via a sibling flag.
+    expect(SEED_VARIANTS.frozen_routing_banner.inputs.accrualStatus).toBe('frozen');
+    expect(SEED_VARIANTS.frozen_routing_banner).not.toHaveProperty('_frozenRoutingApplied');
   });
 
   it('TC-PVA-Seeds-5: cashbalance_with_coverture carries applyCoverture=true to drive UI', () => {

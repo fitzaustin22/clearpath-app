@@ -3,28 +3,39 @@
 /**
  * PVA orchestrator — top-level Pension Valuation Analyzer component.
  *
- * Owns the §7.10.3 discriminated-union consumption per LL-17. The three
- * variants of `prePopulatePVAInputs(...)`'s return get explicit branches —
- * no fall-through:
- *   1. null                                      → "claim not found" surface
- *   2. {error, missingFields, path: null}        → <ValidationErrorPanel/>
- *   3. {path, inputs, _prePopSources, ...flags}  → <InputsPanel/> + <ResultsPanel/>
+ * Owns the §7.10.3 discriminated-union consumption per LL-17. Three variants
+ * of `prePopulatePVAInputs(...)` get explicit render branches — no fall-through:
+ *   1. null                                  → "claim not found" surface
+ *   2. {error, missingFields}                → <ValidationErrorPanel/>
+ *   3. {inputs, _prePopSources}              → <InputsPanel/> + <ResultsPanel/>
  *
- * Path resolution per spec §7.2 layers the user's `planType` / `tierOverride`
- * over pre-pop's accrualStatus-based default:
- *   R1: planType ∈ flag-only set      → 'flag_only'
- *   R2: planType === 'private_db_cash_balance' → 'cash_balance'
- *   R3–R5: prePopResult.path (with user tierOverride for tier paths)
+ * Path resolution per spec §7.2 v2 is a single reactive computation owned
+ * here. The pre-pop seam no longer emits a `path` — the orchestrator derives
+ * `resolvedPath` from `inputs.accrualStatus`, `inputs.planType`, and
+ * `inputs.tierOverride` on every render, so user edits to the Pension-status
+ * control, plan-type selector, and tier override all re-route the asset
+ * without any store roundtrip:
+ *   R1: planType ∈ flag-only set                   → 'flag_only'
+ *   R2: planType === 'private_db_cash_balance'     → 'cash_balance'
+ *   R3: accrualStatus === 'in_pay_status'          → 'in_pay_status'
+ *   R4/R5: tier base = accrualStatus === 'frozen' ? 'tier_1' : 'tier_3'
+ *   R6: tierOverride ∈ validSet wins; validSet drops tier_3 when frozen
  *
  * Pre-pop is one-shot per asset (§7.3.7 — "on a fresh m5Store slot"): the
  * persistence useEffect gates on `existing?.inputs == null` to prevent
  * later renders from overwriting user edits.
  *
+ * `frozenRoutingApplied` is derived from `inputs.accrualStatus === 'frozen'`
+ * — a single source of truth threaded to the engine's STEP CP.4 callout, the
+ * ResultsPanel structural banner, and the InputsPanel's TierOverride tier_3
+ * visibility guard.
+ *
  * @param {object} props
  * @param {object | null} [props.seedOverride]  Dev-only fixture override. Shape:
- *   { assetId, path, inputs, _frozenRoutingApplied?, error?, missingFields? }
- *   When set, bypasses m1/m2/m3 reads — the union variant is synthesized
- *   directly from this object. See `__fixtures__/seedVariants.js`.
+ *   { assetId, inputs, error?, missingFields? } — frozen/in-pay variants
+ *   express the desired routing via `inputs.accrualStatus`; tier overrides
+ *   via `inputs.tierOverride`. The synthesizer maps the seed into a pre-pop
+ *   result that bypasses m1/m2/m3 reads. See `__fixtures__/seedVariants.js`.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -47,6 +58,9 @@ const FLAG_ONLY_PLAN_TYPES = new Set([
   'state_municipal',
 ]);
 
+const TIER_VALUES_FROZEN = new Set(['tier_1', 'tier_2']);
+const TIER_VALUES_ALL = new Set(['tier_1', 'tier_2', 'tier_3']);
+
 export default function PVA({ seedOverride = null }) {
   // ─── Asset selection ──────────────────────────────────────────────────
   const [selectedAssetId, setSelectedAssetId] = useState(seedOverride?.assetId ?? null);
@@ -59,7 +73,6 @@ export default function PVA({ seedOverride = null }) {
   const setPVAAssetInputs = useM5Store((s) => s.setPVAAssetInputs);
   const setPVAAssetPrePopSources = useM5Store((s) => s.setPVAAssetPrePopSources);
   const setPVAAssetResults = useM5Store((s) => s.setPVAAssetResults);
-  const setPVAAssetFlags = useM5Store((s) => s.setPVAAssetFlags);
   const updatePensionValuation = useBlueprintStore((s) => s.updatePensionValuation);
 
   // Synthesize m2Store-shaped object for prePopulate. prePopulatePVAInputs
@@ -69,22 +82,22 @@ export default function PVA({ seedOverride = null }) {
     [m2Items],
   );
 
-  // ─── Pre-pop result (§7.10.3 discriminated union) ─────────────────────
+  // ─── Pre-pop result (§7.10.3 discriminated union; §7.2 v2 shape) ──────
   const prePopResult = useMemo(() => {
     if (seedOverride) {
-      // Synthesize the union variant from the seed config.
+      // Synthesize the union variant from the seed config. The orchestrator
+      // computes path from inputs reactively, so the seed only needs to
+      // supply `inputs` (which expresses accrualStatus/tierOverride for
+      // frozen/in-pay/tier-1 visual targets) — no top-level path key.
       if (seedOverride.error) {
         return {
           error: seedOverride.error,
           missingFields: seedOverride.missingFields ?? [],
-          path: null,
         };
       }
       return {
-        path: seedOverride.path,
         inputs: seedOverride.inputs ?? {},
         _prePopSources: seedOverride._prePopSources ?? {},
-        _frozenRoutingApplied: seedOverride._frozenRoutingApplied ?? false,
       };
     }
     if (!selectedAssetId) return null;
@@ -107,33 +120,36 @@ export default function PVA({ seedOverride = null }) {
     if (existing?.inputs) return;
     setPVAAssetInputs(selectedAssetId, prePopResult.inputs);
     setPVAAssetPrePopSources(selectedAssetId, prePopResult._prePopSources);
-    setPVAAssetFlags(selectedAssetId, {
-      _frozenRoutingApplied: prePopResult._frozenRoutingApplied,
-    });
   }, [
     selectedAssetId,
     prePopResult,
     setPVAAssetInputs,
     setPVAAssetPrePopSources,
-    setPVAAssetFlags,
   ]);
 
-  // ─── Path resolution (§7.2 R1/R2 layered over pre-pop default) ────────
-  const inputs = assetState?.inputs ?? null;
+  // ─── Path resolution (§7.2 v2 R1–R6, all reactive) ────────────────────
+  // Fall back to the pre-pop seed before the store catches up so the very
+  // first render after asset selection has a resolved path (no null-path
+  // flicker). On the error variant `prePopResult.inputs` is undefined, so
+  // this correctly falls through to null.
+  const inputs = assetState?.inputs ?? prePopResult?.inputs ?? null;
   const resolvedPath = useMemo(() => {
-    if (!prePopResult || prePopResult.error) return null;
-    const planType = inputs?.planType;
-    if (planType && FLAG_ONLY_PLAN_TYPES.has(planType)) return 'flag_only';
-    if (planType === 'private_db_cash_balance') return 'cash_balance';
-    // Tier override applies only when pre-pop returned a tier path (R4/R5).
-    if (
-      inputs?.tierOverride &&
-      (prePopResult.path === 'tier_1' || prePopResult.path === 'tier_3' || prePopResult.path === 'tier_2')
-    ) {
+    if (!prePopResult || prePopResult.error || !inputs) return null;
+    const planType = inputs.planType;
+    if (planType && FLAG_ONLY_PLAN_TYPES.has(planType)) return 'flag_only'; // R1
+    if (planType === 'private_db_cash_balance') return 'cash_balance';      // R2
+    if (inputs.accrualStatus === 'in_pay_status') return 'in_pay_status';   // R3
+    const tierBase = inputs.accrualStatus === 'frozen' ? 'tier_1' : 'tier_3'; // R4/R5
+    const validSet = inputs.accrualStatus === 'frozen' ? TIER_VALUES_FROZEN : TIER_VALUES_ALL;
+    if (inputs.tierOverride && validSet.has(inputs.tierOverride)) {         // R6
       return inputs.tierOverride;
     }
-    return prePopResult.path;
-  }, [prePopResult, inputs?.planType, inputs?.tierOverride]);
+    return tierBase;
+  }, [prePopResult, inputs]);
+
+  // Single source of truth for the frozen-routing UX (STEP CP.4 callout,
+  // ResultsPanel structural banner, TierOverride tier_3 visibility guard).
+  const frozenRoutingApplied = inputs?.accrualStatus === 'frozen';
 
   // ─── Engine call ──────────────────────────────────────────────────────
   // Merge sibling flags into the inputs argument per §7.3.1.
@@ -145,7 +161,7 @@ export default function PVA({ seedOverride = null }) {
         ...inputs,
         path: resolvedPath,
         planType: inputs.planType ?? null,
-        _frozenRoutingApplied: assetState?._frozenRoutingApplied ?? false,
+        _frozenRoutingApplied: frozenRoutingApplied,
       });
     } catch {
       // Engine throws on missing required inputs. Surface as "incomplete"
@@ -157,7 +173,7 @@ export default function PVA({ seedOverride = null }) {
     inputs,
     resolvedPath,
     prePopResult,
-    assetState?._frozenRoutingApplied,
+    frozenRoutingApplied,
   ]);
 
   // ─── Persist results ──────────────────────────────────────────────────
@@ -229,19 +245,21 @@ export default function PVA({ seedOverride = null }) {
       {/* Variant 2: validation error  →  ValidationErrorPanel */}
       {prePopResult?.error && <ValidationErrorPanel error={prePopResult} />}
 
-      {/* Variant 3: normal pre-pop  →  InputsPanel + ResultsPanel */}
-      {prePopResult && !prePopResult.error && selectedAssetId && (
+      {/* Variant 3: normal pre-pop  →  InputsPanel + ResultsPanel.
+          Gated on the store having absorbed the one-shot pre-pop seed
+          (`assetState?.inputs`) so that child commit-effects in subpanels
+          like ReceiptFormDropdown can't fire on render-1 with an empty
+          store snapshot and clobber the seed via a stale-closure merge. */}
+      {prePopResult && !prePopResult.error && selectedAssetId && assetState?.inputs && (
         <div style={{ marginTop: '1rem' }}>
           <InputsPanel
             assetId={selectedAssetId}
             path={resolvedPath}
-            frozenRoutingApplied={prePopResult._frozenRoutingApplied ?? false}
+            frozenRoutingApplied={frozenRoutingApplied}
           />
           <ResultsPanel
             results={results}
-            flags={{
-              _frozenRoutingApplied: assetState?._frozenRoutingApplied ?? false,
-            }}
+            flags={{ _frozenRoutingApplied: frozenRoutingApplied }}
           />
         </div>
       )}

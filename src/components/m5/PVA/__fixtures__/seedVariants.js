@@ -1,5 +1,5 @@
 /**
- * Dev-page `?seed=<variant>` fixture map for visual QA per spec §7.11.
+ * Dev-page `?seed=<variant>` fixture map for visual QA per spec §7.11 / §7.2 v2.
  *
  * Wraps 10 engine fixtures from `src/lib/pensionValuation/__tests__/fixtures/`
  * into the `seedOverride` shape consumed by `PVA.jsx`. Each variant surfaces
@@ -17,14 +17,17 @@
  *   flag_only_multiemployer           → AMBER flag-only banner; no BigNumber
  *   r3_validation_error               → RED ValidationErrorPanel; no engine call
  *
- * Seed `inputs` overlay `planType` onto fixture inputs so the UI's
- * `PlanTypeSelector` reflects the seed's path origin (TierOverride
- * visibility, FlagOnly subpanel, etc.).
+ * §7.2 v2: the orchestrator computes `resolvedPath` reactively from
+ * `inputs.accrualStatus` / `inputs.planType` / `inputs.tierOverride`. Each
+ * seed expresses its routing target by setting the relevant input(s):
+ *   - planType drives R1 (flag-only) and R2 (cash-balance).
+ *   - accrualStatus drives R3 (in_pay_status) and R4/R5 (tier base).
+ *   - tierOverride drives R6 (tier swap among the valid set).
  *
- * The frozen banner seed reuses an engine-ready Tier 1 fixture and attaches
- * `_frozenRoutingApplied` externally — the pre-pop fixture
- * (`tc-pva-frozenrouting-1.json`) carries M2-wrapper shape that the engine
- * cannot consume directly.
+ * The `path` field on each seed is documentation/test metadata — the
+ * orchestrator no longer reads it. The frozen seed expresses its routing via
+ * `inputs.accrualStatus: 'frozen'`; the derived `frozenRoutingApplied`
+ * threads to the engine STEP CP.4 callout and the ResultsPanel banner.
  */
 
 import tier1Canonical from '@/src/lib/pensionValuation/__tests__/fixtures/tc-pva-tier1-1.json';
@@ -48,6 +51,10 @@ export const SEED_VARIANTS = Object.freeze({
       planName: 'ABC Corp Pension (seeded)',
       whoseplan: 'Client',
       planType: TIER_TRADITIONAL,
+      // Non-frozen Tier 1 — accruing default (R4/R5 yields tier_3 base)
+      // with R6 override to tier_1.
+      accrualStatus: 'accruing',
+      tierOverride: 'tier_1',
     },
   },
 
@@ -59,6 +66,7 @@ export const SEED_VARIANTS = Object.freeze({
       planName: 'Tier 3 Coverture Plan (seeded)',
       whoseplan: 'Client',
       planType: TIER_TRADITIONAL,
+      accrualStatus: 'accruing',
     },
   },
 
@@ -70,6 +78,7 @@ export const SEED_VARIANTS = Object.freeze({
       planName: 'Tier 3 Zero Coverture (seeded)',
       whoseplan: 'Client',
       planType: TIER_TRADITIONAL,
+      accrualStatus: 'accruing',
     },
   },
 
@@ -81,6 +90,7 @@ export const SEED_VARIANTS = Object.freeze({
       planName: 'In-Pay Plan (seeded)',
       whoseplan: 'Client',
       planType: TIER_TRADITIONAL,
+      accrualStatus: 'in_pay_status',
     },
   },
 
@@ -91,6 +101,7 @@ export const SEED_VARIANTS = Object.freeze({
       ...cashBalanceCanonical.inputs,
       planName: 'Cash Balance Plan (seeded)',
       whoseplan: 'Client',
+      // R2 fires on planType; accrualStatus is moot.
       planType: CASH_BALANCE_PLANTYPE,
     },
   },
@@ -109,16 +120,17 @@ export const SEED_VARIANTS = Object.freeze({
 
   frozen_routing_banner: {
     assetId: 'seed-frozen-routing',
-    // Frozen routes to Tier 1 default per §7.2 R4. Reuse Tier 1 engine
-    // inputs so the calc proceeds normally and the banner overlays.
+    // Frozen routes to Tier 1 default per §7.2 v2 R4. Reuse Tier 1 engine
+    // inputs so the calc proceeds normally and the banner overlays. The
+    // orchestrator derives frozenRoutingApplied from inputs.accrualStatus.
     path: 'tier_1',
     inputs: {
       ...tier1Canonical.inputs,
       planName: 'Frozen DB Plan (seeded)',
       whoseplan: 'Client',
       planType: TIER_TRADITIONAL,
+      accrualStatus: 'frozen',
     },
-    _frozenRoutingApplied: true,
   },
 
   flag_only_multiemployer: {
@@ -158,6 +170,8 @@ export const SEED_VARIANTS = Object.freeze({
       planName: 'Tier 1 + partial vesting (seeded)',
       whoseplan: 'Client',
       planType: TIER_TRADITIONAL,
+      accrualStatus: 'accruing',
+      tierOverride: 'tier_1',
       vestingStatus: 'partially_vested',
     },
   },
@@ -170,6 +184,8 @@ export const SEED_VARIANTS = Object.freeze({
       planName: 'Tier 1 + joint-50 on statement (seeded)',
       whoseplan: 'Client',
       planType: TIER_TRADITIONAL,
+      accrualStatus: 'accruing',
+      tierOverride: 'tier_1',
       formOfBenefitOnStatement: 'joint_50',
     },
   },
@@ -182,6 +198,7 @@ export const SEED_VARIANTS = Object.freeze({
       planName: 'In-pay + joint-100 elected (seeded)',
       whoseplan: 'Client',
       planType: TIER_TRADITIONAL,
+      accrualStatus: 'in_pay_status',
       formOfBenefitInPay: 'joint_100',
     },
   },
@@ -194,6 +211,8 @@ export const SEED_VARIANTS = Object.freeze({
       planName: 'Tier 1 + lump-sum offer below tool PV (seeded)',
       whoseplan: 'Client',
       planType: TIER_TRADITIONAL,
+      accrualStatus: 'accruing',
+      tierOverride: 'tier_1',
     },
   },
 
@@ -209,6 +228,7 @@ export const SEED_VARIANTS = Object.freeze({
       planName: 'Tier 3 zero coverture + vesting + form (seeded)',
       whoseplan: 'Client',
       planType: TIER_TRADITIONAL,
+      accrualStatus: 'accruing',
       vestingStatus: 'partially_vested',
       formOfBenefitOnStatement: 'joint_50',
     },

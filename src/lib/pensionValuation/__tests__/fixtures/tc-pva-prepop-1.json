@@ -20,12 +20,11 @@
     "assetId": "claim_abc"
   },
   "expected": {
-    "path": "tier_3",
     "inputs": {
       "planName": "ABC Corp Pension",
-      "whoseplan": "Client"
+      "whoseplan": "Client",
+      "accrualStatus": "accruing"
     },
-    "_frozenRoutingApplied": false,
     "prePopSourcesFields": ["planName", "whoseplan"]
   },
   "_note": "accrualStatus is synthetic — M2 does not write it. Kept so this fixture exercises the accruing→tier_3 branch."

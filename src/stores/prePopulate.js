@@ -62,34 +62,44 @@ export function prePopulateSupportEstimatorInputs({ m1Store, m2Store, m3Store })
  * 'self'/'spouse' map cleanly; 'joint'/'other'/'unknown'/absent → undefined
  * so the user picks from the WHOSEPLAN_OPTIONS dropdown (Client | Spouse).
  */
-function mapTitleholderToWhoseplan(titleholder) {
+export function mapTitleholderToWhoseplan(titleholder) {
   if (titleholder === 'self') return 'Client';
   if (titleholder === 'spouse') return 'Spouse';
   return undefined;
 }
 
 /**
- * Pre-populate PVA inputs from an M2 pension claim per spec §7.10.3.
+ * Pre-populate PVA inputs from an M2 pension claim per spec §7.2 v2 / §7.10.3.
  *
  * Return-shape union:
  *   - `null` — no claim found at assetId (caller should not have invoked PVA).
- *   - `{ error: 'in_pay_data_incomplete', missingFields, path: null }` —
- *     R3 routing data-completeness guard per [R5b-8]: accrualStatus is
- *     'in_pay_status' but monthlyBenefit and/or benefitStartDate are missing.
- *     PVA must NOT enter the in-pay path; orchestrator surfaces validation to UI.
- *     (§7.10.3 spec slice puts the guard at "caller must verify"; we centralize
- *     it inside prePopulatePVAInputs for unit-testability — orchestrator becomes
- *     a thin consumer of the return-union. Queued as spec-amendment item.)
- *   - Normal pre-pop result with `{ path, inputs, _prePopSources,
- *     _frozenRoutingApplied? }` per §7.10.3.
+ *   - `{ error: 'in_pay_data_incomplete', missingFields }` — R3 routing
+ *     data-completeness guard per [R5b-8]: accrualStatus is 'in_pay_status'
+ *     but monthlyBenefit and/or benefitStartDate are missing. PVA must NOT
+ *     enter the in-pay path; orchestrator surfaces validation to UI.
+ *   - Normal pre-pop result `{ inputs, _prePopSources }`. No `path` key; the
+ *     orchestrator owns reactive path resolution (§7.2 v2 R1–R6) by reading
+ *     `inputs.accrualStatus` alongside `planType` / `tierOverride`.
  *
- * Path selection:
- *   - accrualStatus === 'in_pay_status' → path = 'in_pay_status' (pre-pops
- *     monthlyBenefit + benefitStartDate from claim).
- *   - accrualStatus === 'frozen'         → path = 'tier_1' default
- *     (UI hides Tier 3 option for frozen plans); _frozenRoutingApplied = true.
- *   - accrualStatus === 'accruing' OR absent → path = 'tier_3' default
- *     (user may override to Tier 1/2 in UI).
+ * accrualStatus mapping (§7.2 v2 total mapping):
+ *   - claim.accrualStatus === 'frozen'        → 'frozen'
+ *   - claim.accrualStatus === 'in_pay_status' → 'in_pay_status'
+ *   - any other value (incl. absent / null / out-of-vocabulary) → 'accruing'
+ *
+ * inputs.accrualStatus is a *user-mutable* input — pre-pop seeds it from the
+ * M2 claim, and the Pension-status control in InputsPanel writes through to
+ * the same key. The resolver re-derives the path on every change.
+ *
+ * baseInputs also seeds four dropdown tool-defaults so a user accepting the
+ * default value submits a committed selection (fix for Defect-#2 in §7.2 v2):
+ *   - mortalityTable: 'irs_417e'
+ *   - formOfBenefitOnStatement: 'single_life'
+ *   - vestingStatus: 'fully_vested'
+ *   - formOfBenefitInPay: 'single_life'
+ *
+ * `_prePopSources` only tracks M2-sourced fields (planName, whoseplan, and
+ * the in-pay pair). accrualStatus and the four dropdown defaults are tool
+ * defaults, not M2 provenance.
  *
  * m1Store/m3Store unused at v1 (deferred per P-7a); accepted for §6.5.7 cross-tool
  * signature symmetry.
@@ -106,8 +116,14 @@ export function prePopulatePVAInputs({ m1Store, m2Store, m3Store, assetId }) {
   );
   if (!claim) return null;
 
-  // R3 routing data-completeness guard per [R5b-8]
-  if (claim.accrualStatus === 'in_pay_status') {
+  // §7.2 v2 total mapping for accrualStatus.
+  let accrualStatus;
+  if (claim.accrualStatus === 'frozen') accrualStatus = 'frozen';
+  else if (claim.accrualStatus === 'in_pay_status') accrualStatus = 'in_pay_status';
+  else accrualStatus = 'accruing';
+
+  // R3 routing data-completeness guard per [R5b-8] — keyed off the mapped value.
+  if (accrualStatus === 'in_pay_status') {
     const missingFields = [];
     if (claim.monthlyBenefit == null) missingFields.push('monthlyBenefit');
     if (claim.benefitStartDate == null) missingFields.push('benefitStartDate');
@@ -115,7 +131,6 @@ export function prePopulatePVAInputs({ m1Store, m2Store, m3Store, assetId }) {
       return {
         error: 'in_pay_data_incomplete',
         missingFields,
-        path: null,
       };
     }
   }
@@ -123,42 +138,34 @@ export function prePopulatePVAInputs({ m1Store, m2Store, m3Store, assetId }) {
   const now = () => new Date().toISOString();
   const planName = claim.description;
   const whoseplan = mapTitleholderToWhoseplan(claim.titleholder);
-  const baseInputs = { planName, whoseplan };
+
+  const baseInputs = {
+    planName,
+    whoseplan,
+    accrualStatus,
+    mortalityTable: 'irs_417e',
+    formOfBenefitOnStatement: 'single_life',
+    vestingStatus: 'fully_vested',
+    formOfBenefitInPay: 'single_life',
+  };
   const baseProvenance = {};
   if (planName) baseProvenance.planName = { source: 'm2.pensionClaim', timestamp: now() };
   if (whoseplan) baseProvenance.whoseplan = { source: 'm2.pensionClaim', timestamp: now() };
 
-  if (claim.accrualStatus === 'in_pay_status') {
-    return {
-      path: 'in_pay_status',
-      inputs: {
-        ...baseInputs,
-        monthlyBenefit: claim.monthlyBenefit,
-        benefitStartDate: claim.benefitStartDate,
-      },
-      _prePopSources: {
-        ...baseProvenance,
+  const isInPay = accrualStatus === 'in_pay_status';
+  const inPayInputs = isInPay
+    ? { monthlyBenefit: claim.monthlyBenefit, benefitStartDate: claim.benefitStartDate }
+    : {};
+  const inPayProvenance = isInPay
+    ? {
         monthlyBenefit: { source: 'm2.pensionClaim', timestamp: now() },
         benefitStartDate: { source: 'm2.pensionClaim', timestamp: now() },
-      },
-    };
-  }
+      }
+    : {};
 
-  if (claim.accrualStatus === 'frozen') {
-    return {
-      path: 'tier_1',
-      inputs: { ...baseInputs },
-      _prePopSources: { ...baseProvenance },
-      _frozenRoutingApplied: true,
-    };
-  }
-
-  // accruing OR no accrualStatus → tier_3 default
   return {
-    path: 'tier_3',
-    inputs: { ...baseInputs },
-    _prePopSources: { ...baseProvenance },
-    _frozenRoutingApplied: false,
+    inputs: { ...baseInputs, ...inPayInputs },
+    _prePopSources: { ...baseProvenance, ...inPayProvenance },
   };
 }
 

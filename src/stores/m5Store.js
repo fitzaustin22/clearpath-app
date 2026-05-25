@@ -104,8 +104,7 @@ function makeInitialPensionValuation() {
 }
 
 // Strip transient `_prePopSources` from each keyed asset slot; preserve
-// inputs/results and the pre-pop-derived `_legacy*`/`_frozen*` flags (PVA
-// reload contract — see TC-M5PVA-Slice-6).
+// inputs/results (PVA reload contract — see TC-M5PVA-Slice-6).
 function stripAssetPrePopSources(assets) {
   const out = {};
   for (const [id, slot] of Object.entries(assets || {})) {
@@ -223,10 +222,11 @@ export const useM5Store = create(
           homeDecision: makeInitialHomeDecision(),
         })),
 
-      // ─── PVA setters (§7.6.4 / §7.10.3) ────────────────────────────────
+      // ─── PVA setters (§7.6.4 / §7.10.3 / §7.2 v2) ──────────────────────
       // Object-keyed asset CRUD per the §7.6.4 locked-literal `assets[assetId]`
-      // shape. Each asset slot carries `{ inputs, results, _prePopSources }`
-      // plus the pre-pop derived `_frozenRoutingApplied` flag per [R5b-18].
+      // shape. Each asset slot carries `{ inputs, results, _prePopSources }`.
+      // Routing-derived state (e.g. frozen-routing) is computed reactively
+      // from `inputs.accrualStatus` in the PVA orchestrator — no flag slot.
       //
       // `_prePopSources` is a SIBLING of `inputs` (not nested) per the
       // cross-tool B5b-3 attribution convention shared with Support Estimator,
@@ -272,22 +272,6 @@ export const useM5Store = create(
               [assetId]: {
                 ...state.pensionValuation.assets[assetId],
                 results,
-              },
-            },
-          },
-        })),
-
-      // Merges flag fields without disturbing sibling inputs/results/_prePopSources.
-      // Used by orchestrator post-prePopulate to surface routing-derived flags.
-      setPVAAssetFlags: (assetId, flags) =>
-        set((state) => ({
-          pensionValuation: {
-            ...state.pensionValuation,
-            assets: {
-              ...state.pensionValuation.assets,
-              [assetId]: {
-                ...state.pensionValuation.assets[assetId],
-                ...flags,
               },
             },
           },
