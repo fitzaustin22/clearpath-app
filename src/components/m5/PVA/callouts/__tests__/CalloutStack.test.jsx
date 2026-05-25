@@ -72,7 +72,7 @@ describe('CalloutStack', () => {
     warnSpy.mockRestore();
   });
 
-  it('preserves precedence across the full 12-type set', () => {
+  it('preserves precedence across the full 11-type set', () => {
     render(
       <CalloutStack
         callouts={[
@@ -85,7 +85,6 @@ describe('CalloutStack', () => {
           { type: 'vesting_status_callout', vestingStatus: 'partially_vested' },
           { type: 'coverture_zero_fraction' },
           { type: 'frozen_plan_tier1_routing', planName: 'X' },
-          { type: 'legacy_currentvalue_ignored', legacyValue: 50000 },
           { type: 'gov_flag_only', variant: 'csrs_fers', planName: 'C' },
           { type: 'multi_employer_flag_only', planName: 'M' },
         ]}
@@ -98,7 +97,6 @@ describe('CalloutStack', () => {
     expect(ids).toEqual([
       'callout-multi_employer_flag_only',
       'callout-gov_flag_only',
-      'callout-legacy_currentvalue_ignored',
       'callout-frozen_plan_tier1_routing',
       'callout-coverture_zero_fraction',
       'callout-vesting_status_callout',

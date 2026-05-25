@@ -9,8 +9,8 @@
           {
             "id": "claim_partial",
             "category": "pensions",
-            "planName": "Partial Plan",
-            "whoseplan": "Client",
+            "description": "Partial Plan",
+            "titleholder": "self",
             "accrualStatus": "in_pay_status",
             "monthlyBenefit": null,
             "benefitStartDate": "2020-01-01"
@@ -25,5 +25,6 @@
     "error": "in_pay_data_incomplete",
     "missingFields": ["monthlyBenefit"],
     "path": null
-  }
+  },
+  "_note": "accrualStatus / monthlyBenefit / benefitStartDate are synthetic — M2 does not write them. Kept so this fixture exercises the in_pay_status R3 guard."
 }

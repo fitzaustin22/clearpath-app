@@ -22,7 +22,6 @@ export const DEFAULT_RECEIPT_FORM_BY_PATH = Object.freeze({
 export const CALLOUT_PRECEDENCE = Object.freeze({
   multi_employer_flag_only: 1,
   gov_flag_only: 2,
-  legacy_currentvalue_ignored: 3,
   frozen_plan_tier1_routing: 4,
   coverture_zero_fraction: 5,
   vesting_status_callout: 6,
@@ -176,10 +175,7 @@ export function calculatePensionValue(inputs) {
     }
   }
 
-  // STEP CP.4 — Surface mandatory meta callouts [R5b-9, R5b-10, R5b-18, R5b-19]
-  if (inputs._legacyCurrentValueDetected) {
-    surfaceCallout('legacy_currentvalue_ignored', { legacyValue: inputs._legacyValue ?? null });
-  }
+  // STEP CP.4 — Surface mandatory meta callouts [R5b-10, R5b-18, R5b-19]
   if (inputs._frozenRoutingApplied) {
     surfaceCallout('frozen_plan_tier1_routing', { planName: inputs.planName ?? null });
   }

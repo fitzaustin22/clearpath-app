@@ -70,12 +70,10 @@ describe('m5Store partialize — _prePopSources is never persisted', () => {
     expect(se).not.toHaveProperty('_prePopSources');
   });
 
-  it('TC-M5Persist-3: pensionValuation strips per-asset _prePopSources, preserves inputs/results/_legacy*/_frozen*', () => {
+  it('TC-M5Persist-3: pensionValuation strips per-asset _prePopSources, preserves inputs/results/_frozenRoutingApplied', () => {
     useM5Store.getState().setPVAAssetInputs('a1', { planName: 'ABC Pension' });
     useM5Store.getState().setPVAAssetResults('a1', { path: 'tier_1', pv: { best: 100 } });
     useM5Store.getState().setPVAAssetFlags('a1', {
-      _legacyCurrentValueDetected: true,
-      _legacyValue: 300000,
       _frozenRoutingApplied: true,
     });
     useM5Store.getState().setPVAAssetPrePopSources('a1', {
@@ -86,9 +84,7 @@ describe('m5Store partialize — _prePopSources is never persisted', () => {
     expect(slot).toBeDefined();
     expect(slot.inputs).toEqual({ planName: 'ABC Pension' });
     expect(slot.results).toEqual({ path: 'tier_1', pv: { best: 100 } });
-    // Pre-pop-derived flags ARE preserved (PVA reload contract — TC-M5PVA-Slice-6).
-    expect(slot._legacyCurrentValueDetected).toBe(true);
-    expect(slot._legacyValue).toBe(300000);
+    // Pre-pop-derived flag IS preserved (PVA reload contract — TC-M5PVA-Slice-6).
     expect(slot._frozenRoutingApplied).toBe(true);
     // Only _prePopSources is stripped.
     expect(slot).not.toHaveProperty('_prePopSources');

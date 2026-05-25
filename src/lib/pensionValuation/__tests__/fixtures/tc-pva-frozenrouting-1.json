@@ -9,8 +9,8 @@
           {
             "id": "claim_frozen",
             "category": "pensions",
-            "planName": "Frozen DB Plan",
-            "whoseplan": "Client",
+            "description": "Frozen DB Plan",
+            "titleholder": "self",
             "accrualStatus": "frozen"
           }
         ]
@@ -25,8 +25,7 @@
       "planName": "Frozen DB Plan",
       "whoseplan": "Client"
     },
-    "_legacyCurrentValueDetected": false,
-    "_legacyValue": null,
     "_frozenRoutingApplied": true
-  }
+  },
+  "_note": "accrualStatus is synthetic — M2 does not write it. Kept so this fixture exercises the frozen→tier_1 branch."
 }

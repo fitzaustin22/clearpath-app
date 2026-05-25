@@ -22,8 +22,7 @@
  *
  * @param {object} props
  * @param {object | null} [props.seedOverride]  Dev-only fixture override. Shape:
- *   { assetId, path, inputs, _legacyCurrentValueDetected?, _legacyValue?,
- *     _frozenRoutingApplied?, error?, missingFields? }
+ *   { assetId, path, inputs, _frozenRoutingApplied?, error?, missingFields? }
  *   When set, bypasses m1/m2/m3 reads — the union variant is synthesized
  *   directly from this object. See `__fixtures__/seedVariants.js`.
  */
@@ -85,8 +84,6 @@ export default function PVA({ seedOverride = null }) {
         path: seedOverride.path,
         inputs: seedOverride.inputs ?? {},
         _prePopSources: seedOverride._prePopSources ?? {},
-        _legacyCurrentValueDetected: seedOverride._legacyCurrentValueDetected ?? false,
-        _legacyValue: seedOverride._legacyValue ?? null,
         _frozenRoutingApplied: seedOverride._frozenRoutingApplied ?? false,
       };
     }
@@ -111,8 +108,6 @@ export default function PVA({ seedOverride = null }) {
     setPVAAssetInputs(selectedAssetId, prePopResult.inputs);
     setPVAAssetPrePopSources(selectedAssetId, prePopResult._prePopSources);
     setPVAAssetFlags(selectedAssetId, {
-      _legacyCurrentValueDetected: prePopResult._legacyCurrentValueDetected,
-      _legacyValue: prePopResult._legacyValue,
       _frozenRoutingApplied: prePopResult._frozenRoutingApplied,
     });
   }, [
@@ -150,8 +145,6 @@ export default function PVA({ seedOverride = null }) {
         ...inputs,
         path: resolvedPath,
         planType: inputs.planType ?? null,
-        _legacyCurrentValueDetected: assetState?._legacyCurrentValueDetected ?? false,
-        _legacyValue: assetState?._legacyValue ?? null,
         _frozenRoutingApplied: assetState?._frozenRoutingApplied ?? false,
       });
     } catch {
@@ -164,8 +157,6 @@ export default function PVA({ seedOverride = null }) {
     inputs,
     resolvedPath,
     prePopResult,
-    assetState?._legacyCurrentValueDetected,
-    assetState?._legacyValue,
     assetState?._frozenRoutingApplied,
   ]);
 
@@ -249,8 +240,6 @@ export default function PVA({ seedOverride = null }) {
           <ResultsPanel
             results={results}
             flags={{
-              _legacyCurrentValueDetected: assetState?._legacyCurrentValueDetected ?? false,
-              _legacyValue: assetState?._legacyValue ?? null,
               _frozenRoutingApplied: assetState?._frozenRoutingApplied ?? false,
             }}
           />

@@ -121,13 +121,6 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
     expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
   });
 
-  it('TC-PVA-Orchestrator-9: seedOverride for legacy_currentvalue_banner surfaces legacy banner over Tier 3 numbers', () => {
-    render(<PVA seedOverride={SEED_VARIANTS.legacy_currentvalue_banner} />);
-    expect(screen.getByTestId('pva-banner-legacy')).toBeInTheDocument();
-    expect(screen.getByTestId('pva-bignumber-marital')).toBeInTheDocument();
-    expect(screen.getByTestId('pva-bignumber-total')).toBeInTheDocument();
-  });
-
   // ─── PR 3 / Phase 2 — TierOverride flag-timing fix ────────────────────
   it('TC-PVA-Orchestrator-10: frozen seed hides tier_3 option in TierOverride on first render (no store roundtrip)', () => {
     // The flag-timing fix threads _frozenRoutingApplied as a prop directly

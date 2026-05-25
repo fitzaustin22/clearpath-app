@@ -76,7 +76,7 @@ export default function AssetPicker({ selectedAssetId, onSelect }) {
         {pensionClaims.map((claim) => {
           const isSelected = claim.id === selectedAssetId;
           const hasResults = !!(assetsBySlice && assetsBySlice[claim.id]?.results);
-          const label = claim.label || claim.planName || claim.subcategory || 'Untitled pension';
+          const label = claim.description || 'Untitled pension';
           const whoseplan = claim.whoseplan ? ` — ${claim.whoseplan}` : '';
           return (
             <li key={claim.id} style={{ marginBottom: '0.5rem' }}>

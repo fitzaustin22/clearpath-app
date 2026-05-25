@@ -14,7 +14,6 @@
  *   cashbalance_canonical             → cash balance pass-through (1 BigNumber)
  *   cashbalance_with_coverture        → cash balance + coverture (2 BigNumbers)
  *   frozen_routing_banner             → AMBER frozen-routing banner over Tier 1
- *   legacy_currentvalue_banner        → AMBER legacy banner over Tier 3
  *   flag_only_multiemployer           → AMBER flag-only banner; no BigNumber
  *   r3_validation_error               → RED ValidationErrorPanel; no engine call
  *
@@ -22,10 +21,10 @@
  * `PlanTypeSelector` reflects the seed's path origin (TierOverride
  * visibility, FlagOnly subpanel, etc.).
  *
- * The two "banner" seeds (frozen, legacy) reuse engine-ready fixtures for
- * a path with matching default, then attach the flag externally — the
- * pre-pop fixtures (`tc-pva-frozenrouting-1.json`, `tc-pva-prepop-3.json`)
- * carry M2-wrapper shape that the engine cannot consume directly.
+ * The frozen banner seed reuses an engine-ready Tier 1 fixture and attaches
+ * `_frozenRoutingApplied` externally — the pre-pop fixture
+ * (`tc-pva-frozenrouting-1.json`) carries M2-wrapper shape that the engine
+ * cannot consume directly.
  */
 
 import tier1Canonical from '@/src/lib/pensionValuation/__tests__/fixtures/tc-pva-tier1-1.json';
@@ -120,22 +119,6 @@ export const SEED_VARIANTS = Object.freeze({
       planType: TIER_TRADITIONAL,
     },
     _frozenRoutingApplied: true,
-  },
-
-  legacy_currentvalue_banner: {
-    assetId: 'seed-legacy-currentvalue',
-    // Legacy entries fall through to Tier 3 default in pre-pop's `else`
-    // branch. Reuse coverture-1 engine inputs for a non-trivial PV plus
-    // surface the legacy flag.
-    path: 'tier_3',
-    inputs: {
-      ...tier3Canonical.inputs,
-      planName: 'Legacy Pension (seeded)',
-      whoseplan: 'Client',
-      planType: TIER_TRADITIONAL,
-    },
-    _legacyCurrentValueDetected: true,
-    _legacyValue: 300000,
   },
 
   flag_only_multiemployer: {
