@@ -30,6 +30,7 @@ import { useM5Store } from '@/src/stores/m5Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';
 import { selectQDROPacketReady } from '@/src/lib/qdro/packet';
 import { selectQDROBlueprintProjection, isProjectionEqual } from '@/src/lib/qdro/blueprint/projection';
+import { selectQDRODivisionData } from '@/src/lib/qdro/blueprint/divisionData';
 import { T } from '@/src/lib/brand/tokens';
 
 /**
@@ -65,6 +66,11 @@ export default function QDGBlueprintSavedCallout() {
   const m5State = useM5Store();
   const { savedProjection, savedAt } = useBlueprintStore((s) => s.qdroBlueprint);
   const writeQDROToBlueprint = useBlueprintStore((s) => s.writeQDROToBlueprint);
+  // §10.8 Blueprint write (PR-A m5/qdro-s108-blueprint-wiring) — fans out
+  // from the Save-to-Blueprint CTA alongside the existing §8.12 projection
+  // write. Architect ruling #1: single `handleSave` wrapper, both buttons
+  // share it.
+  const updateQDRODivision = useBlueprintStore((s) => s.updateQDRODivision);
 
   const currentProjection = useMemo(
     () => selectQDROBlueprintProjection(m5State),
@@ -93,6 +99,17 @@ export default function QDGBlueprintSavedCallout() {
   // State 2: savedAt non-null AND !isStale (saved + fresh)
   const isSaved = savedAt !== null;
   const formatted = isSaved ? formatSavedAt(savedAt) : null;
+
+  // §10.8 fan-out — Save-to-Blueprint fires BOTH writes:
+  //   1. §8.12 projection writer (existing): writeQDROToBlueprint(currentProjection)
+  //      → blueprintStore.qdroBlueprint.{savedProjection, savedAt}
+  //   2. §10.8 §6 sub-slot writer (PR-A): updateQDRODivision(divisionData)
+  //      → blueprintStore.sections.s6.data.qdro = { assets, status, lastUpdated }
+  // Shared by State 1 and State 3 buttons.
+  const handleSave = () => {
+    writeQDROToBlueprint(currentProjection);
+    updateQDRODivision(selectQDRODivisionData(m5State));
+  };
 
   return (
     <div
@@ -133,7 +150,7 @@ export default function QDGBlueprintSavedCallout() {
           <button
             type="button"
             data-testid="qdg-blueprint-save-btn"
-            onClick={() => writeQDROToBlueprint(currentProjection)}
+            onClick={handleSave}
             style={buttonStyle}
           >
             Save to Blueprint
@@ -157,7 +174,7 @@ export default function QDGBlueprintSavedCallout() {
           <button
             type="button"
             data-testid="qdg-blueprint-save-btn"
-            onClick={() => writeQDROToBlueprint(currentProjection)}
+            onClick={handleSave}
             style={buttonStyle}
           >
             Save updated decisions

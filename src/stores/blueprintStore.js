@@ -3,18 +3,27 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
 /**
- * Derive §6 sourceModule from which slots in `data` are populated.
- *   pit only      → 'm4'
- *   pva only      → 'm5'
- *   pit + pva     → 'm4+m5'
- *   neither       → null
+ * Derive §6 sourceModule from which slots in `data` are populated, per §10.8's
+ * locked table (qdro added to the original pit/pva pair):
+ *   pit only              → 'm4'
+ *   pva only              → 'm5'
+ *   qdro only             → 'm5'
+ *   pva + qdro            → 'm5'
+ *   pit + pva             → 'm4+m5'
+ *   pit + qdro            → 'm4+m5'
+ *   pit + pva + qdro      → 'm4+m5'
+ *   none                  → null
+ *
+ * Both pva and qdro contribute an 'm5' signal; pit contributes the 'm4' signal.
  */
 export function deriveSourceModule(data) {
   const hasPit = data?.pit != null;
   const hasPva = data?.pva != null;
-  if (hasPit && hasPva) return 'm4+m5';
+  const hasQdro = data?.qdro != null;
+  const hasM5 = hasPva || hasQdro;
+  if (hasPit && hasM5) return 'm4+m5';
   if (hasPit) return 'm4';
-  if (hasPva) return 'm5';
+  if (hasM5) return 'm5';
   return null;
 }
 
@@ -36,7 +45,7 @@ const useBlueprintStore = create(
         // §6 carries multi-source data: PIT (M4) writes to data.pit, PVA (M5)
         // writes to data.pva. sourceModule is dynamically derived via
         // deriveSourceModule (see updateRetirementDivision / updatePensionValuation).
-        s6: { status: 'empty', label: 'Retirement Plan Division', sourceModule: null, data: { pit: null, pva: null } },
+        s6: { status: 'empty', label: 'Retirement Plan Division', sourceModule: null, data: { pit: null, pva: null, qdro: null } },
         s7: { status: 'empty', label: 'Expense Analysis', sourceModule: 'm3', data: null },
         s8: { status: 'empty', label: 'Support Analysis', sourceModule: 'm5', data: null },
         s9: { status: 'empty', label: 'Home Decision', sourceModule: 'm5', data: null },
@@ -289,6 +298,52 @@ const useBlueprintStore = create(
         };
       }),
 
+      // §6 QDRO writer (§10.8, PR-A m5/qdro-s108-blueprint-wiring). Code-name
+      // `updateQDRODivision` is architect-locked; the §10.8 spec still uses the
+      // legacy `updateQDRODecision` name (separate vault rename task). Writes
+      // `sections.s6.data.qdro = { assets, status, lastUpdated }`, last-write-
+      // wins (full overwrite of the qdro sub-slot). Section status propagates
+      // from `qdroData.status`, mirroring the PIT/PVA siblings' last-write-wins
+      // on `s6.status`; the broader §6 multi-source rollup gap is tracked in
+      // vault Roadmap/Deferred/Blueprint-S6-Multi-Source-Status-Rollup.md.
+      //
+      // Input shape (matches `selectQDRODivisionData`'s output):
+      //   { assets: { [assetId]: { userRole, planType, decisions, pvSource,
+      //     completionState, metadata } },
+      //     status: 'empty' | 'partial' | 'complete' }
+      //
+      // §10.8 status logic — the empty/partial/complete tri-state aggregation
+      // over per-asset `completionState` (including the private_db
+      // `pvSource: null` carve-out) — is computed inside `selectQDRODivisionData`;
+      // this action consumes the rolled-up status, it does not recompute it.
+      updateQDRODivision: (qdroData) => {
+        const ts = new Date().toISOString();
+        const status = qdroData?.status ?? 'empty';
+        set(state => {
+          const nextData = {
+            ...state.sections.s6.data,
+            qdro: {
+              assets: qdroData?.assets ?? {},
+              status,
+              lastUpdated: ts,
+            },
+          };
+          return {
+            sections: {
+              ...state.sections,
+              s6: {
+                ...state.sections.s6,
+                status,
+                sourceModule: deriveSourceModule(nextData),
+                data: nextData,
+              },
+            },
+            lastUpdated: ts,
+          };
+        });
+        return { status };
+      },
+
       // §9 — Home Decision (HDA, spec §10.6). Dedicated single-source section:
       // sourceModule is the static 'm5' (preserved via ...state.sections.s9 spread).
       // deriveSourceModule is NOT used for §9 — only §6 (multi-source) needs it.
@@ -398,7 +453,7 @@ const useBlueprintStore = create(
           s3: { status: 'empty', label: 'Asset Inventory', sourceModule: 'm2', data: null },
           s4: { status: 'empty', label: 'Tax Analysis', sourceModule: 'm4', data: null },
           s5: { status: 'empty', label: 'Property Division', sourceModule: 'm2+m4', data: null },
-          s6: { status: 'empty', label: 'Retirement Plan Division', sourceModule: null, data: { pit: null, pva: null } },
+          s6: { status: 'empty', label: 'Retirement Plan Division', sourceModule: null, data: { pit: null, pva: null, qdro: null } },
           s7: { status: 'empty', label: 'Expense Analysis', sourceModule: 'm3', data: null },
           s8: { status: 'empty', label: 'Support Analysis', sourceModule: 'm5', data: null },
           s9: { status: 'empty', label: 'Home Decision', sourceModule: 'm5', data: null },

@@ -39,9 +39,12 @@ beforeEach(() => {
 });
 
 describe('blueprintStore §6 schema (M4 PIT + M5 PVA dual-source)', () => {
-  it('TC-BPSt-1: initial §6 has data.pit===null, data.pva===null, sourceModule===null', () => {
+  it('TC-BPSt-1: initial §6 has data.{pit, pva, qdro} all null, sourceModule===null', () => {
+    // PR-A: §10.8 added the `qdro` sub-slot to s6.data; shape extended from
+    // { pit, pva } to { pit, pva, qdro }. Classification: (b) intended
+    // schema change per the amended §10.8 contract.
     const s6 = useBlueprintStore.getState().sections.s6;
-    expect(s6.data).toEqual({ pit: null, pva: null });
+    expect(s6.data).toEqual({ pit: null, pva: null, qdro: null });
     expect(s6.sourceModule).toBeNull();
     expect(s6.status).toBe('empty');
     expect(s6.label).toBe('Retirement Plan Division');
@@ -403,5 +406,200 @@ describe('blueprintStore §10.8 QDRO Blueprint write (PR5-2, PR5-4)', () => {
 
     const s6After = useBlueprintStore.getState().sections.s6;
     expect(s6After).toEqual(s6Before);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §10.8 deriveSourceModule — qdro slot extensions (PR-A)
+// ---------------------------------------------------------------------------
+
+describe('blueprintStore §10.8 deriveSourceModule — qdro extensions', () => {
+  // Per the amended §10.8 locked table: qdro contributes the 'm5' signal,
+  // alongside pva. Existing pit/pva-only behavior is preserved (covered by
+  // TC-BPSt-5); these TCs add the qdro rows.
+  const QDRO_SLOT = { assets: {}, status: 'empty', lastUpdated: 'fixture' };
+
+  it('TC-BPSt-DSM-1: qdro only → "m5"', () => {
+    expect(deriveSourceModule({ pit: null, pva: null, qdro: QDRO_SLOT })).toBe('m5');
+  });
+
+  it('TC-BPSt-DSM-2: pva + qdro → "m5"', () => {
+    expect(deriveSourceModule({ pit: null, pva: PVA_FIXTURE, qdro: QDRO_SLOT })).toBe('m5');
+  });
+
+  it('TC-BPSt-DSM-3: pit + qdro → "m4+m5"', () => {
+    expect(deriveSourceModule({ pit: PIT_FIXTURE, pva: null, qdro: QDRO_SLOT })).toBe('m4+m5');
+  });
+
+  it('TC-BPSt-DSM-4: pit + pva + qdro → "m4+m5"', () => {
+    expect(deriveSourceModule({ pit: PIT_FIXTURE, pva: PVA_FIXTURE, qdro: QDRO_SLOT })).toBe('m4+m5');
+  });
+
+  it('TC-BPSt-DSM-5: all null (qdro key present) → null', () => {
+    expect(deriveSourceModule({ pit: null, pva: null, qdro: null })).toBeNull();
+  });
+
+  it('TC-BPSt-DSM-6: pit + pva (no qdro key) — original behavior preserved → "m4+m5"', () => {
+    // Regression guard for the pre-PR-A signature (data shape without qdro key).
+    expect(deriveSourceModule({ pit: PIT_FIXTURE, pva: PVA_FIXTURE })).toBe('m4+m5');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §10.8 updateQDRODivision — PR-A §6 sub-slot writer
+// ---------------------------------------------------------------------------
+
+const QDRO_DIV_DATA = {
+  assets: {
+    a1: {
+      userRole: 'participant',
+      planType: 'dc',
+      decisions: {
+        allocationType: 'percentage',
+        allocationValue: 50,
+        receiptMethod: null,
+        valuationDate: { type: 'divorce', date: '2026-01-01' },
+      },
+      pvSource: null,
+      completionState: 'complete',
+      metadata: { formulaId: 'qdg_dc_v1', citations: [], qdroPacketGeneratedAt: null },
+    },
+  },
+  status: 'complete',
+};
+
+describe('blueprintStore §10.8 updateQDRODivision (PR-A)', () => {
+  it('TC-BPSt-QDIV-1: writes s6.data.qdro = { assets, status, lastUpdated }', () => {
+    useBlueprintStore.getState().updateQDRODivision(QDRO_DIV_DATA);
+    const s6 = useBlueprintStore.getState().sections.s6;
+
+    expect(s6.data.qdro).toMatchObject({
+      assets: QDRO_DIV_DATA.assets,
+      status: 'complete',
+    });
+    expect(ISO_REGEX.test(s6.data.qdro.lastUpdated)).toBe(true);
+  });
+
+  it('TC-BPSt-QDIV-2: propagates qdroData.status to s6.status (mirrors PIT/PVA last-write-wins per architect ruling #5)', () => {
+    useBlueprintStore.getState().updateQDRODivision({ ...QDRO_DIV_DATA, status: 'partial' });
+    expect(useBlueprintStore.getState().sections.s6.status).toBe('partial');
+
+    useBlueprintStore.getState().updateQDRODivision({ ...QDRO_DIV_DATA, status: 'complete' });
+    expect(useBlueprintStore.getState().sections.s6.status).toBe('complete');
+
+    useBlueprintStore.getState().updateQDRODivision({ assets: {}, status: 'empty' });
+    expect(useBlueprintStore.getState().sections.s6.status).toBe('empty');
+  });
+
+  it('TC-BPSt-QDIV-3: re-derives s6.sourceModule via deriveSourceModule — qdro-only → "m5"', () => {
+    useBlueprintStore.getState().updateQDRODivision(QDRO_DIV_DATA);
+    expect(useBlueprintStore.getState().sections.s6.sourceModule).toBe('m5');
+  });
+
+  it('TC-BPSt-QDIV-4: pit + qdro → sourceModule "m4+m5"', () => {
+    useBlueprintStore.getState().updateRetirementDivision(PIT_FIXTURE);
+    useBlueprintStore.getState().updateQDRODivision(QDRO_DIV_DATA);
+
+    const s6 = useBlueprintStore.getState().sections.s6;
+    expect(s6.data.pit).toEqual(PIT_FIXTURE);
+    expect(s6.data.qdro.assets).toEqual(QDRO_DIV_DATA.assets);
+    expect(s6.sourceModule).toBe('m4+m5');
+  });
+
+  it('TC-BPSt-QDIV-5: stamps lastUpdated on both s6.data.qdro.lastUpdated AND root lastUpdated, both ISO', () => {
+    const t0 = Date.now();
+    useBlueprintStore.getState().updateQDRODivision(QDRO_DIV_DATA);
+
+    const state = useBlueprintStore.getState();
+    expect(ISO_REGEX.test(state.sections.s6.data.qdro.lastUpdated)).toBe(true);
+    expect(ISO_REGEX.test(state.lastUpdated)).toBe(true);
+
+    const tsQdro = Date.parse(state.sections.s6.data.qdro.lastUpdated);
+    expect(tsQdro).toBeGreaterThanOrEqual(t0);
+    // qdro.lastUpdated and root lastUpdated share one timestamp (single ts inside set())
+    expect(state.lastUpdated).toBe(state.sections.s6.data.qdro.lastUpdated);
+  });
+
+  it('TC-BPSt-QDIV-6: returns { status } reflecting the input', () => {
+    const ret = useBlueprintStore.getState().updateQDRODivision({ ...QDRO_DIV_DATA, status: 'partial' });
+    expect(ret).toEqual({ status: 'partial' });
+  });
+
+  it('TC-BPSt-QDIV-7: last-write-wins — second call fully overwrites first qdro sub-slot', () => {
+    const FIRST = {
+      assets: { a1: { ...QDRO_DIV_DATA.assets.a1 } },
+      status: 'complete',
+    };
+    const SECOND = {
+      assets: { b1: { ...QDRO_DIV_DATA.assets.a1, planType: 'ira' } },
+      status: 'partial',
+    };
+
+    useBlueprintStore.getState().updateQDRODivision(FIRST);
+    useBlueprintStore.getState().updateQDRODivision(SECOND);
+
+    const qdroSlot = useBlueprintStore.getState().sections.s6.data.qdro;
+    // a1 from FIRST is gone; b1 from SECOND is present
+    expect(qdroSlot.assets.a1).toBeUndefined();
+    expect(qdroSlot.assets.b1).toBeDefined();
+    expect(qdroSlot.status).toBe('partial');
+  });
+
+  it('TC-BPSt-QDIV-8: empty assets {} with status "empty" → valid write; s6.data.qdro persisted, s6.status "empty"', () => {
+    const ret = useBlueprintStore.getState().updateQDRODivision({ assets: {}, status: 'empty' });
+    const s6 = useBlueprintStore.getState().sections.s6;
+    expect(ret).toEqual({ status: 'empty' });
+    expect(s6.data.qdro).toMatchObject({ assets: {}, status: 'empty' });
+    expect(s6.status).toBe('empty');
+    // qdro key IS populated (with empty assets), so sourceModule registers m5
+    expect(s6.sourceModule).toBe('m5');
+  });
+
+  it('TC-BPSt-QDIV-9: missing/undefined status defaults to "empty"', () => {
+    const ret = useBlueprintStore.getState().updateQDRODivision({ assets: {} });
+    expect(ret).toEqual({ status: 'empty' });
+    expect(useBlueprintStore.getState().sections.s6.status).toBe('empty');
+  });
+
+  it('TC-BPSt-QDIV-10: PIT-first, then QDRO — pit slot preserved alongside new qdro slot', () => {
+    useBlueprintStore.getState().updateRetirementDivision(PIT_FIXTURE);
+    useBlueprintStore.getState().updateQDRODivision(QDRO_DIV_DATA);
+
+    const s6 = useBlueprintStore.getState().sections.s6;
+    expect(s6.data.pit).toEqual(PIT_FIXTURE);
+    expect(s6.data.pva).toBeNull();
+    expect(s6.data.qdro.assets).toEqual(QDRO_DIV_DATA.assets);
+  });
+
+  it('TC-BPSt-QDIV-11: resetBlueprint clears qdro slot back to null', () => {
+    useBlueprintStore.getState().updateQDRODivision(QDRO_DIV_DATA);
+    expect(useBlueprintStore.getState().sections.s6.data.qdro).not.toBeNull();
+
+    useBlueprintStore.getState().resetBlueprint();
+    expect(useBlueprintStore.getState().sections.s6.data).toEqual({
+      pit: null,
+      pva: null,
+      qdro: null,
+    });
+  });
+
+  it('TC-BPSt-QDIV-12: localStorage round-trip — s6.data.qdro survives rehydrate', () => {
+    useBlueprintStore.getState().updateQDRODivision(QDRO_DIV_DATA);
+    const qdroBefore = useBlueprintStore.getState().sections.s6.data.qdro;
+
+    useBlueprintStore.persist.rehydrate();
+
+    const qdroAfter = useBlueprintStore.getState().sections.s6.data.qdro;
+    expect(qdroAfter).toEqual(qdroBefore);
+  });
+
+  it('TC-BPSt-QDIV-13: updateQDRODivision is a function on the store', () => {
+    expect(typeof useBlueprintStore.getState().updateQDRODivision).toBe('function');
+  });
+
+  it('TC-BPSt-QDIV-14: sibling §8.12 surface — qdroBlueprint is unchanged by updateQDRODivision', () => {
+    const qdroBpBefore = useBlueprintStore.getState().qdroBlueprint;
+    useBlueprintStore.getState().updateQDRODivision(QDRO_DIV_DATA);
+    expect(useBlueprintStore.getState().qdroBlueprint).toEqual(qdroBpBefore);
   });
 });
