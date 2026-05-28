@@ -12,6 +12,9 @@ import {
   buildMarkdownPacket,
 } from '../markdown.js';
 import { QDG_DISCLAIMER_BULLETS, getFlagOnlyBranch } from '@/src/lib/qdro';
+import { calculatePensionValue } from '@/src/lib/pensionValuation';
+import { formatUSD } from '@/src/lib/format/currency';
+import { PVA_FORMULA_GLOSS, glossFor } from '../pvaGlosses.js';
 
 const GEN_AT = '2026-05-19T12:00:00.000Z';
 
@@ -188,5 +191,196 @@ describe('buildMarkdownPacket (§8.7.2 composition + ordering)', () => {
     expect(md.startsWith('#')).toBe(true);
     expect(md).toContain('Attorney Handoff Packet');
     expect(md).toContain(QDG_DISCLAIMER_BULLETS[0]);
+  });
+});
+
+// ─── §8.6.5 PVA fixture embed (PR-B2-β) ────────────────────────────────────
+// Build REAL PVA results via calculatePensionValue (TC-PVA-Tier2-1 + TC-PVA-
+// Coverture-1 fixture inputs) so accessor mismatches surface immediately.
+const tier2Results = calculatePensionValue({
+  path: 'tier_2',
+  participantDOB: '1981-05-01',
+  caseEffectiveDate: '2026-05-01',
+  planNRA: 65,
+  accruedMonthlyBenefitAtNRA: 3000,
+  formOfBenefitOnStatement: 'single_life',
+  vestingStatus: 'fully_vested',
+  benefitSource: 'plan_estimator_or_manual_calculation',
+  mortalityTable: 'irs_417e',
+  discountRateBps: 5234,
+  cola: 0,
+});
+
+const tier3CovertureResults = calculatePensionValue({
+  path: 'tier_3',
+  participantDOB: '1975-01-01',
+  caseEffectiveDate: '2026-05-01',
+  dateOfHire: '2010-01-01',
+  dateOfMarriage: '2015-06-01',
+  maritalCutoffDate: '2024-12-31',
+  expectedRetirementAge: 65,
+  currentAccruedMonthlyBenefit: 2500,
+  formOfBenefitOnStatement: 'single_life',
+  vestingStatus: 'fully_vested',
+  benefitSource: 'official_statement',
+  mortalityTable: 'irs_417e',
+  discountRateBps: 5234,
+  cola: 0,
+});
+
+// Asset slots (same-key with the PVA assetId).
+const dbTier2Asset = {
+  userRole: 'participant',
+  planType: 'private_db',
+  planName: 'Tier2 Pension',
+  employer: 'Tier2Co',
+  pvSource: 'pva_db_tier2_v1',
+  _prePopSources: {},
+  decisions: {},
+  metadata: { formulaId: null, citations: [], qdroPacketGeneratedAt: null },
+};
+const dbTier3Asset = {
+  userRole: 'alternatePayee',
+  planType: 'private_db',
+  planName: 'Tier3 Pension',
+  employer: 'Tier3Co',
+  pvSource: 'pva_db_tier3_coverture_v1',
+  _prePopSources: {},
+  decisions: {},
+  metadata: { formulaId: null, citations: [], qdroPacketGeneratedAt: null },
+};
+
+const stateWithPVA = (qdroAssets, pvaAssets) => ({
+  qdroDecision: { assets: qdroAssets },
+  pensionValuation: { assets: pvaAssets },
+});
+
+describe('buildFullBranchSection — §8.6.5 PVA fixture embed (PR-B2-β)', () => {
+  it('embeds full PV headline + gloss + formulaId + citations + snapshot when private_db has usable non-coverture results', () => {
+    const md = buildFullBranchSection('a', dbTier2Asset, tier2Results);
+    // LOCKED §8.6.5 headline shape:
+    expect(md).toMatch(
+      /- PVA computation: Tier 2 face PV \$[\d,]+ \(range \$[\d,]+–\$[\d,]+\), formulaId `pva_db_tier2_v1` — see PVA report for methodology\./,
+    );
+    // Real PVA citations from CITATIONS_BY_PATH.tier_2 (verbatim):
+    expect(md).toContain('- Citations: IRC §417(e)(3); 26 CFR §1.417(e)-1; SOA actuarial standards (commutation methodology)');
+    // ISO snapshot present (any ISO string with T):
+    expect(md).toMatch(/- PVA snapshot: \d{4}-\d{2}-\d{2}T/);
+    // No marital line for non-coverture results.
+    expect(md).not.toMatch(/PVA marital portion/);
+    // The §8.6.3 fallback must NOT also fire (no double-emit).
+    expect(md).not.toContain('PV: not computed');
+  });
+
+  it('embeds BOTH the full headline and the marital line under coverture; the two figures are distinct', () => {
+    const md = buildFullBranchSection('a', dbTier3Asset, tier3CovertureResults);
+    // Full/total headline (the §8.6.5 pv.full):
+    const headlineMatch = md.match(/- PVA computation: Tier 3 \(coverture\) PV \$([\d,]+) \(range \$([\d,]+)–\$([\d,]+)\), formulaId `pva_db_tier3_coverture_v1` — see PVA report for methodology\./);
+    expect(headlineMatch).not.toBeNull();
+    // Marital line (the §8.6.5 pv.marital):
+    const maritalMatch = md.match(/- PVA marital portion: \$([\d,]+) \(range \$([\d,]+)–\$([\d,]+)\)/);
+    expect(maritalMatch).not.toBeNull();
+    // Distinct figures — regression that collapsed headline→marital (or omitted full) would fail here.
+    expect(headlineMatch[1]).not.toBe(maritalMatch[1]);
+    // Sanity: the headline number equals formatUSD(FULL/total accessor) and the
+    // marital number equals formatUSD(MARITAL accessor). Asserting against
+    // `formatUSD(x)` (not the raw float) verifies the accessor binding without
+    // coupling to the formatter's rounding — the embed uses `formatUSD`, so
+    // do the test.
+    expect(`$${headlineMatch[1]}`).toBe(formatUSD(tier3CovertureResults.pv.total.best));
+    expect(`$${maritalMatch[1]}`).toBe(formatUSD(tier3CovertureResults.pv.marital.best));
+  });
+
+  it('falls back to "PV: not computed" when private_db has no usable results', () => {
+    const md = buildFullBranchSection('c', privateDbNoPv, null);
+    expect(md).toContain('- PV: not computed (run the Pension Valuation Analyzer — §8.6.3)');
+    expect(md).not.toMatch(/PVA computation:/);
+    expect(md).not.toMatch(/PVA marital portion/);
+    expect(md).not.toMatch(/PVA snapshot:/);
+  });
+
+  it('emits no PVA embed and no fallback for dc/ira assets even when results are passed', () => {
+    const mdDc = buildFullBranchSection('a', dcParticipant, tier2Results);
+    const mdIra = buildFullBranchSection('b', iraPrepopped, tier2Results);
+    for (const md of [mdDc, mdIra]) {
+      expect(md).not.toMatch(/PVA computation:/);
+      expect(md).not.toMatch(/PVA marital portion/);
+      expect(md).not.toMatch(/PV: not computed/);
+    }
+  });
+
+  it('guards the Citations line when metadata.citations is empty or absent (no crash, no Citations line)', () => {
+    // Empty citations:
+    const resultsEmptyCites = {
+      ...tier2Results,
+      metadata: { ...tier2Results.metadata, citations: [] },
+    };
+    const mdEmpty = buildFullBranchSection('a', dbTier2Asset, resultsEmptyCites);
+    expect(mdEmpty).not.toMatch(/- Citations:/);
+    expect(mdEmpty).toMatch(/PVA computation: Tier 2 face/);
+    // Absent metadata:
+    const resultsNoMeta = { ...tier2Results, metadata: undefined };
+    const mdNoMeta = buildFullBranchSection('a', dbTier2Asset, resultsNoMeta);
+    expect(mdNoMeta).not.toMatch(/- Citations:/);
+    expect(mdNoMeta).not.toMatch(/- PVA snapshot:/);
+    expect(mdNoMeta).toMatch(/PVA computation: Tier 2 face/);
+  });
+
+  it('threads results from the composer: state with both qdroDecision.assets and pensionValuation.assets embeds in private_db only', () => {
+    const md = buildMarkdownPacket(
+      stateWithPVA(
+        { d: dcParticipant, t2: dbTier2Asset, t3: dbTier3Asset },
+        { t2: { results: tier2Results }, t3: { results: tier3CovertureResults } },
+      ),
+      { generatedAt: GEN_AT },
+    );
+    // Both private_db sections render the embed:
+    expect(md).toMatch(/Tier2 Pension[\s\S]*PVA computation: Tier 2 face/);
+    expect(md).toMatch(/Tier3 Pension[\s\S]*PVA computation: Tier 3 \(coverture\)/);
+    // Marital line appears for the coverture asset:
+    expect(md).toMatch(/Tier3 Pension[\s\S]*PVA marital portion:/);
+    // DC asset has neither embed nor fallback line:
+    expect(md).toMatch(/MegaCorp 401\(k\)[\s\S]*?\*\*Decisions captured\*\*/);
+    const dcSection = md.split('MegaCorp 401(k)')[1].split('### ')[0];
+    expect(dcSection).not.toMatch(/PVA computation:/);
+    expect(dcSection).not.toMatch(/PV: not computed/);
+  });
+
+  it('falls back gracefully to the raw formulaId for an unmapped value (glossFor never renders "undefined")', () => {
+    const resultsUnknownFormula = {
+      ...tier2Results,
+      formulaId: 'pva_future_formula_v9',
+    };
+    // glossFor unit-check:
+    expect(glossFor('pva_future_formula_v9')).toBe('pva_future_formula_v9');
+    expect(glossFor(null)).toBe(null);
+    // Embed never emits "undefined":
+    const md = buildFullBranchSection('a', dbTier2Asset, resultsUnknownFormula);
+    expect(md).not.toMatch(/undefined/);
+    expect(md).toMatch(/PVA computation: pva_future_formula_v9 PV/);
+    // Sanity on the locked label set:
+    expect(Object.keys(PVA_FORMULA_GLOSS).sort()).toEqual([
+      'pva_cashbalance_passthrough_v1',
+      'pva_db_inpaystatus_v1',
+      'pva_db_tier1_v1',
+      'pva_db_tier2_v1',
+      'pva_db_tier3_coverture_v1',
+    ]);
+  });
+
+  it('summary-header "N missing" count equals the number of per-asset sections rendering "PV: not computed"', () => {
+    // Two private_db assets: one with usable results (no fallback), one without (fallback). Header should count 1 missing.
+    const md = buildMarkdownPacket(
+      stateWithPVA(
+        { t2: dbTier2Asset, p: privateDbNoPv },
+        { t2: { results: tier2Results } },
+      ),
+      { generatedAt: GEN_AT },
+    );
+    // Summary header counts 1 missing (privateDbNoPv has pvSource: null per fixture).
+    expect(md).toContain('PV not yet computed for 1 private DB asset(s).');
+    // Exactly one per-asset "PV: not computed" line.
+    const fallbackCount = (md.match(/- PV: not computed \(run the Pension Valuation Analyzer/g) || []).length;
+    expect(fallbackCount).toBe(1);
   });
 });
