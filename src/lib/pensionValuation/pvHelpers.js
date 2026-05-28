@@ -38,3 +38,40 @@ export function getMaritalPV(results) {
   if (!results || results.pv === null || results.coverture === null) return null;
   return results.pv.marital.best;
 }
+
+/**
+ * Range-aware sibling of `getHeadlinePV` per PR-B2-α / §8.6.2. Returns
+ * `{ best, low, high }` for the headline PV in any path:
+ *   - Non-coverture: pulls from `pv.{best, low, high}`.
+ *   - Coverture:     pulls from `pv.total.{best, low, high}`.
+ *   - Flag-only:     null (no PV to range).
+ *
+ * QDRO §8.6.2 / §8.6.5 consumers render the "(range $low–$high)" disclosure
+ * via this helper; they MUST NOT dereference the `pv` union themselves.
+ *
+ * @param {object | null | undefined} results
+ * @returns {{ best: number, low: number, high: number } | null}
+ */
+export function getHeadlinePVRange(results) {
+  if (!results || results.pv === null) return null;
+  if (results.coverture !== null) {
+    const { best, low, high } = results.pv.total;
+    return { best, low, high };
+  }
+  const { best, low, high } = results.pv;
+  return { best, low, high };
+}
+
+/**
+ * Range-aware sibling of `getMaritalPV` per PR-B2-α / §8.6.2. Returns
+ * `{ best, low, high }` of `pv.marital` for coverture paths; null otherwise
+ * (no-coverture has no marital narrowing; flag-only has no PV).
+ *
+ * @param {object | null | undefined} results
+ * @returns {{ best: number, low: number, high: number } | null}
+ */
+export function getMaritalPVRange(results) {
+  if (!results || results.pv === null || results.coverture === null) return null;
+  const { best, low, high } = results.pv.marital;
+  return { best, low, high };
+}

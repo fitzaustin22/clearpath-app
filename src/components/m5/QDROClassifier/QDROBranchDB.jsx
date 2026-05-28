@@ -40,6 +40,7 @@ import { useM5Store } from '@/src/stores/m5Store';
 import WizardSection from '@/src/components/wizard/WizardSection';
 import WizardRadio from '@/src/components/wizard/WizardRadio';
 import { T } from '@/src/lib/brand/tokens';
+import QDROBranchDBPVDisplay from './QDROBranchDBPVDisplay.jsx';
 
 // §8.6.3 entry callout — verbatim, spec-locked.
 const PVA_NOT_RUN_CALLOUT =
@@ -234,7 +235,11 @@ export default function QDROBranchDB({ assetId, userRole }) {
         </InfoCard>
       ) : null}
 
-      {/* PR-B2 §8.6.2 per-perspective PV display inserts here */}
+      {/* PR-B2-α §8.6.2 per-perspective PV display. Renders only when
+          PVA has usable same-key results; the §8.6.3 callout above owns
+          the null path. State-coherence between the two gates is held by
+          `reconcileQDROPvSources` (QDROClassifier container effect). */}
+      <QDROBranchDBPVDisplay assetId={assetId} perspective={perspective} />
 
       <div data-testid="qdro-db-q1">
         <WizardSection title="Question 1 — Interest structure" first>

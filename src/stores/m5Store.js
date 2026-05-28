@@ -18,6 +18,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { getHeadlinePV } from '@/src/lib/pensionValuation';
 
 // ─── §6.5.1 Support Estimator inputs (locked literal) ──────────────────────
 const initialPartyInputs = {
@@ -417,6 +418,48 @@ export const useM5Store = create(
             };
           }
           return { qdroDecision: { ...state.qdroDecision, assets: nextAssets } };
+        }),
+
+      // ─── §8.6.1 / §8.10.1 — PR-B2-α `pvSource` reconciler ──────────────
+      //
+      // Same-key pairing: `qdroDecision.assets[k]` ↔ `pensionValuation.assets[k]`
+      // where `k = M2 item id` for M2-seeded assets (per `prePopulateQDROInputs`
+      // and PVA `AssetPicker`'s `claim.id`). Wizard-added (synthetic-UUID)
+      // assets have no PVA companion and stay `pvSource: null`.
+      //
+      // For each `private_db` QDRO asset, the target `pvSource` is:
+      //   - `results.formulaId`  when PVA has usable results (`getHeadlinePV(results) != null`)
+      //   - `null`               otherwise (no results, flag-only `pv === null`,
+      //                          or PVA recompute cleared `results`)
+      //
+      // Idempotent: only assets whose `pvSource !== target` are rewritten; if no
+      // diffs accrue, the entire `set()` returns `{}` (no state mutation, no
+      // subscriber notifications). This loop-safety property is the contract
+      // the QDROClassifier trigger relies on per Phase-3 design.
+      //
+      // Non-private_db assets (`dc` / `ira` / `gov_civilian` / `military` /
+      // `state_municipal`) are NEVER touched — they have no PV consumption per
+      // §8.6.1 and their `pvSource` (always `null` from `addQDROAsset`) is
+      // outside this reconciler's domain.
+      reconcileQDROPvSources: () =>
+        set((state) => {
+          const qdroAssets = state.qdroDecision?.assets;
+          if (!qdroAssets || typeof qdroAssets !== 'object') return {};
+          const pvaAssets = state.pensionValuation?.assets ?? {};
+
+          let mutated = null;
+          for (const [assetId, asset] of Object.entries(qdroAssets)) {
+            if (asset?.planType !== 'private_db') continue;
+            const results = pvaAssets[assetId]?.results;
+            const usable = getHeadlinePV(results) != null;
+            const target = usable ? results.formulaId : null;
+            if (asset.pvSource === target) continue;
+            if (mutated === null) mutated = { ...qdroAssets };
+            mutated[assetId] = { ...asset, pvSource: target };
+          }
+
+          if (mutated === null) return {};
+          return { qdroDecision: { ...state.qdroDecision, assets: mutated } };
         }),
     }),
     {
