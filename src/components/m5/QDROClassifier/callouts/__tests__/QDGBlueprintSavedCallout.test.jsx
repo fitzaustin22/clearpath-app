@@ -13,6 +13,7 @@ import { useM5Store } from '@/src/stores/m5Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';
 import { selectQDROBlueprintProjection } from '@/src/lib/qdro/blueprint/projection';
 import * as projMod from '@/src/lib/qdro/blueprint/projection';
+import { selectQDRODivisionData } from '@/src/lib/qdro/blueprint/divisionData';
 import { T } from '@/src/lib/brand/tokens';
 import QDGBlueprintSavedCallout from '../QDGBlueprintSavedCallout.jsx';
 
@@ -47,8 +48,13 @@ beforeEach(() => {
   useBlueprintStore.persist.rehydrate();
   // Reset m5 assets to empty (not-ready state)
   useM5Store.setState((s) => ({ qdroDecision: { ...s.qdroDecision, assets: {} } }));
-  // Reset blueprint QDRO slice
-  useBlueprintStore.setState({ qdroBlueprint: { savedProjection: null, savedAt: null } });
+  // Reset entire blueprint store. PR-A: the Save-to-Blueprint click now fans
+  // out to BOTH qdroBlueprint AND sections.s6.data.qdro (§10.8); the prior
+  // qdroBlueprint-only reset left s6 residue between tests. resetBlueprint()
+  // clears both slots (and userName/costBasisEntries, which no test in this
+  // file depends on pre-setting). Classification: (b) intended test-isolation
+  // update driven by PR-A's fan-out behavior.
+  useBlueprintStore.getState().resetBlueprint();
 });
 
 // ---------------------------------------------------------------------------
@@ -310,5 +316,72 @@ describe('QDGBlueprintSavedCallout — brand tokens', () => {
     expect(btn.style.border).toContain(normalizeCss('borderColor', T.GOLD_BORDER));
     // backgroundColor is normalized T.GOLD_TINT
     expect(btn.style.backgroundColor).toBe(normalizeCss('backgroundColor', T.GOLD_TINT));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 11. §10.8 fan-out (PR-A m5/qdro-s108-blueprint-wiring) — handleSave fires
+//     BOTH writeQDROToBlueprint (§8.12 projection) AND updateQDRODivision
+//     (§10.8 §6 sub-slot writer) from one button click.
+// ---------------------------------------------------------------------------
+describe('QDGBlueprintSavedCallout — §10.8 fan-out (PR-A)', () => {
+  it('TC-QGBSC-Fanout-1: State 1 click writes BOTH qdroBlueprint AND sections.s6.data.qdro', () => {
+    seedReady();
+    render(<QDGBlueprintSavedCallout />);
+
+    // Pre-conditions: nothing written yet
+    expect(useBlueprintStore.getState().qdroBlueprint.savedAt).toBeNull();
+    expect(useBlueprintStore.getState().sections.s6.data.qdro).toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save to Blueprint' }));
+
+    // §8.12 projection write — existing behavior, unchanged
+    const { savedAt, savedProjection } = useBlueprintStore.getState().qdroBlueprint;
+    expect(savedAt).not.toBeNull();
+    const proj = selectQDROBlueprintProjection(useM5Store.getState());
+    expect(savedProjection).toEqual({ ...proj, generatedAt: savedAt });
+
+    // §10.8 §6 sub-slot write — new in PR-A
+    const s6 = useBlueprintStore.getState().sections.s6;
+    expect(s6.data.qdro).not.toBeNull();
+    expect(s6.data.qdro.assets).toEqual(selectQDRODivisionData(useM5Store.getState()).assets);
+    expect(s6.data.qdro.status).toBe('complete'); // dcComplete asset → complete
+    expect(s6.sourceModule).toBe('m5'); // qdro slot populated
+    expect(s6.status).toBe('complete');
+  });
+
+  it('TC-QGBSC-Fanout-2: State 3 click writes BOTH the post-mutation projection AND the post-mutation §6 sub-slot', () => {
+    seedReady();
+    // Initial save (transitions to State 2)
+    act(() => {
+      useBlueprintStore
+        .getState()
+        .writeQDROToBlueprint(selectQDROBlueprintProjection(useM5Store.getState()));
+      useBlueprintStore
+        .getState()
+        .updateQDRODivision(selectQDRODivisionData(useM5Store.getState()));
+    });
+
+    render(<QDGBlueprintSavedCallout />);
+
+    // Mutate so component enters State 3 (stale)
+    act(() => {
+      useM5Store.getState().updateQDRODecision('a1', { allocationValue: 75 });
+    });
+
+    expect(screen.getByRole('button', { name: 'Save updated decisions' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save updated decisions' }));
+
+    // §8.12 projection write — post-mutation projection
+    const { savedProjection, savedAt: newSavedAt } = useBlueprintStore.getState().qdroBlueprint;
+    const postMutationProjection = selectQDROBlueprintProjection(useM5Store.getState());
+    expect(savedProjection).toEqual({ ...postMutationProjection, generatedAt: newSavedAt });
+
+    // §10.8 §6 sub-slot — post-mutation division data
+    const s6 = useBlueprintStore.getState().sections.s6;
+    const postMutationDivision = selectQDRODivisionData(useM5Store.getState());
+    expect(s6.data.qdro.assets).toEqual(postMutationDivision.assets);
+    expect(s6.data.qdro.assets.a1.decisions.allocationValue).toBe(75);
   });
 });

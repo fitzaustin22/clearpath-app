@@ -55,13 +55,21 @@ export function isMixedPerspective(assets) {
   return roles.size > 1;
 }
 
-function isValuePopulated(v) {
+export function isValuePopulated(v) {
   return v != null && v !== '';
 }
 
-// Per-branch "decisions populated to non-null per branch shape" per §8.10.3.
-// Note: enum 'not_yet_decided' is an explicit (non-null) selection → ready.
-function isAssetComplete(asset) {
+/**
+ * §8.10.3 — per-branch "decisions populated to non-null per branch shape."
+ * Returns true when the asset's `decisions` object is fully captured per its
+ * `planType` schema (§8.10.2). Used by `isPacketReady` here and by
+ * `selectQDRODivisionData` (src/lib/qdro/blueprint/divisionData.js) to derive
+ * per-asset `completionState`.
+ *
+ * Note: enum value `'not_yet_decided'` is an explicit (non-null) selection
+ * and counts as populated.
+ */
+export function isAssetComplete(asset) {
   const d = asset.decisions || {};
   switch (asset.planType) {
     case 'dc': {
