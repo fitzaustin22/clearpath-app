@@ -11,9 +11,21 @@
  * the order itself must be attorney-drafted) without duplicating the
  * `qdg_not_legal_order` bullets.
  *
- * Pure presentation with NO conditional logic — the parent decides when
- * to mount it (Q-B7: per-asset, only when a decision is captured).
+ * PR-B2-α §8.6.4 extension: the optional prop `covertureApplies` (default
+ * false → existing callers unchanged) appends the LOCKED coverture recap
+ * and the prose cross-link to PVA's coverture callout. The parent
+ * (QDROAssetCard) sets this true only on the `private_db`-with-coverture
+ * path — dc / ira / flag-only never pass it true (no coverture concept
+ * applies). The prose "See PVA report …" IS the cross-link (no link
+ * primitive exists in the codebase; PVA Tool 2 is the user's mental
+ * neighbor and the prose reference is the convention — mirrors the M4
+ * PIT TaxTreatmentNote pattern).
  *
+ * Otherwise pure presentation — the parent owns the mount decision (Q-B7).
+ *
+ * @param {object} props
+ * @param {boolean} [props.covertureApplies=false] when true, appends the
+ *   §8.6.4 recap + cross-link.
  * @returns {JSX.Element}
  */
 
@@ -25,7 +37,11 @@ const BODY =
   'drafting specialist) must draft and review the actual order before it is ' +
   'submitted to the plan administrator or the court.';
 
-export default function QDGAttorneyReviewRequired() {
+// §8.6.4 LOCKED recap copy — verbatim from M5-Tool-Specs.md.
+const COVERTURE_RECAP =
+  'Only the marital portion of this pension is divisible — the share earned during marriage. See PVA report for the full coverture calculation.';
+
+export default function QDGAttorneyReviewRequired({ covertureApplies = false }) {
   return (
     <div
       data-testid="qdg-attorney-review-required"
@@ -55,6 +71,14 @@ export default function QDGAttorneyReviewRequired() {
         Attorney review required
       </p>
       <p style={{ margin: 0, color: T.INK_2 }}>{BODY}</p>
+      {covertureApplies ? (
+        <p
+          data-testid="qdg-attorney-review-required-coverture-recap"
+          style={{ margin: '8px 0 0', color: T.INK_2 }}
+        >
+          {COVERTURE_RECAP}
+        </p>
+      ) : null}
     </div>
   );
 }

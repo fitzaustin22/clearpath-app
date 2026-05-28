@@ -19,4 +19,9 @@ export { CITATIONS_BY_PATH } from './citations.js';
 export { CALLOUT_PRECEDENCE } from './calculatePensionValue.js';
 
 // Type-narrow helpers for discriminated-union pv field per [R5b-16]
-export { getHeadlinePV, getMaritalPV } from './pvHelpers.js';
+export {
+  getHeadlinePV,
+  getMaritalPV,
+  getHeadlinePVRange,
+  getMaritalPVRange,
+} from './pvHelpers.js';

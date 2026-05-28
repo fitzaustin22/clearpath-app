@@ -44,8 +44,10 @@ function syntheticAssetId() {
 export default function QDROClassifier() {
   const m2Items = useM2Store((s) => s.maritalEstateInventory?.items);
   const assets = useM5Store((s) => s.qdroDecision.assets);
+  const pvaAssets = useM5Store((s) => s.pensionValuation?.assets);
   const seedQDROAssetsFromM2 = useM5Store((s) => s.seedQDROAssetsFromM2);
   const addQDROAsset = useM5Store((s) => s.addQDROAsset);
+  const reconcileQDROPvSources = useM5Store((s) => s.reconcileQDROPvSources);
 
   const retirementItems = useMemo(() => {
     if (!Array.isArray(m2Items)) return [];
@@ -67,6 +69,30 @@ export default function QDROClassifier() {
     });
     seedQDROAssetsFromM2(result);
   }, [retirementItems, seedQDROAssetsFromM2]);
+
+  // PR-B2-α — `pvSource` reconciliation trigger (§8.6.1 / §10.1).
+  //
+  // The action is idempotent: a second call with unchanged input writes
+  // nothing. Therefore an over-broad dep at worst causes one no-op pass —
+  // acceptable. We dep on the PVA results slice and on a *stable string*
+  // derived from the set of `private_db` asset keys (NOT on `pvSource`
+  // values — the latter would risk a self-trigger loop if idempotency
+  // ever regressed). Reconciling at the container covers both orderings
+  // (PVA-then-QDRO, QDRO-then-PVA) and any asset seeded after mount.
+  //
+  // Per LL-9, derived keysets are computed in `useMemo` rather than
+  // inlined inside the Zustand selector callback.
+  const privateDbKeyset = useMemo(() => {
+    return Object.entries(assets || {})
+      .filter(([, a]) => a?.planType === 'private_db')
+      .map(([k]) => k)
+      .sort()
+      .join(',');
+  }, [assets]);
+
+  useEffect(() => {
+    reconcileQDROPvSources();
+  }, [pvaAssets, privateDbKeyset, reconcileQDROPvSources]);
 
   const m2ById = useMemo(() => {
     const map = {};

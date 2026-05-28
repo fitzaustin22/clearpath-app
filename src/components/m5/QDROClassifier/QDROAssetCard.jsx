@@ -135,6 +135,14 @@ function radioChoiceIdForPlanType(planType) {
 export default function QDROAssetCard({ assetId, m2Item }) {
   const asset = useM5Store((s) => s.qdroDecision.assets[assetId]);
   const setQDROClassifiers = useM5Store((s) => s.setQDROClassifiers);
+  // PR-B2-α §8.6.4 wiring: read same-key PVA coverture object. The
+  // selector returns the coverture sub-field directly (primitive selector
+  // per LL-9 — no object literal, no array methods). `covertureApplies`
+  // is derived from this plus the QDRO planType below; the recap surfaces
+  // only on the `private_db`-with-coverture path.
+  const pvaCoverture = useM5Store(
+    (s) => s.pensionValuation?.assets?.[assetId]?.results?.coverture,
+  );
 
   if (!asset) return null;
 
@@ -319,7 +327,11 @@ export default function QDROAssetCard({ assetId, m2Item }) {
 
       {hasCapturedDecision(asset.decisions) ? (
         <div style={{ marginTop: '16px' }}>
-          <QDGAttorneyReviewRequired />
+          <QDGAttorneyReviewRequired
+            covertureApplies={
+              asset.planType === 'private_db' && pvaCoverture != null
+            }
+          />
         </div>
       ) : null}
 
