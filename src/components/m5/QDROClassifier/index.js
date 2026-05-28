@@ -11,6 +11,7 @@ export { default as QDROStillNotSureDiagnostic } from './QDROStillNotSureDiagnos
 export { default as QDROBranchCapture } from './QDROBranchCapture.jsx';
 export { default as QDROBranchDC } from './QDROBranchDC.jsx';
 export { default as QDROBranchIRA } from './QDROBranchIRA.jsx';
+export { default as QDROBranchDB } from './QDROBranchDB.jsx';
 export { default as QDROWhyThisMatters } from './QDROWhyThisMatters.jsx';
 export { default as QDROLandingIntro } from './QDROLandingIntro.jsx';
 export {

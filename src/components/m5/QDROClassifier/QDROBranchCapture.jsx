@@ -30,6 +30,7 @@
 
 import QDROBranchDC from './QDROBranchDC.jsx';
 import QDROBranchIRA from './QDROBranchIRA.jsx';
+import QDROBranchDB from './QDROBranchDB.jsx';
 import QDROFlagOnlyCapture from './QDROFlagOnlyCapture.jsx';
 
 const FLAG_ONLY = new Set(['gov_civilian', 'military', 'state_municipal']);
@@ -44,9 +45,12 @@ export default function QDROBranchCapture({ assetId, userRole, planType }) {
   if (planType === 'ira') {
     return <QDROBranchIRA assetId={assetId} />;
   }
+  if (planType === 'private_db') {
+    return <QDROBranchDB assetId={assetId} userRole={userRole} />;
+  }
   if (FLAG_ONLY.has(planType)) {
     return <QDROFlagOnlyCapture assetId={assetId} planType={planType} />;
   }
-  // private_db → §13 step 6 (PVA-dependent); unknown → fail closed.
+  // unknown → fail closed.
   return null;
 }
