@@ -135,3 +135,16 @@ Every tool writes structured output to a per-user JSON object keyed by module. S
 7. Practitioner dashboard stub (auth-gated, ClearPath Pro)
 
 ##
+
+---
+
+## Git worktrees & test gates
+
+Builds run in a git worktree, never the main checkout. The harness auto-creates worktrees under
+`.claude/worktrees/<name>/` (gitignored) — use that location; don't relocate them. Always run the
+test and build gates **from inside the worktree** (`cd` into it first). `vitest.config` excludes
+`**/.claude/**`, so running gates from the *main* checkout silently skips the worktree's changes and
+produces false-green results. Before any gate, verify `git rev-parse --show-toplevel` equals the
+worktree path. As a backstop: if you wrote N tests and the post-run test-count delta is 0, you ran
+against the wrong checkout — stop and re-run from the worktree.
+

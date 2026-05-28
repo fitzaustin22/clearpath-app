@@ -2,6 +2,7 @@
 
 import { T } from '@/src/lib/brand/tokens';
 
+// Intentional: returns the '$—' sentinel (not '—'), so this stays inline rather than consuming @/src/lib/format/currency.
 function formatUSD(n) {
   if (n == null || !Number.isFinite(n)) return '$—';
   return n.toLocaleString('en-US', {
