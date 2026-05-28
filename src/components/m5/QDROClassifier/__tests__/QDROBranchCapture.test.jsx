@@ -5,7 +5,8 @@
  * (Q-B2). Then routes by planType: dc → QDROBranchDC; ira → QDROBranchIRA;
  * flag-only (gov_civilian/military/state_municipal) → QDROFlagOnlyCapture
  * (consolidated §8.5.6 consult callout + 3 starter-Q inputs, PR4);
- * private_db → nothing (silent, step 6); anything unknown → nothing
+ * private_db → QDROBranchDB (§8.5.3 / §8.6.3 — five decision questions
+ * plus the PVA-not-run entry callout, PR-B); anything unknown → nothing
  * (fail closed).
  */
 
@@ -136,16 +137,18 @@ describe('QDROBranchCapture — planType routing (§8.4.1 / D6)', () => {
     expect(screen.getAllByRole('textbox')).toHaveLength(3);
   });
 
-  it('private_db renders nothing (silent — step 6 / PVA-dependent)', () => {
+  it('routes private_db → QDROBranchDB (§8.5.3 / §8.6.3)', () => {
     seedAsset('a1', asset({ userRole: 'participant', planType: 'private_db' }));
-    const { container } = render(
+    render(
       <QDROBranchCapture
         assetId="a1"
         userRole="participant"
         planType="private_db"
       />,
     );
-    expect(container).toBeEmptyDOMElement();
+    expect(screen.getByTestId('qdro-branch-db')).toBeInTheDocument();
+    expect(screen.queryByTestId('qdro-branch-dc')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('qdro-branch-ira')).not.toBeInTheDocument();
   });
 
   it('an unknown planType renders nothing (fail closed)', () => {
