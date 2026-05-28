@@ -21,21 +21,13 @@
 
 import Link from 'next/link';
 import { T } from '@/src/lib/brand/tokens';
+import { formatUSD } from '@/src/lib/format/currency';
 import { getHeadlinePV, getMaritalPV } from '@/src/lib/pensionValuation';
 import CalloutStack from './callouts/CalloutStack';
 import PerStepNarrative from './show-the-math/PerStepNarrative';
 import PvComputationRationale from './educational/PvComputationRationale';
 import CovertureRationale from './educational/CovertureRationale';
 import TaxTreatmentNote from './educational/TaxTreatmentNote';
-
-function formatUSD(value) {
-  if (value == null || !Number.isFinite(value)) return '—';
-  return value.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    maximumFractionDigits: 0,
-  });
-}
 
 function BigNumber({ value, label, testId }) {
   return (
