@@ -24,6 +24,13 @@ import {
   privateDbMissingPvSource,
   getFlagOnlyBranch,
 } from '@/src/lib/qdro';
+import {
+  getHeadlinePV,
+  getHeadlinePVRange,
+  getMaritalPVRange,
+} from '@/src/lib/pensionValuation';
+import { formatUSD } from '@/src/lib/format/currency';
+import { glossFor } from './pvaGlosses.js';
 
 const ROUTING_HEADER =
   'The following retirement assets require specialist drafting. Engage attorneys experienced with each regime; generalist domestic-relations counsel often runs into rejection.';
@@ -100,7 +107,7 @@ function summaryHeaderEls(assets, generatedAt) {
   return els;
 }
 
-function fullBranchEls(assetId, asset) {
+function fullBranchEls(assetId, asset, results) {
   const els = [
     <Text key={`${assetId}-n`} style={styles.h3}>{asset.planName ?? 'Unnamed asset'}</Text>,
     <Text key={`${assetId}-t`} style={styles.line}>{`Plan type: ${PLAN_TYPE_LABEL[asset.planType] ?? asset.planType}`}</Text>,
@@ -112,12 +119,49 @@ function fullBranchEls(assetId, asset) {
       <Text key={`${assetId}-m2`} style={styles.line}>{`Inventoried in M2: pre-populated asset (${assetId})`}</Text>,
     );
   }
-  if (asset.planType === 'private_db' && asset.pvSource == null) {
-    els.push(
-      <Text key={`${assetId}-pv`} style={styles.line}>
-        PV: not computed (run the Pension Valuation Analyzer — §8.6.3)
-      </Text>,
-    );
+  if (asset.planType === 'private_db') {
+    if (getHeadlinePV(results) != null) {
+      // §8.6.5 PVA fixture embed — same wording as markdown.js, no "- " bullet
+      // prefix (PDF renderer convention; mirrors the existing "PV: not computed"
+      // fallback line).
+      const full = getHeadlinePVRange(results);
+      const marital = getMaritalPVRange(results);
+      const formulaId = results.formulaId;
+      els.push(
+        <Text key={`${assetId}-pva-headline`} style={styles.line}>
+          {`PVA computation: ${glossFor(formulaId)} PV ${formatUSD(full.best)} (range ${formatUSD(full.low)}–${formatUSD(full.high)}), formulaId \`${formulaId}\` — see PVA report for methodology.`}
+        </Text>,
+      );
+      if (marital != null) {
+        els.push(
+          <Text key={`${assetId}-pva-marital`} style={styles.line}>
+            {`PVA marital portion: ${formatUSD(marital.best)} (range ${formatUSD(marital.low)}–${formatUSD(marital.high)})`}
+          </Text>,
+        );
+      }
+      const citations = results.metadata?.citations;
+      if (Array.isArray(citations) && citations.length > 0) {
+        els.push(
+          <Text key={`${assetId}-pva-citations`} style={styles.line}>
+            {`Citations: ${citations.join('; ')}`}
+          </Text>,
+        );
+      }
+      const snapshot = results.metadata?.calculationTimestamp;
+      if (snapshot) {
+        els.push(
+          <Text key={`${assetId}-pva-snapshot`} style={styles.line}>
+            {`PVA snapshot: ${snapshot}`}
+          </Text>,
+        );
+      }
+    } else {
+      els.push(
+        <Text key={`${assetId}-pv`} style={styles.line}>
+          PV: not computed (run the Pension Valuation Analyzer — §8.6.3)
+        </Text>,
+      );
+    }
   }
   els.push(<Text key={`${assetId}-dl`} style={styles.line}>Decisions captured:</Text>);
   decisionLines(asset.decisions).forEach((l, i) =>
@@ -170,6 +214,9 @@ function disclaimerEls() {
 
 export default function QDROHandoffPacketPDF({ state, generatedAt }) {
   const assets = state?.qdroDecision?.assets ?? {};
+  // §8.6.5: thread same-key PVA results into per-asset builders. Mirrors the
+  // α `reconcileQDROPvSources` accessor (m5Store.js) verbatim.
+  const pvaAssets = state?.pensionValuation?.assets ?? {};
   const at = generatedAt ?? new Date().toISOString();
   const flagOnly = flagOnlyAssets(assets);
 
@@ -181,7 +228,9 @@ export default function QDROHandoffPacketPDF({ state, generatedAt }) {
   ];
   for (const planType of FULL_BRANCH_ORDER) {
     for (const [assetId, asset] of Object.entries(assets)) {
-      if (asset.planType === planType) body.push(...fullBranchEls(assetId, asset));
+      if (asset.planType === planType) {
+        body.push(...fullBranchEls(assetId, asset, pvaAssets[assetId]?.results));
+      }
     }
   }
   if (flagOnly.length > 0) {

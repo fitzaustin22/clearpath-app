@@ -22,6 +22,13 @@ import {
   privateDbMissingPvSource,
   getFlagOnlyBranch,
 } from '@/src/lib/qdro';
+import {
+  getHeadlinePV,
+  getHeadlinePVRange,
+  getMaritalPVRange,
+} from '@/src/lib/pensionValuation';
+import { formatUSD } from '@/src/lib/format/currency';
+import { glossFor } from './pvaGlosses.js';
 
 // ─── LOCKED packet-copy literals (verbatim, M5-Tool-Specs.md) ──────────────
 const ROUTING_HEADER =
@@ -93,8 +100,22 @@ function renderDecisionLines(decisions) {
   return out.length > 0 ? out : ['- (no decisions captured yet)'];
 }
 
-/** §8.7.4 — per-asset section for a full branch (private_db | dc | ira). */
-export function buildFullBranchSection(assetId, asset) {
+/**
+ * §8.7.4 — per-asset section for a full branch (private_db | dc | ira).
+ *
+ * §8.6.5 embed (private_db only): when same-key PVA `results` are usable
+ * (`getHeadlinePV(results) != null`), embed the PVA fixture (full headline +
+ * marital line when coverture, formulaId + gloss, citations, snapshot ISO).
+ * When results are absent/unusable, fall back to the §8.6.3 "PV: not computed"
+ * line. Non-`private_db` assets emit neither (DC/IRA pull values from m2Store
+ * directly per §8.6.1).
+ *
+ * `results` is an optional 3rd arg threaded by the composer (verbatim mirror
+ * of the α reconciler accessor: `state.pensionValuation?.assets[assetId]?.results`).
+ * It defaults to `undefined` so direct callers (tests on dc/ira fixtures)
+ * render identically to pre-β behavior.
+ */
+export function buildFullBranchSection(assetId, asset, results) {
   const lines = [
     `### ${asset.planName ?? 'Unnamed asset'}`,
     '',
@@ -105,8 +126,33 @@ export function buildFullBranchSection(assetId, asset) {
   if (asset._prePopSources && Object.keys(asset._prePopSources).length > 0) {
     lines.push(`- Inventoried in M2: pre-populated asset (${assetId})`);
   }
-  if (asset.planType === 'private_db' && asset.pvSource == null) {
-    lines.push('- PV: not computed (run the Pension Valuation Analyzer — §8.6.3)');
+  if (asset.planType === 'private_db') {
+    if (getHeadlinePV(results) != null) {
+      // §8.6.5 PVA fixture embed.
+      const full = getHeadlinePVRange(results);     // pv.full (FULL/TOTAL) per α helpers
+      const marital = getMaritalPVRange(results);   // marital range; null off-coverture
+      const formulaId = results.formulaId;
+      // LOCKED §8.6.5 headline shape (architect-locked):
+      lines.push(
+        `- PVA computation: ${glossFor(formulaId)} PV ${formatUSD(full.best)} (range ${formatUSD(full.low)}–${formatUSD(full.high)}), formulaId \`${formulaId}\` — see PVA report for methodology.`,
+      );
+      if (marital != null) {
+        // Coverture only — the marital carve-out (a DISTINCT figure from the headline).
+        lines.push(
+          `- PVA marital portion: ${formatUSD(marital.best)} (range ${formatUSD(marital.low)}–${formatUSD(marital.high)})`,
+        );
+      }
+      const citations = results.metadata?.citations;
+      if (Array.isArray(citations) && citations.length > 0) {
+        lines.push(`- Citations: ${citations.join('; ')}`);
+      }
+      const snapshot = results.metadata?.calculationTimestamp;
+      if (snapshot) {
+        lines.push(`- PVA snapshot: ${snapshot}`);
+      }
+    } else {
+      lines.push('- PV: not computed (run the Pension Valuation Analyzer — §8.6.3)');
+    }
   }
   lines.push('', '**Decisions captured**', ...renderDecisionLines(asset.decisions));
   return lines.join('\n');
@@ -150,6 +196,10 @@ export function buildDisclaimerFooter() {
  */
 export function buildMarkdownPacket(state, opts = {}) {
   const assets = state?.qdroDecision?.assets ?? {};
+  // §8.6.5: thread same-key PVA results into per-asset builders. Mirrors the
+  // α `reconcileQDROPvSources` accessor (m5Store.js) verbatim: pvaAssets via
+  // `state.pensionValuation?.assets ?? {}`, results via `pvaAssets[k]?.results`.
+  const pvaAssets = state?.pensionValuation?.assets ?? {};
   const generatedAt = opts.generatedAt ?? new Date().toISOString();
 
   const parts = [
@@ -160,7 +210,7 @@ export function buildMarkdownPacket(state, opts = {}) {
   for (const planType of FULL_BRANCH_ORDER) {
     for (const [assetId, asset] of entries(assets)) {
       if (asset.planType === planType) {
-        parts.push(buildFullBranchSection(assetId, asset));
+        parts.push(buildFullBranchSection(assetId, asset, pvaAssets[assetId]?.results));
       }
     }
   }
