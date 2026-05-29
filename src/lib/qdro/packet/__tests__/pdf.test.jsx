@@ -152,10 +152,10 @@ describe('QDROHandoffPacketPDF — §8.6.5 PVA fixture embed (PR-B2-β)', () => 
       pensionValuation: { assets: { t2: { results: tier2Results } } },
     });
     expect(joined).toMatch(
-      /PVA computation: Tier 2 face PV \$[\d,]+ \(range \$[\d,]+–\$[\d,]+\), formulaId `pva_db_tier2_v1` — see PVA report for methodology\./,
+      /PVA computation: Tier 2 PV \$[\d,]+ \(range \$[\d,]+–\$[\d,]+\), formulaId `pva_db_tier2_v1` — see PVA report for methodology\./,
     );
     expect(joined).toContain('Citations: IRC §417(e)(3); 26 CFR §1.417(e)-1; SOA actuarial standards (commutation methodology)');
-    expect(joined).toMatch(/PVA snapshot: \d{4}-\d{2}-\d{2}T/);
+    expect(joined).toMatch(/PVA computed: \d{4}-\d{2}-\d{2}T/);
     expect(joined).not.toMatch(/PVA marital portion/);
     // No "PV: not computed" fallback when usable.
     expect(joined).not.toMatch(/Tier2 Pension[\s\S]*?PV: not computed/);
@@ -181,7 +181,7 @@ describe('QDROHandoffPacketPDF — §8.6.5 PVA fixture embed (PR-B2-β)', () => 
     expect(joined).toContain('PV: not computed (run the Pension Valuation Analyzer — §8.6.3)');
     expect(joined).not.toMatch(/PVA computation:/);
     expect(joined).not.toMatch(/PVA marital portion/);
-    expect(joined).not.toMatch(/PVA snapshot:/);
+    expect(joined).not.toMatch(/PVA computed:/);
   });
 
   it('emits no PVA embed and no fallback for dc/ira assets even when same-key results are provided', () => {
@@ -202,15 +202,15 @@ describe('QDROHandoffPacketPDF — §8.6.5 PVA fixture embed (PR-B2-β)', () => 
       pensionValuation: { assets: { t2: { results: resultsEmptyCites } } },
     });
     expect(a).not.toMatch(/^Citations:/m);
-    expect(a).toMatch(/PVA computation: Tier 2 face/);
+    expect(a).toMatch(/PVA computation: Tier 2 PV/);
     const resultsNoMeta = { ...tier2Results, metadata: undefined };
     const { joined: b } = tree({
       qdroDecision: { assets: { t2: dbTier2 } },
       pensionValuation: { assets: { t2: { results: resultsNoMeta } } },
     });
     expect(b).not.toMatch(/^Citations:/m);
-    expect(b).not.toMatch(/^PVA snapshot:/m);
-    expect(b).toMatch(/PVA computation: Tier 2 face/);
+    expect(b).not.toMatch(/^PVA computed:/m);
+    expect(b).toMatch(/PVA computation: Tier 2 PV/);
   });
 
   it('threads results from the composer: state with both qdroDecision.assets and pensionValuation.assets embeds in private_db only', () => {
@@ -218,7 +218,7 @@ describe('QDROHandoffPacketPDF — §8.6.5 PVA fixture embed (PR-B2-β)', () => 
       qdroDecision: { assets: { d: dc, t2: dbTier2, t3: dbTier3 } },
       pensionValuation: { assets: { t2: { results: tier2Results }, t3: { results: tier3CovertureResults } } },
     });
-    expect(joined).toMatch(/PVA computation: Tier 2 face/);
+    expect(joined).toMatch(/PVA computation: Tier 2 PV/);
     expect(joined).toMatch(/PVA computation: Tier 3 \(coverture\)/);
     expect(joined).toMatch(/PVA marital portion/);
     // DC section: between its plan name and the next h3, no PVA copy:

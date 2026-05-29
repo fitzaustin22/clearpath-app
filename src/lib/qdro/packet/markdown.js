@@ -148,7 +148,7 @@ export function buildFullBranchSection(assetId, asset, results) {
       }
       const snapshot = results.metadata?.calculationTimestamp;
       if (snapshot) {
-        lines.push(`- PVA snapshot: ${snapshot}`);
+        lines.push(`- PVA computed: ${snapshot}`);
       }
     } else {
       lines.push('- PV: not computed (run the Pension Valuation Analyzer — §8.6.3)');

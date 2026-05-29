@@ -6,8 +6,8 @@
  * `formulaId` values written by `src/lib/pensionValuation/` for the QDRO-
  * relevant `private_db` paths:
  *
- *   pva_db_tier1_v1                — Tier 1 face         (tier1And2.js)
- *   pva_db_tier2_v1                — Tier 2 face         (tier1And2.js)
+ *   pva_db_tier1_v1                — Tier 1              (tier1And2.js)
+ *   pva_db_tier2_v1                — Tier 2              (tier1And2.js)
  *   pva_db_tier3_coverture_v1      — Tier 3 (coverture)  (tier3Coverture.js)
  *   pva_db_inpaystatus_v1          — In-pay status       (inPayStatus.js)
  *   pva_cashbalance_passthrough_v1 — Cash balance        (cashBalancePassthrough.js)
@@ -18,8 +18,8 @@
 
 // §8.6.5 attorney-readable formulaId gloss — architect-locked.
 export const PVA_FORMULA_GLOSS = {
-  pva_db_tier1_v1: 'Tier 1 face',
-  pva_db_tier2_v1: 'Tier 2 face',
+  pva_db_tier1_v1: 'Tier 1',
+  pva_db_tier2_v1: 'Tier 2',
   pva_db_tier3_coverture_v1: 'Tier 3 (coverture)',
   pva_db_inpaystatus_v1: 'In-pay status',
   pva_cashbalance_passthrough_v1: 'Cash balance',

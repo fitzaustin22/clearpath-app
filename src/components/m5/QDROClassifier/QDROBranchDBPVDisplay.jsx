@@ -172,7 +172,7 @@ export default function QDROBranchDBPVDisplay({ assetId, perspective }) {
           style={regionStyle}
         >
           <div style={headlineStyle}>
-            Total present value: {formatUSD(headlineRange.best)}{' '}
+            Full present value: {formatUSD(headlineRange.best)}{' '}
             <span style={rangeMutedStyle}>{rangeText(headlineRange)}</span>
           </div>
           {perspective === 'alternatePayee' ? (

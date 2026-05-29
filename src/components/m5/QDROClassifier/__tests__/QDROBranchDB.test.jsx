@@ -107,12 +107,12 @@ describe('QDROBranchDB — Type-A perspective flip (§8.5.3 / §8.2)', () => {
     ).toBeInTheDocument();
   });
 
-  it('Q2 qpsa: alternate-payee wording is about "insisting" on QPSA designation', () => {
+  it('Q2 qpsa: alternate-payee wording is about "requiring" QPSA designation', () => {
     seedAsset('a1', asset({ userRole: 'alternatePayee' }));
     render(<QDROBranchDB assetId="a1" userRole="alternatePayee" />);
     const q2 = within(screen.getByTestId('qdro-db-q2'));
     expect(
-      q2.getByText(/Are you insisting on QPSA designation/),
+      q2.getByText(/Are you requiring QPSA designation/),
     ).toBeInTheDocument();
   });
 
@@ -125,12 +125,12 @@ describe('QDROBranchDB — Type-A perspective flip (§8.5.3 / §8.2)', () => {
     ).toBeInTheDocument();
   });
 
-  it('Q3 qjsa: alternate-payee wording is about "insisting" on QJSA designation', () => {
+  it('Q3 qjsa: alternate-payee wording is about "requiring" QJSA designation', () => {
     seedAsset('a1', asset({ userRole: 'alternatePayee' }));
     render(<QDROBranchDB assetId="a1" userRole="alternatePayee" />);
     const q3 = within(screen.getByTestId('qdro-db-q3'));
     expect(
-      q3.getByText(/Are you insisting on QJSA designation/),
+      q3.getByText(/Are you requiring QJSA designation/),
     ).toBeInTheDocument();
   });
 
