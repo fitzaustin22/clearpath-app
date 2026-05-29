@@ -58,13 +58,13 @@ const Q_WORDING = {
     participant:
       'Will you elect to designate the alternate payee as QPSA (Qualified Pre-Retirement Survivor Annuity) beneficiary, so they receive benefits if you die before retirement?',
     alternatePayee:
-      'Are you insisting on QPSA designation in the negotiated order, so you receive benefits if your former spouse dies before retirement?',
+      'Are you requiring QPSA designation in the negotiated order, so you receive benefits if your former spouse dies before retirement?',
   },
   qjsa: {
     participant:
       'Will the alternate payee receive QJSA (Qualified Joint and Survivor Annuity) benefits if you die after retirement begins?',
     alternatePayee:
-      'Are you insisting on QJSA designation, so you receive survivor benefits if your former spouse dies after retirement begins?',
+      'Are you requiring QJSA designation, so you receive survivor benefits if your former spouse dies after retirement begins?',
   },
   // Type-B — single wording regardless of perspective.
   cola: 'Will the alternate payee share in cost-of-living adjustments to the benefit?',
@@ -76,13 +76,13 @@ const Q_WORDING = {
 // question (does NOT flip on perspective). Architect-authored, locked.
 const WHY_THIS_MATTERS = {
   interestStructure:
-    "Separate-interest and shared-interest QDROs divide a pension in fundamentally different ways. A separate interest carves the alternate payee's share into its own benefit measured on the alternate payee's life, so it isn't tied to when the participant retires or dies. A shared interest splits each payment as the participant receives it, so those payments typically stop at the participant's death unless survivor protection is added separately. This choice shapes how long payments last and which survivor protections are even available.",
+    "Separate-interest and shared-interest QDROs divide a pension in fundamentally different ways. A separate interest carves the alternate payee's share into its own benefit measured on the alternate payee's life — so once payments begin, they continue for the alternate payee's lifetime regardless of when the participant retires or dies. (In most plans, the alternate payee still can't begin payments until the participant reaches the plan's earliest retirement age, even if the participant hasn't actually retired.) A shared interest splits each payment as the participant receives it, so those payments typically stop at the participant's death unless survivor protection is added separately. This choice shapes how long payments last and which survivor protections are even available.",
   qpsa:
-    'A QPSA (Qualified Pre-Retirement Survivor Annuity) covers what happens if the participant dies before retirement payments begin. Without a QPSA designation in the order, a death during that window can leave the alternate payee with nothing, even when the divorce awarded them a share. Naming the alternate payee as QPSA beneficiary protects that share in the gap between divorce and retirement.',
+    'A QPSA (Qualified Pre-Retirement Survivor Annuity) covers what happens if the participant dies before retirement payments begin. Without a QPSA designation in the order, a death during the pre-retirement window can leave the alternate payee with nothing, even when the divorce awarded them a share. Naming the alternate payee as QPSA beneficiary protects that share in the gap between divorce and retirement.',
   qjsa:
-    "A QJSA (Qualified Joint and Survivor Annuity) covers what happens if the participant dies after retirement payments have already started. Because a shared-interest payment stream is tied to the participant's life, it can end at the participant's death unless survivor protection is in place. Settling QJSA in the order determines whether the alternate payee's payments continue.",
+    "A QJSA (Qualified Joint and Survivor Annuity) covers what happens to payments if the participant dies after retirement has begun. Whether the alternate payee's stream continues past that point depends on the QDRO structure and on the survivor election made at retirement. In a shared-interest QDRO, payments are tied to the participant's life and generally end at the participant's death unless QJSA-style survivor protection is built into the order. In a separate-interest QDRO, the alternate payee's share is already measured on the alternate payee's life, so it generally continues — but survivor protection on any portion the participant retains is still worth settling in the order. Settling these survivor questions up front avoids a contested record later.",
   cola:
-    "Many pensions raise payments over time through cost-of-living adjustments (COLAs). Whether the alternate payee's share rises with those adjustments — or stays fixed at the original amount — can change its real value substantially over a long retirement. Some plans provide no COLA at all, in which case there is nothing to divide on this point.",
+    "Many pensions raise payments over time through cost-of-living adjustments (COLAs). Whether the alternate payee's share rises with those adjustments — or stays fixed at the original amount — can change its real value substantially over a long retirement. Many private-sector defined benefit plans provide no COLA at all, in which case there is nothing to divide on this point.",
   earlyRetirementSubsidy:
     'Some pensions add a subsidy when a participant retires early, making the early benefit worth more than a standard actuarial reduction would suggest. Whether the alternate payee shares proportionally in that subsidy — if the participant later retires early — affects the value of their share. Not every plan offers this subsidy, so the term may not apply.',
 };

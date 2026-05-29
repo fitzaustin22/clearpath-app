@@ -260,12 +260,12 @@ describe('buildFullBranchSection — §8.6.5 PVA fixture embed (PR-B2-β)', () =
     const md = buildFullBranchSection('a', dbTier2Asset, tier2Results);
     // LOCKED §8.6.5 headline shape:
     expect(md).toMatch(
-      /- PVA computation: Tier 2 face PV \$[\d,]+ \(range \$[\d,]+–\$[\d,]+\), formulaId `pva_db_tier2_v1` — see PVA report for methodology\./,
+      /- PVA computation: Tier 2 PV \$[\d,]+ \(range \$[\d,]+–\$[\d,]+\), formulaId `pva_db_tier2_v1` — see PVA report for methodology\./,
     );
     // Real PVA citations from CITATIONS_BY_PATH.tier_2 (verbatim):
     expect(md).toContain('- Citations: IRC §417(e)(3); 26 CFR §1.417(e)-1; SOA actuarial standards (commutation methodology)');
     // ISO snapshot present (any ISO string with T):
-    expect(md).toMatch(/- PVA snapshot: \d{4}-\d{2}-\d{2}T/);
+    expect(md).toMatch(/- PVA computed: \d{4}-\d{2}-\d{2}T/);
     // No marital line for non-coverture results.
     expect(md).not.toMatch(/PVA marital portion/);
     // The §8.6.3 fallback must NOT also fire (no double-emit).
@@ -296,7 +296,7 @@ describe('buildFullBranchSection — §8.6.5 PVA fixture embed (PR-B2-β)', () =
     expect(md).toContain('- PV: not computed (run the Pension Valuation Analyzer — §8.6.3)');
     expect(md).not.toMatch(/PVA computation:/);
     expect(md).not.toMatch(/PVA marital portion/);
-    expect(md).not.toMatch(/PVA snapshot:/);
+    expect(md).not.toMatch(/PVA computed:/);
   });
 
   it('emits no PVA embed and no fallback for dc/ira assets even when results are passed', () => {
@@ -317,13 +317,13 @@ describe('buildFullBranchSection — §8.6.5 PVA fixture embed (PR-B2-β)', () =
     };
     const mdEmpty = buildFullBranchSection('a', dbTier2Asset, resultsEmptyCites);
     expect(mdEmpty).not.toMatch(/- Citations:/);
-    expect(mdEmpty).toMatch(/PVA computation: Tier 2 face/);
+    expect(mdEmpty).toMatch(/PVA computation: Tier 2 PV/);
     // Absent metadata:
     const resultsNoMeta = { ...tier2Results, metadata: undefined };
     const mdNoMeta = buildFullBranchSection('a', dbTier2Asset, resultsNoMeta);
     expect(mdNoMeta).not.toMatch(/- Citations:/);
-    expect(mdNoMeta).not.toMatch(/- PVA snapshot:/);
-    expect(mdNoMeta).toMatch(/PVA computation: Tier 2 face/);
+    expect(mdNoMeta).not.toMatch(/- PVA computed:/);
+    expect(mdNoMeta).toMatch(/PVA computation: Tier 2 PV/);
   });
 
   it('threads results from the composer: state with both qdroDecision.assets and pensionValuation.assets embeds in private_db only', () => {
@@ -335,7 +335,7 @@ describe('buildFullBranchSection — §8.6.5 PVA fixture embed (PR-B2-β)', () =
       { generatedAt: GEN_AT },
     );
     // Both private_db sections render the embed:
-    expect(md).toMatch(/Tier2 Pension[\s\S]*PVA computation: Tier 2 face/);
+    expect(md).toMatch(/Tier2 Pension[\s\S]*PVA computation: Tier 2 PV/);
     expect(md).toMatch(/Tier3 Pension[\s\S]*PVA computation: Tier 3 \(coverture\)/);
     // Marital line appears for the coverture asset:
     expect(md).toMatch(/Tier3 Pension[\s\S]*PVA marital portion:/);

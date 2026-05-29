@@ -177,7 +177,7 @@ export default function ResultsPanel({ results, flags }) {
               />
               <BigNumber
                 value={headlinePV}
-                label="Total present value"
+                label="Full present value"
                 testId="pva-bignumber-total"
               />
             </>

@@ -151,7 +151,7 @@ function fullBranchEls(assetId, asset, results) {
       if (snapshot) {
         els.push(
           <Text key={`${assetId}-pva-snapshot`} style={styles.line}>
-            {`PVA snapshot: ${snapshot}`}
+            {`PVA computed: ${snapshot}`}
           </Text>,
         );
       }
