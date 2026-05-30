@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';
-import useBlueprintStore, { deriveSourceModule } from '../blueprintStore.js';
+import useBlueprintStore, { deriveSourceModule, deriveNegotiationStatus } from '../blueprintStore.js';
 
 const PIT_FIXTURE = {
   planBalance: 200000,
@@ -601,5 +601,134 @@ describe('blueprintStore §10.8 updateQDRODivision (PR-A)', () => {
     const qdroBpBefore = useBlueprintStore.getState().qdroBlueprint;
     useBlueprintStore.getState().updateQDRODivision(QDRO_DIV_DATA);
     expect(useBlueprintStore.getState().qdroBlueprint).toEqual(qdroBpBefore);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// §10 Negotiation Strategy (M6 multi-source) — Phase 0b
+// ---------------------------------------------------------------------------
+
+const PRIORITIES_FIXTURE = [{ item: 'Keep the house', importance: 'high', rank: 1 }];
+const TRADEOFFS_FIXTURE = [{ give: 'Vacation home', get: 'Primary residence' }];
+
+describe('blueprintStore §10 Negotiation Strategy (M6 multi-source)', () => {
+  it('TC-BPSt-NEG-1: initial + post-reset s10.data is { priorities: null, tradeOffs: null } (covers BOTH literals)', () => {
+    // (i) live post-reset value (module beforeEach already reset).
+    const s10 = useBlueprintStore.getState().sections.s10;
+    expect(s10.data).toEqual({ priorities: null, tradeOffs: null });
+    expect(s10.status).toBe('empty');
+    expect(s10.sourceModule).toBe('m6');
+    expect(s10.label).toBe('Negotiation Strategy');
+
+    // (ii) initial-state literal specifically — guards the initial copy, which
+    // the module beforeEach (resetBlueprint) would otherwise mask. zustand v5
+    // exposes getInitialState(); it returns the initializer literal frozen at
+    // store-creation time, independent of resetBlueprint/rehydrate. A missed
+    // edit on the initial literal would surface here as data === null.
+    expect(typeof useBlueprintStore.getInitialState).toBe('function');
+    expect(useBlueprintStore.getInitialState().sections.s10.data).toEqual({
+      priorities: null,
+      tradeOffs: null,
+    });
+  });
+
+  it('TC-BPSt-NEG-2: updateNegotiationStrategy("priorities", ...) writes only priorities; tradeOffs stays null; status partial; sourceModule m6; returns { status }', () => {
+    const ret = useBlueprintStore.getState().updateNegotiationStrategy('priorities', PRIORITIES_FIXTURE);
+
+    const s10 = useBlueprintStore.getState().sections.s10;
+    expect(s10.data.priorities).toEqual(PRIORITIES_FIXTURE);
+    expect(s10.data.tradeOffs).toBeNull();
+    expect(s10.status).toBe('partial');
+    expect(s10.sourceModule).toBe('m6');
+    expect(ret).toEqual({ status: 'partial' });
+  });
+
+  it('TC-BPSt-NEG-3: updateNegotiationStrategy("tradeOffs", ...) writes only tradeOffs; priorities stays null; status partial; returns { status }', () => {
+    const ret = useBlueprintStore.getState().updateNegotiationStrategy('tradeOffs', TRADEOFFS_FIXTURE);
+
+    const s10 = useBlueprintStore.getState().sections.s10;
+    expect(s10.data.tradeOffs).toEqual(TRADEOFFS_FIXTURE);
+    expect(s10.data.priorities).toBeNull();
+    expect(s10.status).toBe('partial');
+    expect(s10.sourceModule).toBe('m6');
+    expect(ret).toEqual({ status: 'partial' });
+  });
+
+  it('TC-BPSt-NEG-4: both writers → complete; order-independent (no clobber)', () => {
+    useBlueprintStore.getState().updateNegotiationStrategy('priorities', PRIORITIES_FIXTURE);
+    const ret = useBlueprintStore.getState().updateNegotiationStrategy('tradeOffs', TRADEOFFS_FIXTURE);
+
+    let s10 = useBlueprintStore.getState().sections.s10;
+    expect(s10.data.priorities).toEqual(PRIORITIES_FIXTURE);
+    expect(s10.data.tradeOffs).toEqual(TRADEOFFS_FIXTURE);
+    expect(s10.status).toBe('complete');
+    expect(ret).toEqual({ status: 'complete' });
+
+    // Reverse write order — identical outcome (order-independent, no clobber).
+    useBlueprintStore.getState().resetBlueprint();
+    useBlueprintStore.getState().updateNegotiationStrategy('tradeOffs', TRADEOFFS_FIXTURE);
+    const ret2 = useBlueprintStore.getState().updateNegotiationStrategy('priorities', PRIORITIES_FIXTURE);
+
+    s10 = useBlueprintStore.getState().sections.s10;
+    expect(s10.data.priorities).toEqual(PRIORITIES_FIXTURE);
+    expect(s10.data.tradeOffs).toEqual(TRADEOFFS_FIXTURE);
+    expect(s10.status).toBe('complete');
+    expect(ret2).toEqual({ status: 'complete' });
+  });
+
+  it('TC-BPSt-NEG-5: deriveNegotiationStatus — five contract values incl. []-reads-as-empty', () => {
+    expect(deriveNegotiationStatus({ priorities: null, tradeOffs: null })).toBe('empty');
+    expect(deriveNegotiationStatus({ priorities: [], tradeOffs: [] })).toBe('empty');
+    expect(deriveNegotiationStatus({ priorities: PRIORITIES_FIXTURE, tradeOffs: null })).toBe('partial');
+    expect(deriveNegotiationStatus({ priorities: null, tradeOffs: TRADEOFFS_FIXTURE })).toBe('partial');
+    expect(deriveNegotiationStatus({ priorities: PRIORITIES_FIXTURE, tradeOffs: TRADEOFFS_FIXTURE })).toBe('complete');
+  });
+
+  it('TC-BPSt-NEG-6: localStorage round-trip preserves both slots + status', () => {
+    useBlueprintStore.getState().updateNegotiationStrategy('priorities', PRIORITIES_FIXTURE);
+    useBlueprintStore.getState().updateNegotiationStrategy('tradeOffs', TRADEOFFS_FIXTURE);
+
+    // Force re-hydration from localStorage.
+    useBlueprintStore.persist.rehydrate();
+
+    const s10 = useBlueprintStore.getState().sections.s10;
+    expect(s10.data.priorities).toEqual(PRIORITIES_FIXTURE);
+    expect(s10.data.tradeOffs).toEqual(TRADEOFFS_FIXTURE);
+    expect(s10.status).toBe('complete');
+  });
+
+  it('TC-BPSt-NEG-7: resetBlueprint restores s10.data to { priorities: null, tradeOffs: null } + status empty (dual-copy guard)', () => {
+    useBlueprintStore.getState().updateNegotiationStrategy('priorities', PRIORITIES_FIXTURE);
+    useBlueprintStore.getState().updateNegotiationStrategy('tradeOffs', TRADEOFFS_FIXTURE);
+    expect(useBlueprintStore.getState().sections.s10.status).toBe('complete');
+
+    useBlueprintStore.getState().resetBlueprint();
+
+    const s10 = useBlueprintStore.getState().sections.s10;
+    expect(s10.data).toEqual({ priorities: null, tradeOffs: null });
+    expect(s10.status).toBe('empty');
+  });
+
+  it('TC-BPSt-NEG-8: invalid slot is a no-op — s10.data unchanged, no stray key, no throw (slot-pollution guard)', () => {
+    useBlueprintStore.getState().updateNegotiationStrategy('priorities', PRIORITIES_FIXTURE);
+    useBlueprintStore.getState().updateNegotiationStrategy('tradeOffs', TRADEOFFS_FIXTURE);
+    const before = useBlueprintStore.getState().sections.s10.data;
+
+    expect(() =>
+      useBlueprintStore.getState().updateNegotiationStrategy('bogus', [{ x: 1 }]),
+    ).not.toThrow();
+
+    const after = useBlueprintStore.getState().sections.s10.data;
+    // Exact deep-equality → no extra 'bogus' key; prior { priorities, tradeOffs } intact.
+    expect(after).toEqual({ priorities: PRIORITIES_FIXTURE, tradeOffs: TRADEOFFS_FIXTURE });
+    expect(after).toEqual(before);
+    expect(Object.keys(after).sort()).toEqual(['priorities', 'tradeOffs']);
+  });
+
+  it('TC-BPSt-NEG-9: sibling isolation — s11.data null, s6.data { pit, pva, qdro } all null after updateNegotiationStrategy', () => {
+    useBlueprintStore.getState().updateNegotiationStrategy('priorities', PRIORITIES_FIXTURE);
+
+    expect(useBlueprintStore.getState().sections.s11.data).toBeNull();
+    expect(useBlueprintStore.getState().sections.s6.data).toEqual({ pit: null, pva: null, qdro: null });
   });
 });

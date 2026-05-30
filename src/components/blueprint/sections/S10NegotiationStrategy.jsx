@@ -26,6 +26,8 @@ export default function S10NegotiationStrategy({ data, status }) {
     : [];
   const tradeOffs = Array.isArray(data.tradeOffs) ? data.tradeOffs : [];
 
+  if (priorities.length === 0 && tradeOffs.length === 0) return null;
+
   return (
     <div>
       {priorities.length > 0 && (

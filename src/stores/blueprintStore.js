@@ -27,6 +27,26 @@ export function deriveSourceModule(data) {
   return null;
 }
 
+/**
+ * Derive §10 Negotiation Strategy status from the two M6 feeder slots, mirroring
+ * rollupStatus's empty/partial/complete semantics. A slot counts as populated
+ * only when it is a non-empty array — so `[]`, `null`, and `undefined` all read
+ * as empty (a tool may write `[]` to clear a slot).
+ *   both slots empty      → 'empty'
+ *   both slots populated  → 'complete'
+ *   exactly one populated → 'partial'
+ *
+ * Input is `s10.data` = { priorities, tradeOffs }.
+ */
+export function deriveNegotiationStatus(data) {
+  const states = [data?.priorities, data?.tradeOffs].map((slot) =>
+    Array.isArray(slot) && slot.length > 0 ? 'complete' : 'empty',
+  );
+  if (states.every((s) => s === 'empty')) return 'empty';
+  if (states.every((s) => s === 'complete')) return 'complete';
+  return 'partial';
+}
+
 const useBlueprintStore = create(
   persist(
     (set, get) => ({
@@ -49,7 +69,7 @@ const useBlueprintStore = create(
         s7: { status: 'empty', label: 'Expense Analysis', sourceModule: 'm3', data: null },
         s8: { status: 'empty', label: 'Support Analysis', sourceModule: 'm5', data: null },
         s9: { status: 'empty', label: 'Home Decision', sourceModule: 'm5', data: null },
-        s10: { status: 'empty', label: 'Negotiation Strategy', sourceModule: 'm6', data: null },
+        s10: { status: 'empty', label: 'Negotiation Strategy', sourceModule: 'm6', data: { priorities: null, tradeOffs: null } },
         s11: { status: 'empty', label: 'Settlement Evaluation', sourceModule: 'm6', data: null },
         s12: { status: 'empty', label: 'Action Plan & Timeline', sourceModule: 'm7', data: null },
       },
@@ -375,6 +395,36 @@ const useBlueprintStore = create(
         return { status };
       },
 
+      // §10 — Negotiation Strategy (M6 multi-source, Phase 0b). Two feeder
+      // tools write independent slots into s10.data: Priorities Worksheet →
+      // data.priorities, Trade-Off Analyzer → data.tradeOffs. Merge-don't-
+      // clobber (mirrors updateRetirementDivision): each call updates one slot
+      // and preserves the other. sourceModule is the static 'm6' (preserved via
+      // the ...state.sections.s10 spread) — deriveSourceModule is NOT used here
+      // (that derivation is §6-only). status is the tri-state rollup over both
+      // slots (deriveNegotiationStatus). An invalid slot is a safe no-op: state
+      // is left completely unchanged (no stray key written into s10.data), no
+      // throw. Returns { status }, mirroring updateQDRODivision/updateHomeDecision.
+      updateNegotiationStrategy: (slot, payload) => {
+        if (slot !== 'priorities' && slot !== 'tradeOffs') {
+          return { status: get().sections.s10.status };
+        }
+        const nextData = { ...get().sections.s10.data, [slot]: payload };
+        const status = deriveNegotiationStatus(nextData);
+        set(state => ({
+          sections: {
+            ...state.sections,
+            s10: {
+              ...state.sections.s10,
+              status,
+              data: nextData,
+            },
+          },
+          lastUpdated: new Date().toISOString(),
+        }));
+        return { status };
+      },
+
       // §7 — called by M3 Budget Modeler on completion
       // categories shape: Array<{ name: string, current: number, projected: number, change: number }>
       updateExpenseAnalysis: (budgetData) => set(state => ({
@@ -457,7 +507,7 @@ const useBlueprintStore = create(
           s7: { status: 'empty', label: 'Expense Analysis', sourceModule: 'm3', data: null },
           s8: { status: 'empty', label: 'Support Analysis', sourceModule: 'm5', data: null },
           s9: { status: 'empty', label: 'Home Decision', sourceModule: 'm5', data: null },
-          s10: { status: 'empty', label: 'Negotiation Strategy', sourceModule: 'm6', data: null },
+          s10: { status: 'empty', label: 'Negotiation Strategy', sourceModule: 'm6', data: { priorities: null, tradeOffs: null } },
           s11: { status: 'empty', label: 'Settlement Evaluation', sourceModule: 'm6', data: null },
           s12: { status: 'empty', label: 'Action Plan & Timeline', sourceModule: 'm7', data: null },
         },
