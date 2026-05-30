@@ -13,11 +13,12 @@
 import { describe, it, expect } from 'vitest';
 import { useM6Store } from '../m6Store.js';
 
-describe('m6Store — Phase 0a empty initial state', () => {
-  it('exposes an empty state object (no tool slices yet)', () => {
+describe('m6Store — initial tool slices', () => {
+  it('initializes the priorities slice (Phase 1); other tool slices not yet added', () => {
     const state = useM6Store.getState();
-    // Whatever zustand attaches internally aside, no app slices should exist.
-    expect(state.priorities).toBeUndefined();
+    // Phase 1 adds the additive `priorities` slice to the foundation scaffold.
+    expect(state.priorities).toEqual({ items: [] });
+    // The remaining M6 tools accrue in later phases.
     expect(state.tradeOff).toBeUndefined();
     expect(state.offerOrganizer).toBeUndefined();
     expect(state.deferredComp).toBeUndefined();

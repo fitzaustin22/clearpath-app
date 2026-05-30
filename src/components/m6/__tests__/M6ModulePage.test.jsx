@@ -1,10 +1,10 @@
 /**
- * M6ModulePage — Phase 0a foundation landing tests.
+ * M6ModulePage — landing tests (Phase 0a foundation + Phase 1 Priorities).
  *
- * M6 is Full Access only (`hasAccess(userTier, 'navigator')`). At Phase 0a all
- * four tools are `available: false`, so the Full-state surface is "Coming
- * soon" pills, NOT live Open links. Tier-lock dominates: a non-Full user sees
- * the Locked treatment regardless of `available`.
+ * M6 is Full Access only (`hasAccess(userTier, 'navigator')`). Phase 1 flips the
+ * Priorities card to `available: true`, so the Full-state surface is one live
+ * Open link (Priorities) plus three "Coming soon" pills. Tier-lock still
+ * dominates: a non-Full user sees the Locked treatment regardless of `available`.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -46,16 +46,32 @@ describe('M6ModulePage — header + nav', () => {
   );
 });
 
-describe('M6ModulePage — Full state (all four tools "Coming soon")', () => {
+describe('M6ModulePage — Full state (Priorities live, three tools "Coming soon")', () => {
+  // Phase 1 flips the Priorities card to available: true. In the Full state it
+  // is now a live Open link; the other three remain Coming soon pills.
   it.each(['navigator', 'signature'])(
-    '%s tier renders four cards, each with a Coming soon pill, no Open link, no Unlock CTA',
+    '%s tier renders the Priorities card as a live Open link → /modules/m6/priorities',
     (tier) => {
       render(<M6ModulePage userTier={tier} />);
 
       const cards = screen.getAllByTestId('m6-tool-card');
       expect(cards).toHaveLength(4);
 
-      for (const card of cards) {
+      const prioritiesCard = cards[0];
+      const open = within(prioritiesCard).getByRole('link', { name: /Open/i });
+      expect(open).toHaveAttribute('href', '/modules/m6/priorities');
+      expect(within(prioritiesCard).queryByTestId('m6-tool-card-coming-soon')).toBeNull();
+      expect(within(prioritiesCard).queryByTestId('m6-tool-card-lock')).toBeNull();
+    },
+  );
+
+  it.each(['navigator', 'signature'])(
+    '%s tier renders the other three tools as Coming soon pills, no Open link, no Unlock CTA',
+    (tier) => {
+      render(<M6ModulePage userTier={tier} />);
+
+      const cards = screen.getAllByTestId('m6-tool-card');
+      for (const card of cards.slice(1)) {
         expect(
           within(card).getByTestId('m6-tool-card-coming-soon'),
         ).toBeInTheDocument();
@@ -67,7 +83,7 @@ describe('M6ModulePage — Full state (all four tools "Coming soon")', () => {
     },
   );
 
-  it('renders all four tool titles in the canonical Phase 0a order', () => {
+  it('renders all four tool titles in the canonical order', () => {
     render(<M6ModulePage userTier="navigator" />);
     const titles = screen
       .getAllByRole('heading', { level: 2 })
@@ -75,19 +91,19 @@ describe('M6ModulePage — Full state (all four tools "Coming soon")', () => {
     expect(titles).toEqual(TOOL_TITLES);
   });
 
-  it('Coming soon cards expose no link to the unbuilt tool routes', () => {
+  it('links the built Priorities route but not the three unbuilt tool routes', () => {
     render(<M6ModulePage userTier="navigator" />);
-    const allLinks = screen.getAllByRole('link');
-    for (const route of TOOL_ROUTES) {
-      const dead = allLinks.find((a) => a.getAttribute('href') === route);
-      expect(dead).toBeUndefined();
+    const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'));
+    expect(hrefs).toContain('/modules/m6/priorities');
+    for (const route of TOOL_ROUTES.slice(1)) {
+      expect(hrefs).not.toContain(route);
     }
   });
 
-  it('Coming soon pill conveys status to assistive tech (not color alone)', () => {
+  it('Coming soon pills convey status to assistive tech (not color alone)', () => {
     render(<M6ModulePage userTier="navigator" />);
     const pills = screen.getAllByTestId('m6-tool-card-coming-soon');
-    expect(pills).toHaveLength(4);
+    expect(pills).toHaveLength(3);
     for (const pill of pills) {
       // aria-label combines title + status so screen readers announce it.
       expect(pill.getAttribute('aria-label')).toMatch(/coming soon/i);

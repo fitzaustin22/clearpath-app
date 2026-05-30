@@ -13,7 +13,7 @@ const TOOLS = [
     title: 'Priorities Worksheet',
     line: 'Name what matters most, in your own words, so every trade-off lands on a deliberate yardstick.',
     route: '/modules/m6/priorities',
-    available: false,
+    available: true,
   },
   {
     id: 'trade-off',
