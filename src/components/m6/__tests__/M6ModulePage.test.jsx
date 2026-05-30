@@ -1,10 +1,13 @@
 /**
- * M6ModulePage — landing tests (Phase 0a foundation + Phase 1 Priorities).
+ * M6ModulePage — landing tests (Phase 0a foundation + Phase 1 Priorities +
+ * Phase 2 Trade-Off Analyzer).
  *
- * M6 is Full Access only (`hasAccess(userTier, 'navigator')`). Phase 1 flips the
- * Priorities card to `available: true`, so the Full-state surface is one live
- * Open link (Priorities) plus three "Coming soon" pills. Tier-lock still
- * dominates: a non-Full user sees the Locked treatment regardless of `available`.
+ * M6 is Full Access only (`hasAccess(userTier, 'navigator')`). Phase 1 flipped
+ * the Priorities card to `available: true`; Phase 2 flips the Trade-Off Analyzer
+ * card too. The Full-state surface is now TWO live Open links (Priorities +
+ * Trade-Off) plus TWO "Coming soon" pills (Offer Organizer + Deferred Comp).
+ * Tier-lock still dominates: a non-Full user sees the Locked treatment
+ * regardless of `available`.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -46,11 +49,11 @@ describe('M6ModulePage — header + nav', () => {
   );
 });
 
-describe('M6ModulePage — Full state (Priorities live, three tools "Coming soon")', () => {
-  // Phase 1 flips the Priorities card to available: true. In the Full state it
-  // is now a live Open link; the other three remain Coming soon pills.
+describe('M6ModulePage — Full state (Priorities + Trade-Off live, two tools "Coming soon")', () => {
+  // Phase 1 flipped Priorities to available: true; Phase 2 flips Trade-Off too.
+  // Both are live Open links; the other two remain Coming soon pills.
   it.each(['navigator', 'signature'])(
-    '%s tier renders the Priorities card as a live Open link → /modules/m6/priorities',
+    '%s tier renders Priorities and Trade-Off as live Open links to their routes',
     (tier) => {
       render(<M6ModulePage userTier={tier} />);
 
@@ -58,20 +61,26 @@ describe('M6ModulePage — Full state (Priorities live, three tools "Coming soon
       expect(cards).toHaveLength(4);
 
       const prioritiesCard = cards[0];
-      const open = within(prioritiesCard).getByRole('link', { name: /Open/i });
-      expect(open).toHaveAttribute('href', '/modules/m6/priorities');
+      const prioritiesOpen = within(prioritiesCard).getByRole('link', { name: /Open/i });
+      expect(prioritiesOpen).toHaveAttribute('href', '/modules/m6/priorities');
       expect(within(prioritiesCard).queryByTestId('m6-tool-card-coming-soon')).toBeNull();
       expect(within(prioritiesCard).queryByTestId('m6-tool-card-lock')).toBeNull();
+
+      const tradeOffCard = cards[1];
+      const tradeOffOpen = within(tradeOffCard).getByRole('link', { name: /Open/i });
+      expect(tradeOffOpen).toHaveAttribute('href', '/modules/m6/trade-off');
+      expect(within(tradeOffCard).queryByTestId('m6-tool-card-coming-soon')).toBeNull();
+      expect(within(tradeOffCard).queryByTestId('m6-tool-card-lock')).toBeNull();
     },
   );
 
   it.each(['navigator', 'signature'])(
-    '%s tier renders the other three tools as Coming soon pills, no Open link, no Unlock CTA',
+    '%s tier renders the other two tools as Coming soon pills, no Open link, no Unlock CTA',
     (tier) => {
       render(<M6ModulePage userTier={tier} />);
 
       const cards = screen.getAllByTestId('m6-tool-card');
-      for (const card of cards.slice(1)) {
+      for (const card of cards.slice(2)) {
         expect(
           within(card).getByTestId('m6-tool-card-coming-soon'),
         ).toBeInTheDocument();
@@ -91,11 +100,12 @@ describe('M6ModulePage — Full state (Priorities live, three tools "Coming soon
     expect(titles).toEqual(TOOL_TITLES);
   });
 
-  it('links the built Priorities route but not the three unbuilt tool routes', () => {
+  it('links the two built routes (Priorities + Trade-Off) but not the two unbuilt tool routes', () => {
     render(<M6ModulePage userTier="navigator" />);
     const hrefs = screen.getAllByRole('link').map((a) => a.getAttribute('href'));
     expect(hrefs).toContain('/modules/m6/priorities');
-    for (const route of TOOL_ROUTES.slice(1)) {
+    expect(hrefs).toContain('/modules/m6/trade-off');
+    for (const route of TOOL_ROUTES.slice(2)) {
       expect(hrefs).not.toContain(route);
     }
   });
@@ -103,7 +113,7 @@ describe('M6ModulePage — Full state (Priorities live, three tools "Coming soon
   it('Coming soon pills convey status to assistive tech (not color alone)', () => {
     render(<M6ModulePage userTier="navigator" />);
     const pills = screen.getAllByTestId('m6-tool-card-coming-soon');
-    expect(pills).toHaveLength(3);
+    expect(pills).toHaveLength(2);
     for (const pill of pills) {
       // aria-label combines title + status so screen readers announce it.
       expect(pill.getAttribute('aria-label')).toMatch(/coming soon/i);

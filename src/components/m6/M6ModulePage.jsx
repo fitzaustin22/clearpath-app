@@ -18,9 +18,9 @@ const TOOLS = [
   {
     id: 'trade-off',
     title: 'Trade-Off Analyzer',
-    line: 'Stack two proposals side by side and see where each one costs you something the other does not.',
+    line: "Pair what you most want to keep with what you'd offer to secure it, so every concession is one you chose.",
     route: '/modules/m6/trade-off',
-    available: false,
+    available: true,
   },
   {
     id: 'offer-organizer',
