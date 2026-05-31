@@ -53,7 +53,7 @@ export const PLANS: Plan[] = [
       'Modules 1–6',
       'ClearPath Full Access AI assistant',
       'Advanced calculators & tools',
-      'Settlement Offer Evaluator',
+      'Settlement Offer Organizer',
       'Priority support',
     ],
   },

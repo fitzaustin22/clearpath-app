@@ -14,13 +14,14 @@ import { describe, it, expect } from 'vitest';
 import { useM6Store } from '../m6Store.js';
 
 describe('m6Store — initial tool slices', () => {
-  it('initializes the priorities slice (Phase 1); other tool slices not yet added', () => {
+  it('initializes the priorities + offerOrganizer slices; deferred-comp not yet added', () => {
     const state = useM6Store.getState();
     // Phase 1 adds the additive `priorities` slice to the foundation scaffold.
     expect(state.priorities).toEqual({ items: [] });
-    // The remaining M6 tools accrue in later phases.
+    // Phase 3 adds the additive `offerOrganizer` slice (offer null until first write).
+    expect(state.offerOrganizer).toEqual({ offer: null });
+    // The remaining M6 tool (Deferred Compensation Analyzer) accrues in a later phase.
     expect(state.tradeOff).toBeUndefined();
-    expect(state.offerOrganizer).toBeUndefined();
     expect(state.deferredComp).toBeUndefined();
   });
 });

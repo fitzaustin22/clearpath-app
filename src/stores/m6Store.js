@@ -150,6 +150,110 @@ export function buildTradeOffsPayload(rows) {
   return out;
 }
 
+// ── Settlement Offer Organizer (Phase 3, §8) — pure helpers ───────────────────
+// The Organizer ORGANIZES and MAPS an offer against the user's priorities; it
+// NEVER scores, grades, ranks, or says better/worse/fair/accept/reject. These
+// helpers carry that contract: buildOfferMap echoes the user's own labels and
+// reads status VERBATIM from the user's tags (two values only, never a tool
+// inference); buildOfferGaps lists structurally-absent sections in neutral
+// "silent on" language (never "fails").
+
+// True when the offer's support sub-object carries any entered field.
+const hasSupport = (s) =>
+  Boolean(
+    s &&
+      (s.amount != null ||
+        s.durationMonths != null ||
+        (typeof s.kind === 'string' && s.kind.trim() !== '')),
+  );
+
+// The six offer sections, in canonical order, each with its neutral gap line and
+// a presence test. One source of truth for both the gap list and which fields
+// the summary may carry.
+const OFFER_SECTIONS = [
+  { key: 'assets', gap: 'The offer is silent on assets.', present: (o) => (o.assetItems ?? []).length > 0 },
+  { key: 'support', gap: 'The offer is silent on support.', present: (o) => hasSupport(o.support) },
+  { key: 'residence', gap: 'The offer is silent on the home.', present: (o) => Boolean(o.residence && o.residence.disposition) },
+  { key: 'retirement', gap: 'The offer is silent on retirement.', present: (o) => Boolean(o.retirement && o.retirement.divisionPct != null) },
+  { key: 'debts', gap: 'The offer is silent on debts.', present: (o) => (o.debts ?? []).length > 0 },
+  { key: 'otherTerms', gap: 'The offer is silent on other terms.', present: (o) => typeof o.otherTerms === 'string' && o.otherTerms.trim() !== '' },
+];
+
+// A fresh, empty offer (lazily created on first write; offer stays null until then).
+const emptyOffer = () => ({
+  assetItems: [],
+  support: { amount: null, durationMonths: null, kind: '' },
+  residence: { disposition: '', note: '' },
+  retirement: { divisionPct: null, note: '' },
+  debts: [],
+  otherTerms: '',
+  priorityTags: {},
+});
+
+/**
+ * buildOfferMap — pure. Spine = the user's secure priorities (the Phase 1
+ * payload, [{ item, importance, rank }]). For each priority, `status` comes
+ * VERBATIM from offer.priorityTags (keyed by the priority's own label):
+ * 'addressed' when the user tagged it, else 'silent' — TWO values only, never
+ * 'partial', never a tool inference. `offerSays` is the user's own label,
+ * verbatim (the tool refuses to characterize what the offer "says" about it).
+ * Returns [{ priority, offerSays, status }]; [] when there are no priorities.
+ */
+export function buildOfferMap(offer, priorities) {
+  const list = Array.isArray(priorities) ? priorities : [];
+  const tags = (offer && offer.priorityTags) || {};
+  return list
+    .filter((p) => p && typeof p.item === 'string' && p.item.trim() !== '')
+    .map((p) => {
+      const label = p.item;
+      const status = tags[label] === 'addressed' ? 'addressed' : 'silent';
+      return { priority: label, offerSays: label, status };
+    });
+}
+
+/**
+ * buildOfferGaps — pure. The neutral list of structurally-absent offer sections,
+ * each phrased "The offer is silent on X" (never "fails" / "missing"). Returns
+ * [{ key, text }] for every section the offer does not address; [] when the
+ * offer covers all six. A null/empty offer is silent on everything.
+ */
+export function buildOfferGaps(offer) {
+  const o = offer ?? {};
+  return OFFER_SECTIONS.filter((s) => !s.present(o)).map((s) => ({ key: s.key, text: s.gap }));
+}
+
+/**
+ * buildOfferSummary — local (not exported). The DISPLAYED offer fields only —
+ * every in-tool `note` is stripped, so notes can never reach the Blueprint (the
+ * §11 payload). Only present fields are included, so a wholly-empty offer yields
+ * null (which the §11 writer reads as "not populated"). Asset/debt `id` handles
+ * are internal and also dropped.
+ */
+function buildOfferSummary(offer) {
+  if (!offer) return null;
+  const s = {};
+  const assets = (offer.assetItems ?? []).map((a) => ({ label: a.label, toUser: a.toUser ?? '' }));
+  if (assets.length) s.assetItems = assets;
+  if (hasSupport(offer.support)) {
+    s.support = {
+      amount: offer.support.amount ?? null,
+      durationMonths: offer.support.durationMonths ?? null,
+      kind: offer.support.kind ?? '',
+    };
+  }
+  if (offer.residence && offer.residence.disposition) {
+    s.residence = { disposition: offer.residence.disposition };
+  }
+  if (offer.retirement && offer.retirement.divisionPct != null) {
+    s.retirement = { divisionPct: offer.retirement.divisionPct };
+  }
+  const debts = (offer.debts ?? []).map((d) => ({ label: d.label, toUser: d.toUser ?? '' }));
+  if (debts.length) s.debts = debts;
+  const other = typeof offer.otherTerms === 'string' ? offer.otherTerms.trim() : '';
+  if (other) s.otherTerms = other;
+  return Object.keys(s).length ? s : null;
+}
+
 export const useM6Store = create(
   persist(
     (set, get) => ({
@@ -371,6 +475,124 @@ export const useM6Store = create(
         return useBlueprintStore
           .getState()
           .updateNegotiationStrategy('tradeOffs', payload);
+      },
+
+      // ── Settlement Offer Organizer (Phase 3, §8) ──────────────────────────
+      // offerOrganizer.offer: Offer | null
+      //   Offer = { assetItems: AssetItem[], support: { amount, durationMonths,
+      //     kind }, residence: { disposition, note? }, retirement: { divisionPct,
+      //     note? }, debts: DebtItem[], otherTerms: string,
+      //     priorityTags: { [priorityLabel]: 'addressed' } }
+      //   AssetItem = { id, label, toUser, note? }   DebtItem = { id, label, toUser }
+      // The offer is null until the first write (lazily seeded from emptyOffer()).
+      // `note` is in-tool only — never written to the Blueprint (stripped by
+      // buildOfferSummary). priorityTags is keyed by the priority's own label and
+      // carries ONLY the user's explicit 'addressed' marks; the tool never infers.
+      offerOrganizer: { offer: null },
+
+      // Set a top-level ('otherTerms') or one-deep ('support.amount',
+      // 'residence.disposition', 'retirement.note', …) field. Seeds the offer on
+      // first write.
+      setOfferField: (path, value) =>
+        set((state) => {
+          const offer = state.offerOrganizer.offer ?? emptyOffer();
+          const segs = String(path).split('.');
+          let next;
+          if (segs.length === 1) {
+            next = { ...offer, [segs[0]]: value };
+          } else {
+            const [a, b] = segs;
+            next = { ...offer, [a]: { ...(offer[a] ?? {}), [b]: value } };
+          }
+          return { offerOrganizer: { offer: next } };
+        }),
+
+      // Append an asset line { id, label, toUser, note? }. Trims; rejects a blank
+      // label. note is kept only when non-blank (clamped to NOTE_MAX, in-tool only).
+      addAssetItem: ({ label, toUser, note } = {}) => {
+        const trimmed = typeof label === 'string' ? label.trim() : '';
+        if (!trimmed) return;
+        set((state) => {
+          const offer = state.offerOrganizer.offer ?? emptyOffer();
+          const item = { id: makeId('offer'), label: trimmed, toUser: toUser ?? '' };
+          if (typeof note === 'string' && note.trim()) item.note = note.slice(0, NOTE_MAX);
+          return {
+            offerOrganizer: { offer: { ...offer, assetItems: [...offer.assetItems, item] } },
+          };
+        });
+      },
+
+      removeAssetItem: (id) =>
+        set((state) => {
+          const offer = state.offerOrganizer.offer;
+          if (!offer) return state;
+          return {
+            offerOrganizer: {
+              offer: { ...offer, assetItems: offer.assetItems.filter((a) => a.id !== id) },
+            },
+          };
+        }),
+
+      // Append a debt line { id, label, toUser }. Trims; rejects a blank label.
+      addDebtItem: ({ label, toUser } = {}) => {
+        const trimmed = typeof label === 'string' ? label.trim() : '';
+        if (!trimmed) return;
+        set((state) => {
+          const offer = state.offerOrganizer.offer ?? emptyOffer();
+          const item = { id: makeId('debt'), label: trimmed, toUser: toUser ?? '' };
+          return {
+            offerOrganizer: { offer: { ...offer, debts: [...offer.debts, item] } },
+          };
+        });
+      },
+
+      removeDebtItem: (id) =>
+        set((state) => {
+          const offer = state.offerOrganizer.offer;
+          if (!offer) return state;
+          return {
+            offerOrganizer: { offer: { ...offer, debts: offer.debts.filter((d) => d.id !== id) } },
+          };
+        }),
+
+      // Mark a priority (by its own label) as addressed by the offer. The USER
+      // decides — the tool never guesses. Seeds the offer on first write.
+      tagPriority: (key) => {
+        if (typeof key !== 'string' || !key) return;
+        set((state) => {
+          const offer = state.offerOrganizer.offer ?? emptyOffer();
+          return {
+            offerOrganizer: {
+              offer: { ...offer, priorityTags: { ...offer.priorityTags, [key]: 'addressed' } },
+            },
+          };
+        });
+      },
+
+      untagPriority: (key) =>
+        set((state) => {
+          const offer = state.offerOrganizer.offer;
+          if (!offer) return state;
+          const nextTags = { ...offer.priorityTags };
+          delete nextTags[key];
+          return { offerOrganizer: { offer: { ...offer, priorityTags: nextTags } } };
+        }),
+
+      resetOffer: () => set({ offerOrganizer: { offer: null } }),
+
+      // Explicit, user-triggered write into Blueprint §11. Builds the neutral
+      // overview — { offerSummary (displayed fields, NO in-tool notes), map (the
+      // two-status priority map), gaps (neutral structural absences) } — and hands
+      // it to the dedicated updateSettlementOverview writer. Returns { status }.
+      saveOfferToBlueprint: () => {
+        const offer = get().offerOrganizer.offer;
+        const priorities = buildPrioritiesPayload(get().priorities.items);
+        const payload = {
+          offerSummary: buildOfferSummary(offer),
+          map: buildOfferMap(offer, priorities),
+          gaps: buildOfferGaps(offer),
+        };
+        return useBlueprintStore.getState().updateSettlementOverview(payload);
       },
     }),
     {

@@ -47,7 +47,7 @@ All 7 modules feed a **Cumulative Data Pipeline** (JSON, per user). Data entered
 | M3 | Know What You Spend | Essentials | Budget Modeler, Financial Affidavit Builder |
 | M4 | Tax Landscape | Full Access | Filing Status Optimizer, Point-in-Time Tax Discount Calculator, Tax-Adjusted Asset View |
 | M5 | Value What Matters | Full Access | State-Configurable Support Estimator (VA/MD/DC/CA/NY), Marital Home Decision Analyzer, QDRO / Retirement Division Modeler |
-| M6 | Negotiate from Strength | Full Access | Priorities Worksheet, Trade-Off Analyzer, Settlement Offer Evaluator |
+| M6 | Negotiate from Strength | Full Access | Priorities Worksheet, Trade-Off Analyzer, Settlement Offer Organizer |
 | M7 | ClearPath Financial Blueprint | Full Access | Client Blueprint Generator (consumer-ready PDF, all 12 sections). Attorney Blueprint variant ($499 one-time add-on) deferred to V2. |
 
 **Gating model:** Two render states per module — **Locked** or **Full**. The "conceptual/preview" state (sample-data read-only mode under the old Navigator tier) has been removed per the 2026-04-20 tier simplification. See `Tier-Architecture-and-Gating-Map.md §3` for the full gating matrix.

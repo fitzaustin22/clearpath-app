@@ -70,7 +70,7 @@ const useBlueprintStore = create(
         s8: { status: 'empty', label: 'Support Analysis', sourceModule: 'm5', data: null },
         s9: { status: 'empty', label: 'Home Decision', sourceModule: 'm5', data: null },
         s10: { status: 'empty', label: 'Negotiation Strategy', sourceModule: 'm6', data: { priorities: null, tradeOffs: null } },
-        s11: { status: 'empty', label: 'Settlement Evaluation', sourceModule: 'm6', data: null },
+        s11: { status: 'empty', label: 'Settlement Offer Overview', sourceModule: 'm6', data: null },
         s12: { status: 'empty', label: 'Action Plan & Timeline', sourceModule: 'm7', data: null },
       },
 
@@ -425,6 +425,38 @@ const useBlueprintStore = create(
         return { status };
       },
 
+      // §11 — Settlement Offer Overview (M6 Tool 3, Settlement Offer Organizer).
+      // Dedicated single-source writer (symmetry with updateNegotiationStrategy /
+      // updateQDRODivision / updateHomeDecision — NOT the generic updateSection;
+      // §11 had no writer before Phase 3). Sets s11.data = { offerSummary, map,
+      // gaps } and derives a TWO-state status. §11 is an ORGANIZING overview,
+      // never an evaluation: it stores the neutral readout the Organizer produced
+      // (priority map + structural gaps) and never scores, ranks, or judges.
+      // Status is binary — no 'partial' (a single save captures whatever the
+      // offer holds): 'complete' when there is something to show (a present
+      // offerSummary OR a non-empty priority map), else 'empty'. gaps alone
+      // (which a wholly-empty offer always produces) do NOT populate the section.
+      // map/gaps are coerced to [] so the renderer never guards on shape. Last-
+      // write-wins; sourceModule stays the static 'm6'. Returns { status },
+      // mirroring the sibling feeders.
+      updateSettlementOverview: (payload) => {
+        const offerSummary = payload?.offerSummary ?? null;
+        const map = Array.isArray(payload?.map) ? payload.map : [];
+        const gaps = Array.isArray(payload?.gaps) ? payload.gaps : [];
+        const hasSummary =
+          offerSummary != null &&
+          (typeof offerSummary !== 'object' || Object.keys(offerSummary).length > 0);
+        const status = hasSummary || map.length > 0 ? 'complete' : 'empty';
+        set(state => ({
+          sections: {
+            ...state.sections,
+            s11: { ...state.sections.s11, status, data: { offerSummary, map, gaps } },
+          },
+          lastUpdated: new Date().toISOString(),
+        }));
+        return { status };
+      },
+
       // §7 — called by M3 Budget Modeler on completion
       // categories shape: Array<{ name: string, current: number, projected: number, change: number }>
       updateExpenseAnalysis: (budgetData) => set(state => ({
@@ -508,7 +540,7 @@ const useBlueprintStore = create(
           s8: { status: 'empty', label: 'Support Analysis', sourceModule: 'm5', data: null },
           s9: { status: 'empty', label: 'Home Decision', sourceModule: 'm5', data: null },
           s10: { status: 'empty', label: 'Negotiation Strategy', sourceModule: 'm6', data: { priorities: null, tradeOffs: null } },
-          s11: { status: 'empty', label: 'Settlement Evaluation', sourceModule: 'm6', data: null },
+          s11: { status: 'empty', label: 'Settlement Offer Overview', sourceModule: 'm6', data: null },
           s12: { status: 'empty', label: 'Action Plan & Timeline', sourceModule: 'm7', data: null },
         },
         costBasisEntries: [],

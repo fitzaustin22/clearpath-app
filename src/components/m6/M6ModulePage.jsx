@@ -25,9 +25,9 @@ const TOOLS = [
   {
     id: 'offer-organizer',
     title: 'Settlement Offer Organizer',
-    line: 'Capture each offer as it arrives and keep the running comparison straight across rounds of negotiation.',
+    line: 'Lay an offer beside your priorities and your Blueprint numbers — see what it covers and what it leaves unsaid.',
     route: '/modules/m6/offer-organizer',
-    available: false,
+    available: true,
   },
   {
     id: 'deferred-comp',
