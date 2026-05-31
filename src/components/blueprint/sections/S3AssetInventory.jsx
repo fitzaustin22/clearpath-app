@@ -207,6 +207,12 @@ export default function S3AssetInventory({ data, status }) {
   const assetEntries = Object.entries(data.assetsByCategory || {});
   const liabilityEntries = Object.entries(data.liabilitiesByCategory || {});
 
+  // DEF-9 → M6 Tool 4: the "Pending" advisory fires only for stubs NOT yet
+  // resolved by the Deferred Compensation Analyzer; resolved stubs render a
+  // marital-PORTION summary (share counts + intrinsic estimate) — never a split.
+  const unresolvedDeferredComp = deferredCompStubs.filter((s) => !s.resolved);
+  const resolvedDeferredComp = deferredCompStubs.filter((s) => s.resolved);
+
   const allocated =
     (data.divisionStatus?.client || 0) + (data.divisionStatus?.spouse || 0);
   const totalAssets = data.totalAssets || 0;
@@ -340,7 +346,7 @@ export default function S3AssetInventory({ data, status }) {
         </section>
       )}
 
-      {deferredCompStubs.length > 0 && (
+      {unresolvedDeferredComp.length > 0 && (
         <section style={{ marginTop: 16 }}>
           <div
             style={{
@@ -355,12 +361,45 @@ export default function S3AssetInventory({ data, status }) {
               lineHeight: 1.5,
             }}
           >
-            <strong>Deferred Comp Pending:</strong> {deferredCompStubs.length} item
-            {deferredCompStubs.length === 1 ? '' : 's'}
+            <strong>Deferred Comp Pending:</strong> {unresolvedDeferredComp.length} item
+            {unresolvedDeferredComp.length === 1 ? '' : 's'}
             {' '}— unvested or unexercised equity tracked in your blueprint without an
             FMV today. These will need separate treatment in settlement (coverture
             fraction, vesting schedule).
           </div>
+        </section>
+      )}
+
+      {resolvedDeferredComp.length > 0 && (
+        <section style={{ marginTop: 16 }}>
+          {resolvedDeferredComp.map((stub) => {
+            const md = stub.metadata || {};
+            const shares = md.maritalShares || {};
+            const value = md.intrinsicValue || {};
+            return (
+              <div
+                key={stub.id}
+                data-testid={`s3-deferred-comp-resolved-${stub.id}`}
+                style={{
+                  fontFamily: SANS,
+                  fontSize: 14,
+                  color: NAVY,
+                  padding: '10px 14px',
+                  marginTop: 8,
+                  border: `1px solid ${GOLD}`,
+                  borderLeft: `3px solid ${GREEN}`,
+                  borderRadius: 6,
+                  backgroundColor: 'rgba(45, 138, 78, 0.06)',
+                  lineHeight: 1.5,
+                }}
+              >
+                <strong>Deferred Comp Analyzed:</strong> {stub.company || 'Equity grant'} — marital
+                portion under each coverture method. Hug: {shares.hug ?? 0} shares
+                ({currency(value.hug)}). Nelson: {shares.nelson ?? 0} shares ({currency(value.nelson)}).
+                The marital portion is a share count, not the final split.
+              </div>
+            );
+          })}
         </section>
       )}
 

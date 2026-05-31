@@ -75,6 +75,11 @@ export default function S5PropertyDivision({ data, status }) {
   const showTaxView = costBasisViewEnabled && hasCostBasis && taxAdjusted && hiddenTax;
   const showNudge = costBasisViewEnabled && !hasCostBasis;
 
+  // DEF-9 → M6 Tool 4: advisory only for stubs NOT yet resolved by the Deferred
+  // Compensation Analyzer; resolved stubs render a marital-PORTION summary.
+  const unresolvedDeferredComp = deferredCompStubs.filter((s) => !s.resolved);
+  const resolvedDeferredComp = deferredCompStubs.filter((s) => s.resolved);
+
   return (
     <div>
       {/* Cost basis view toggle */}
@@ -225,7 +230,7 @@ export default function S5PropertyDivision({ data, status }) {
         </>
       )}
 
-      {deferredCompStubs.length > 0 && (
+      {unresolvedDeferredComp.length > 0 && (
         <div
           style={{
             fontFamily: SANS,
@@ -240,12 +245,41 @@ export default function S5PropertyDivision({ data, status }) {
             lineHeight: 1.5,
           }}
         >
-          <strong>Deferred Comp Pending:</strong> {deferredCompStubs.length} item
-          {deferredCompStubs.length === 1 ? '' : 's'}
+          <strong>Deferred Comp Pending:</strong> {unresolvedDeferredComp.length} item
+          {unresolvedDeferredComp.length === 1 ? '' : 's'}
           {' '}— unvested or unexercised equity isn&apos;t reflected in either column above
           and will need separate treatment in settlement.
         </div>
       )}
+
+      {resolvedDeferredComp.map((stub) => {
+        const md = stub.metadata || {};
+        const shares = md.maritalShares || {};
+        const value = md.intrinsicValue || {};
+        return (
+          <div
+            key={stub.id}
+            data-testid={`s5-deferred-comp-resolved-${stub.id}`}
+            style={{
+              fontFamily: SANS,
+              fontSize: 14,
+              color: NAVY,
+              padding: '10px 14px',
+              marginTop: 12,
+              border: `1px solid ${GOLD}`,
+              borderLeft: `3px solid ${GREEN}`,
+              borderRadius: 6,
+              backgroundColor: 'rgba(45, 138, 78, 0.06)',
+              lineHeight: 1.5,
+            }}
+          >
+            <strong>Deferred Comp Analyzed:</strong> {stub.company || 'Equity grant'} — marital
+            portion under each coverture method. Hug: {shares.hug ?? 0} shares
+            ({currency(value.hug)}). Nelson: {shares.nelson ?? 0} shares ({currency(value.nelson)}).
+            The marital portion is a share count, not the final split.
+          </div>
+        );
+      })}
     </div>
   );
 }

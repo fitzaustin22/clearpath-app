@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import useBlueprintStore from '@/src/stores/blueprintStore';
+import { analyzeGrant, intrinsicValue } from '@/src/lib/coverture/coverture';
 
 /**
  * m6Store — Negotiate from Strength. Tool slices accrue per build phase.
@@ -38,6 +39,11 @@ const NOTE_MAX = 140;
 // Date.now() + random suffix. No uuid dep; does NOT assume crypto.randomUUID
 // exists in tests. Phase 1 uses the default 'prio'; Phase 2 passes 'trade'/'give'.
 const makeId = (prefix = 'prio') => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+
+// §14 forward-compat citation — the verified coverture case law (Hug / Nelson).
+// Stored in the resolved-stub metadata for V2 Attorney Blueprint extraction.
+const DEFERRED_COMP_CITATION =
+  'In re Marriage of Hug (1984) 154 Cal.App.3d 780; In re Marriage of Nelson (1986) 177 Cal.App.3d 150';
 
 /**
  * buildPrioritiesPayload — pure. Builds the Blueprint §10 priorities payload.
@@ -593,6 +599,146 @@ export const useM6Store = create(
           gaps: buildOfferGaps(offer),
         };
         return useBlueprintStore.getState().updateSettlementOverview(payload);
+      },
+
+      // ── Deferred Compensation Analyzer (Phase 4, §9) ──────────────────────
+      // deferredCompAnalyzer.{ stubId, analysis } holds ONE in-progress analysis
+      // keyed to the M2-minted deferredComp stub being resolved. It does NOT own
+      // the stub — it references it by stubId and reads the M2-captured fields
+      // (grantDate, strikePrice, category); on save it patches the analysis back
+      // onto that stub via updateDeferredCompStub (no new writer, no results slot).
+      //   analysis = { hireDate, grantDate (prefill), separationDate, state, fmv,
+      //                tranches: [{ id, vestDate, shares }], intentNote }
+      // tranche ids use the in-scope makeId('tranche'). The stub's free-text
+      // vestingSchedule is a display-only hint — it is NEVER parsed into tranches.
+      deferredCompAnalyzer: { stubId: null, analysis: null },
+
+      // Select an M2 stub to resolve: prefill a fresh analysis, including
+      // grantDate from the stub (the Nelson fraction start). No-op for an unknown
+      // id. RSU/option is read from the stub at compute time, never re-entered.
+      selectStub: (stubId) => {
+        const stub = useBlueprintStore
+          .getState()
+          .deferredCompStubs.find((s) => s.id === stubId);
+        if (!stub) return;
+        set({
+          deferredCompAnalyzer: {
+            stubId,
+            analysis: {
+              hireDate: null,
+              grantDate: stub.grantDate ?? null,
+              separationDate: null,
+              state: null,
+              fmv: null,
+              tranches: [],
+              intentNote: '',
+            },
+          },
+        });
+      },
+
+      // Set an analysis field. Top-level path ('hireDate', 'fmv', 'state', …) or a
+      // tranche-field path 'tranches.<id>.<field>' (vestDate / shares). No-op when
+      // no analysis is in progress.
+      setAnalysisField: (path, value) =>
+        set((state) => {
+          const dca = state.deferredCompAnalyzer;
+          if (!dca.analysis) return state;
+          const segs = String(path).split('.');
+          if (segs[0] === 'tranches' && segs.length === 3) {
+            const [, id, field] = segs;
+            const tranches = dca.analysis.tranches.map((tr) =>
+              tr.id === id ? { ...tr, [field]: value } : tr,
+            );
+            return {
+              deferredCompAnalyzer: { ...dca, analysis: { ...dca.analysis, tranches } },
+            };
+          }
+          return {
+            deferredCompAnalyzer: {
+              ...dca,
+              analysis: { ...dca.analysis, [segs[0]]: value },
+            },
+          };
+        }),
+
+      // Append an empty vesting tranche (the user fills vestDate + shares via
+      // setAnalysisField). id via the in-scope makeId('tranche'). No-op when no
+      // analysis is in progress.
+      addTranche: () =>
+        set((state) => {
+          const dca = state.deferredCompAnalyzer;
+          if (!dca.analysis) return state;
+          return {
+            deferredCompAnalyzer: {
+              ...dca,
+              analysis: {
+                ...dca.analysis,
+                tranches: [
+                  ...dca.analysis.tranches,
+                  { id: makeId('tranche'), vestDate: '', shares: null },
+                ],
+              },
+            },
+          };
+        }),
+
+      removeTranche: (trancheId) =>
+        set((state) => {
+          const dca = state.deferredCompAnalyzer;
+          if (!dca.analysis) return state;
+          return {
+            deferredCompAnalyzer: {
+              ...dca,
+              analysis: {
+                ...dca.analysis,
+                tranches: dca.analysis.tranches.filter((tr) => tr.id !== trancheId),
+              },
+            },
+          };
+        }),
+
+      resetAnalysis: () => set({ deferredCompAnalyzer: { stubId: null, analysis: null } }),
+
+      // The deliberate commit. Computes BOTH formulas (analyzeGrant) and the
+      // per-formula intrinsic estimate (intrinsicValue) of the marital PORTION,
+      // then patches the resolved stub additively via updateDeferredCompStub —
+      // exactly { resolved, analysis, metadata }. NO final-split math anywhere; NO
+      // new writer; NO deferredCompResults slot. The §14 metadata block is
+      // forward-compat for the V2 Attorney Blueprint. No-op when no analysis is in
+      // progress or the stub is unknown.
+      saveAnalysisToBlueprint: (stubId) => {
+        const { analysis } = get().deferredCompAnalyzer;
+        const stub = useBlueprintStore
+          .getState()
+          .deferredCompStubs.find((s) => s.id === stubId);
+        if (!analysis || !stub) return undefined;
+        const grant = analyzeGrant(analysis);
+        const hugShares = grant.totals.hug.maritalShares;
+        const nelsonShares = grant.totals.nelson.maritalShares;
+        const patch = {
+          resolved: true,
+          analysis,
+          metadata: {
+            formula: 'both',
+            hireDate: analysis.hireDate,
+            grantDate: analysis.grantDate,
+            separationDate: analysis.separationDate,
+            perTrancheFractions: grant.perTranche.map((t) => ({
+              id: t.id,
+              hug: t.hug.fraction,
+              nelson: t.nelson.fraction,
+            })),
+            maritalShares: { hug: hugShares, nelson: nelsonShares },
+            intrinsicValue: {
+              hug: intrinsicValue(hugShares, analysis.fmv, stub.strikePrice),
+              nelson: intrinsicValue(nelsonShares, analysis.fmv, stub.strikePrice),
+            },
+            fmvSource: 'user-entered',
+            citation: DEFERRED_COMP_CITATION,
+          },
+        };
+        return useBlueprintStore.getState().updateDeferredCompStub(stubId, patch);
       },
     }),
     {

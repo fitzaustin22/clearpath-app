@@ -34,7 +34,7 @@ const TOOLS = [
     title: 'Deferred Compensation Analyzer',
     line: 'Value RSUs, options, and other deferred-comp grants so they do not slip out of the marital ledger.',
     route: '/modules/m6/deferred-comp',
-    available: false,
+    available: true,
   },
 ];
 
