@@ -74,7 +74,7 @@ const QDRO_COMPLETE = {
       userRole: 'alternatePayee',
       planType: 'private_db',
       decisions: { interestStructure: 'shared' },
-      pvSource: 'pva_asset_k1', // scalar PV-source key — should surface as a labeled value
+      pvSource: 'pva_asset_k1', // PVA linkage → surfaces as 'Pension Valuation Analyzer', never the raw token
       completionState: 'complete',
       metadata: { formulaId: null, citations: [], qdroPacketGeneratedAt: null },
     },
@@ -92,6 +92,23 @@ const QDRO_COMPLETE = {
 };
 
 const QDRO_EMPTY = { assets: {}, status: 'empty', lastUpdated: '2026-06-01T00:00:00.000Z' };
+
+// pvSource present but NOT a PVA linkage (legacy/unknown scalar). The renderer
+// must omit the PV Source row entirely and NEVER surface the raw token.
+const QDRO_NON_PVA_SOURCE = {
+  assets: {
+    a1: {
+      userRole: 'participant',
+      planType: 'dc',
+      decisions: {},
+      pvSource: 'legacy_sentinel',
+      completionState: 'complete',
+      metadata: { formulaId: null, citations: [], qdroPacketGeneratedAt: null },
+    },
+  },
+  status: 'complete',
+  lastUpdated: '2026-06-01T00:00:00.000Z',
+};
 
 describe('S6RetirementDivision — PIT slot (regression guard)', () => {
   it('renders the PIT block and no PVA/QDRO blocks when only pit is present', () => {
@@ -144,13 +161,26 @@ describe('S6RetirementDivision — QDRO slot', () => {
     expect(screen.queryByText('a1')).toBeNull();
   });
 
-  it('renders multiple complete assets and surfaces a scalar pvSource as a labeled value', () => {
+  it('renders a PVA-linked pvSource as "Pension Valuation Analyzer" and never the raw token', () => {
     render(<S6RetirementDivision data={{ pit: null, pva: null, qdro: QDRO_COMPLETE }} status="complete" />);
     expect(screen.getByText(/2 plans modeled in the QDRO tool\./)).toBeInTheDocument();
     expect(screen.getByText('Private defined benefit')).toBeInTheDocument();
     expect(screen.getByText('IRA')).toBeInTheDocument();
     expect(screen.getByText('Alternate payee')).toBeInTheDocument();
-    expect(screen.getByText('pva_asset_k1')).toBeInTheDocument(); // scalar pvSource surfaced
+    // a1.pvSource = 'pva_asset_k1' (PVA linkage) surfaces as a friendly source name,
+    // never the internal token; a2.pvSource = null contributes no PV Source row.
+    expect(screen.getAllByText('PV Source')).toHaveLength(1);
+    expect(screen.getByText('Pension Valuation Analyzer')).toBeInTheDocument();
+    expect(screen.queryByText('pva_asset_k1')).toBeNull();
+  });
+
+  it('omits the PV Source row for a non-PVA pvSource and never renders the raw token', () => {
+    render(
+      <S6RetirementDivision data={{ pit: null, pva: null, qdro: QDRO_NON_PVA_SOURCE }} status="complete" />,
+    );
+    expect(screen.queryByText('PV Source')).toBeNull();
+    expect(screen.queryByText('legacy_sentinel')).toBeNull();
+    expect(screen.queryByText('Pension Valuation Analyzer')).toBeNull();
   });
 
   it('renders no QDRO block and does not crash when assets map is empty', () => {
@@ -159,6 +189,30 @@ describe('S6RetirementDivision — QDRO slot', () => {
     );
     expect(screen.queryByText(/modeled in the QDRO tool/)).toBeNull();
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+describe('S6RetirementDivision — §6 pagination contract (sub-block break-avoid hooks)', () => {
+  it('wraps each present sub-block (PIT, PVA, QDRO) in a .blueprint-s6-block container', () => {
+    render(
+      <S6RetirementDivision data={{ pit: PIT, pva: PVA_VALUED, qdro: QDRO_PARTIAL }} status="complete" />,
+    );
+    // Each sub-heading sits inside a hooked container so the premium export
+    // (body.exporting-blueprint) can break BETWEEN sub-blocks and never orphan a
+    // sub-heading the way the un-hooked §6 did ("QDRO Decisions" orphan, p7→p8).
+    expect(screen.getByText('PLAN BALANCE AT DIVISION').closest('.blueprint-s6-block')).not.toBeNull();
+    expect(screen.getByText('Pension Present Value').closest('.blueprint-s6-block')).not.toBeNull();
+    expect(screen.getByText('QDRO Decisions').closest('.blueprint-s6-block')).not.toBeNull();
+  });
+
+  it('hooks the PVA sub-block (sub-heading + content) when it is the only slot present', () => {
+    const { container } = render(
+      <S6RetirementDivision data={{ pit: null, pva: PVA_VALUED, qdro: null }} status="complete" />,
+    );
+    const block = screen.getByText('Pension Present Value').closest('.blueprint-s6-block');
+    expect(block).not.toBeNull();
+    expect(block.textContent).toContain('Pension Present Value');
+    expect(container.querySelectorAll('.blueprint-s6-block').length).toBeGreaterThanOrEqual(1);
   });
 });
 

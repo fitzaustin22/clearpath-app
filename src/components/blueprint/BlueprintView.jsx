@@ -244,6 +244,14 @@ export default function BlueprintView({ userTier = 'essentials' }) {
             break-inside: avoid;
             page-break-inside: avoid;
           }
+          /* §6 (Retirement Division) is the only over-page section, so the
+             section-level break-inside:avoid above cannot hold it. Keep each §6
+             sub-block (PIT / PVA / QDRO, and each QDRO asset) intact so a page
+             break lands BETWEEN sub-blocks and never orphans a sub-heading. */
+          body.exporting-blueprint .blueprint-section .blueprint-s6-block {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
         }
       `}</style>
       <div
