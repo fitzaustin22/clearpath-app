@@ -457,6 +457,38 @@ const useBlueprintStore = create(
         return { status };
       },
 
+      // §12 — Action Plan & Timeline (M7 Phase A, Action Plan tool). Dedicated
+      // single-source writer mirroring updateSettlementOverview (§11) — NOT the
+      // dead generic updateSection; §12 had no writer before Phase A. Sets
+      // s12.data = { nextSteps, professionals, keyDates } (each coerced to [] so
+      // the renderer never guards on shape) and derives a TWO-state status:
+      // 'complete' when ANY of the three payload lists is non-empty, else
+      // 'empty'. Status derives from the PAYLOAD lists (already stripped of
+      // incomplete rows by buildActionPlanPayload), NOT the raw in-tool store
+      // lists — so an incomplete-only save reads 'empty', not a false
+      // 'complete'. Two independent obligations are both satisfied here in one
+      // call: the renderer body is driven purely by `data` (must be non-null),
+      // and `status` independently feeds the §12 progress dot / completed tally.
+      // Last-write-wins; ...state.sections.s12 spread preserves label/
+      // sourceModule ('m7'). Returns { status }, mirroring the sibling writers.
+      updateActionPlan: (payload) => {
+        const nextSteps = Array.isArray(payload?.nextSteps) ? payload.nextSteps : [];
+        const professionals = Array.isArray(payload?.professionals) ? payload.professionals : [];
+        const keyDates = Array.isArray(payload?.keyDates) ? payload.keyDates : [];
+        const status =
+          nextSteps.length > 0 || professionals.length > 0 || keyDates.length > 0
+            ? 'complete'
+            : 'empty';
+        set(state => ({
+          sections: {
+            ...state.sections,
+            s12: { ...state.sections.s12, status, data: { nextSteps, professionals, keyDates } },
+          },
+          lastUpdated: new Date().toISOString(),
+        }));
+        return { status };
+      },
+
       // §7 — called by M3 Budget Modeler on completion
       // categories shape: Array<{ name: string, current: number, projected: number, change: number }>
       updateExpenseAnalysis: (budgetData) => set(state => ({
