@@ -9,7 +9,7 @@ const MODULES: { key: string; title: string; tier: UserTier }[] = [
   { key: "m4", title: "Tax Landscape", tier: "navigator" },
   { key: "m5", title: "Value What Matters", tier: "navigator" },
   { key: "m6", title: "Negotiate from Strength", tier: "navigator" },
-  { key: "m7", title: "ClearPath Financial Blueprint", tier: "signature" },
+  { key: "m7", title: "ClearPath Financial Blueprint", tier: "navigator" },
 ]
 
 export default async function DashboardPage() {
