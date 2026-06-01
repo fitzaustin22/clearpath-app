@@ -17,7 +17,6 @@ export const CITATIONS_BY_PATH = {
     'Bender v. Bender, 297 A.2d 786 (DC 1972)',
     'Mosley v. Mosley, 19 Va. App. 192, 450 S.E.2d 161 (1994)',
     'Deering v. Deering, 292 Md. 115, 437 A.2d 883 (1981)',
-    'In re Marriage of Lehman, 18 Cal. 4th 169 (1998) (projected-at-retirement variant — v1.1 deferred)',
   ],
   in_pay_status: [
     'IRC §417(e)(3)',

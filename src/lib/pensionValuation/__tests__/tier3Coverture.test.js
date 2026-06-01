@@ -49,12 +49,14 @@ describe('Tier 3 coverture calc engine (§7.4.3 + §7.4.3a)', () => {
     // Marital = total × fraction (coverture held constant per P-4)
     closePV(result.pv.marital.best, result.pv.total.best * result.coverture.fraction, 'marital == total × fraction');
 
-    // Citations (4 entries for tier_3 per §7.6.4)
-    expect(result.metadata.citations).toHaveLength(4);
+    // Citations (3 entries for tier_3 — the Lehman projected-at-retirement
+    // variant was pulled per founder decision; the variant it cites is
+    // v1.1-deferred, so it must not surface in the export.)
+    expect(result.metadata.citations).toHaveLength(3);
     expect(result.metadata.citations[0]).toContain('Bender');
     expect(result.metadata.citations[1]).toContain('Mosley');
     expect(result.metadata.citations[2]).toContain('Deering');
-    expect(result.metadata.citations[3]).toContain('Lehman');
+    expect(result.metadata.citations.some((c) => c.includes('Lehman'))).toBe(false);
 
     // No zero-fraction callout
     expect(collected).toHaveLength(0);

@@ -58,6 +58,15 @@ function completionStateLabel(key) {
   return COMPLETION_STATE_LABELS[key] || 'In progress';
 }
 
+// A QDRO asset's pvSource holds a PVA formula identifier (e.g.
+// 'pva_db_tier3_coverture_v1') when its present value was linked from the
+// Pension Valuation Analyzer, otherwise null. The raw token must never reach
+// the consumer: surface a friendly source name for a PVA linkage, and omit the
+// row for anything else (null, or any non-PVA scalar).
+function isPvaLinkedSource(pvSource) {
+  return typeof pvSource === 'string' && pvSource.startsWith('pva_');
+}
+
 const currency = (n) =>
   (n || 0).toLocaleString('en-US', {
     style: 'currency',
@@ -194,7 +203,7 @@ export default function S6RetirementDivision({ data, status }) {
   return (
     <div>
       {hasPit && (
-        <>
+        <div className="blueprint-s6-block">
           <section>
             <div style={bodyStyle}>Plan: {planTypeLabel(pit.planType)}</div>
             <div style={{ ...labelStyle, marginTop: 16 }}>PLAN BALANCE AT DIVISION</div>
@@ -272,11 +281,11 @@ export default function S6RetirementDivision({ data, status }) {
             {formatPercent(pit.effectiveTaxRate)} effective rate,{' '}
             {formatPercent(pit.discountRate)} discount rate
           </div>
-        </>
+        </div>
       )}
 
       {hasPva && (
-        <section style={{ marginTop: hasPit ? 40 : 0 }}>
+        <section className="blueprint-s6-block" style={{ marginTop: hasPit ? 40 : 0 }}>
           <div style={subHeaderStyle}>Pension Present Value</div>
           {pva.path === 'flag_only' ? (
             <p style={{ ...bodyStyle, marginTop: 8 }}>
@@ -315,7 +324,7 @@ export default function S6RetirementDivision({ data, status }) {
       )}
 
       {hasQdro && (
-        <section style={{ marginTop: hasPit || hasPva ? 40 : 0 }}>
+        <section className="blueprint-s6-block" style={{ marginTop: hasPit || hasPva ? 40 : 0 }}>
           <div style={subHeaderStyle}>QDRO Decisions</div>
           <p style={{ ...bodyStyle, marginTop: 8 }}>
             {`${qdroAssetEntries.length} ${
@@ -325,6 +334,7 @@ export default function S6RetirementDivision({ data, status }) {
           {qdroAssetEntries.map(([id, asset]) => (
             <div
               key={id}
+              className="blueprint-s6-block"
               style={{
                 marginTop: 16,
                 paddingTop: 12,
@@ -337,8 +347,8 @@ export default function S6RetirementDivision({ data, status }) {
               <div style={{ marginTop: 6 }}>
                 {asset.userRole && <Row label="Role" value={qdroRoleLabel(asset.userRole)} />}
                 <Row label="Status" value={completionStateLabel(asset.completionState)} />
-                {asset.pvSource != null && typeof asset.pvSource !== 'object' && (
-                  <Row label="PV Source" value={String(asset.pvSource)} />
+                {isPvaLinkedSource(asset.pvSource) && (
+                  <Row label="PV Source" value="Pension Valuation Analyzer" />
                 )}
                 {asset.metadata?.formulaId && (
                   <Row label="Formula" value={String(asset.metadata.formulaId)} />
