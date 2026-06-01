@@ -38,7 +38,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body style={{ margin: 0, backgroundColor: "#FAF8F2", fontFamily: "var(--font-source-sans), 'Source Sans Pro', sans-serif" }}>
         <ClerkProvider signInUrl="/login" signUpUrl="/signup" signInFallbackRedirectUrl="/dashboard" signUpFallbackRedirectUrl="/dashboard">
           <header
-            className="flex flex-col gap-3 items-start sm:flex-row sm:gap-0 sm:justify-between sm:items-center"
+            className="blueprint-export-hide flex flex-col gap-3 items-start sm:flex-row sm:gap-0 sm:justify-between sm:items-center"
             style={{ backgroundColor: "#1B2A4A", padding: "16px 20px" }}
           >
             <a href="/" style={{ color: "#C8A96E", fontFamily: "var(--font-playfair), 'Playfair Display', serif", fontSize: "1.4rem", textDecoration: "none", fontWeight: 700 }}>ClearPath</a>
@@ -54,7 +54,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </header>
           <BlueprintBarWrapper>{children}</BlueprintBarWrapper>
           <ToastContainer />
-          <footer style={{ backgroundColor: "#1B2A4A", color: "rgba(255,255,255,0.5)", textAlign: "center", padding: "24px", fontSize: "0.8rem" }}>
+          <footer className="blueprint-export-hide" style={{ backgroundColor: "#1B2A4A", color: "rgba(255,255,255,0.5)", textAlign: "center", padding: "24px", fontSize: "0.8rem" }}>
             ClearPath Divorce Financial LLC is not a law firm and does not provide legal advice.
           </footer>
         </ClerkProvider>

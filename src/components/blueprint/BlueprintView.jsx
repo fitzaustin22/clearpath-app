@@ -5,6 +5,8 @@ import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import useBlueprintStore from '@/src/stores/blueprintStore';
 import BlueprintSection from '@/src/components/blueprint/BlueprintSection';
+import BlueprintCover from '@/src/components/blueprint/BlueprintCover';
+import BlueprintExport from '@/src/components/blueprint/BlueprintExport';
 import S1PersonalProfile from '@/src/components/blueprint/sections/S1PersonalProfile';
 import S2IncomeAnalysis from '@/src/components/blueprint/sections/S2IncomeAnalysis';
 import S3AssetInventory from '@/src/components/blueprint/sections/S3AssetInventory';
@@ -94,7 +96,7 @@ function statusMessage(completedCount, sections) {
   return 'Your Blueprint is complete. Module 7 will generate the final document.';
 }
 
-export default function BlueprintView() {
+export default function BlueprintView({ userTier = 'essentials' }) {
   const router = useRouter();
   const { user } = useUser();
 
@@ -205,6 +207,44 @@ export default function BlueprintView() {
             break-inside: avoid;
           }
         }
+        /* ── M7 Blueprint Export (Phase B) — premium print, marker-scoped (D13) ──
+           Every rule below fires ONLY when the gated Export action has set
+           body.exporting-blueprint. A plain Ctrl+P never sets the marker, so this
+           block is dormant and plain printing keeps the un-marked baseline above
+           (app chrome present, no cover). Mirrors the M3 affidavit print route. */
+        @media print {
+          @page blueprintExport {
+            size: letter;
+            margin: 0.75in;
+          }
+          body.exporting-blueprint {
+            page: blueprintExport;
+            background-color: #FFFFFF !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+          }
+          /* Suppress the global layout chrome (header/footer carry this class in
+             layout.tsx). Namespaced so M3/M4 print routes never match it; dormant
+             without the marker, so the layout.tsx className is inert on every other
+             route and on a plain Ctrl+P here. */
+          body.exporting-blueprint .blueprint-export-hide {
+            display: none !important;
+          }
+          /* Each §section after the first opens a fresh page; never split a section,
+             and keep table rows intact — applied via descendant selectors so no
+             section renderer is edited. */
+          body.exporting-blueprint .blueprint-section {
+            break-inside: avoid;
+          }
+          body.exporting-blueprint .blueprint-section + .blueprint-section {
+            break-before: page;
+            page-break-before: always;
+          }
+          body.exporting-blueprint .blueprint-section tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+        }
       `}</style>
       <div
         className="clearpath-blueprint-root"
@@ -223,6 +263,8 @@ export default function BlueprintView() {
           fontFamily: "var(--font-source-sans), 'Source Sans Pro', sans-serif",
         }}
       >
+        <BlueprintCover />
+
         <button
           type="button"
           onClick={handleBack}
@@ -280,6 +322,10 @@ export default function BlueprintView() {
             Draft — Last updated {lastUpdatedLabel}
           </p>
         </header>
+
+        <div style={{ marginBottom: 32 }}>
+          <BlueprintExport userTier={userTier} />
+        </div>
 
         <div
           style={{
