@@ -88,6 +88,22 @@ function Cta({ cta, featured }) {
  * A single marketing pricing tier card. `featured` renders the navy/gold
  * "Most popular" treatment; `expander` is the collapsible "See what's
  * included" body. Used three times on the /pricing page.
+ *
+ * Props are typed here (JSDoc) because this .jsx is consumed by the .tsx
+ * /pricing page under allowJs+strict: without it, `features = []` infers as
+ * never[] and `next build` rejects the page. All props are optional so the
+ * Free/Essentials cards may omit priceSuffix/badge.
+ *
+ * @param {object} props
+ * @param {string} [props.name]
+ * @param {string} [props.price]
+ * @param {string} [props.priceSuffix]
+ * @param {string} [props.tagline]
+ * @param {{ text: string, bold?: boolean, indent?: boolean }[]} [props.features]
+ * @param {*} [props.expander]
+ * @param {*} [props.cta]
+ * @param {boolean} [props.featured]
+ * @param {string} [props.badge]
  */
 export default function PricingCard({
   name,
