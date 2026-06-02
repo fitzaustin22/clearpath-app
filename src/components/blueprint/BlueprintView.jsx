@@ -236,9 +236,19 @@ export default function BlueprintView({ userTier = 'essentials' }) {
           body.exporting-blueprint .blueprint-section {
             break-inside: avoid;
           }
-          body.exporting-blueprint .blueprint-section + .blueprint-section {
+          body.exporting-blueprint .blueprint-section + .blueprint-section:not(.blueprint-section-empty) {
             break-before: page;
             page-break-before: always;
+          }
+          /* Collapse empty sections: the :not(...-empty) above suppresses the
+             page break BEFORE an empty ("Not yet complete") section, so a run of
+             empties flows together instead of spending a page each; a populated
+             section after a run still breaks (the :not() is on the 2nd operand).
+             This rule tightens an empty section's footprint so the run packs —
+             the inline marginBottom:64 needs !important to override. 16px is a
+             browser-pass starting value, not a final tuned number. */
+          body.exporting-blueprint .blueprint-section-empty {
+            margin-bottom: 16px !important;
           }
           body.exporting-blueprint .blueprint-section tr {
             break-inside: avoid;
@@ -251,6 +261,15 @@ export default function BlueprintView({ userTier = 'essentials' }) {
           body.exporting-blueprint .blueprint-section .blueprint-s6-block {
             break-inside: avoid;
             page-break-inside: avoid;
+          }
+          /* Kill the trailing blank page (primary cause): the screen layout pads
+             the root to a full viewport (minHeight:100vh) with a 120px bottom
+             gutter — in print that overflows into one empty trailing sheet. Reset
+             both for export. Secondary contributors (last-section marginBottom:64,
+             disclaimer marginTop:48) are a browser-pass follow-up if one survives. */
+          body.exporting-blueprint .clearpath-blueprint-root {
+            min-height: auto !important;
+            padding-bottom: 0 !important;
           }
         }
       `}</style>

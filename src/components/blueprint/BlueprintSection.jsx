@@ -16,12 +16,18 @@ const SOURCE_MODULE_LABELS = {
   'm2+m4': 'Modules 2 and 4',
 };
 
-function emptyStateText(sectionKey, sourceModule) {
+function emptyStateText(sectionKey, sourceModule, label) {
   if (sectionKey === 's12') {
-    return 'Assembles in Module 7 from your completed Blueprint sections';
+    return 'Your Action Plan builds from the sections above — complete them, then Module 7 assembles it here.';
   }
-  const label = SOURCE_MODULE_LABELS[sourceModule] || 'a future module';
-  return `Builds with ${label}.`;
+  if (sectionKey === 's6') {
+    return 'Not yet complete — finish Modules 4 and 5 to add your retirement plan division.';
+  }
+  const moduleLabel = SOURCE_MODULE_LABELS[sourceModule] || 'a future module';
+  if (!label) {
+    return `Not yet complete — finish ${moduleLabel} to fill in this section.`;
+  }
+  return `Not yet complete — finish ${moduleLabel} to add your ${label.toLowerCase()}.`;
 }
 
 export default function BlueprintSection({ id, number, label, status, sourceModule, children }) {
@@ -43,7 +49,7 @@ export default function BlueprintSection({ id, number, label, status, sourceModu
   return (
     <section
       id={id}
-      className="blueprint-section"
+      className={isEmpty ? 'blueprint-section blueprint-section-empty' : 'blueprint-section'}
       style={{
         marginBottom: 64,
         borderLeft: borderStyle,
@@ -84,7 +90,7 @@ export default function BlueprintSection({ id, number, label, status, sourceModu
             color: 'rgba(27,42,74,0.3)',
           }}
         >
-          {emptyStateText(sectionKey, sourceModule)}
+          {emptyStateText(sectionKey, sourceModule, label)}
         </p>
       ) : (
         children
