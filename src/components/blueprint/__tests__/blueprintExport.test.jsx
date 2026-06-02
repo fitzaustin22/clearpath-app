@@ -80,8 +80,11 @@ describe('BlueprintExport — chrome print-suppression markup (test 6)', () => {
     );
   });
 
-  it('TC-M7B-CHROME-2: the global layout header & footer carry the marker-scoped hide class', () => {
-    const layout = readFileSync(resolve(process.cwd(), 'src/app/layout.tsx'), 'utf8');
+  it('TC-M7B-CHROME-2: the app-group layout header & footer carry the marker-scoped hide class', () => {
+    // The navy app chrome (header/footer) was lifted out of the root layout into
+    // the (app) route group so it wraps only authenticated pages; the
+    // blueprint-export-hide class moved with it, verbatim.
+    const layout = readFileSync(resolve(process.cwd(), 'src/app/(app)/layout.tsx'), 'utf8');
     // Exactly the two chrome elements (header, footer) should carry the class.
     const occurrences = (layout.match(/blueprint-export-hide/g) || []).length;
     expect(layout).toContain('<header');

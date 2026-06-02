@@ -56,6 +56,9 @@ export const T = {
   PARCHMENT_DEEP: '#F1E9D3',
   CARD:           '#FFFFFF',
 
+  // Marketing site (2026-06-02): glass nav background.
+  GLASS:          'rgba(250, 248, 242, 0.9)', // T.PARCHMENT @ 90% — glass nav
+
   // Wizard-foundation (2026-05-17): hairlines + provenance pill text
   LINE:        '#E6E2D8',
   LINE_STRONG: '#D4CFC2',
