@@ -230,23 +230,11 @@ export default function BlueprintView({ userTier = 'essentials' }) {
           body.exporting-blueprint .blueprint-export-hide {
             display: none !important;
           }
-          /* Each §section after the first opens a fresh page; never split a section,
-             and keep table rows intact — applied via descendant selectors so no
-             section renderer is edited. */
+          /* Never split a section, and keep table rows intact — applied via descendant selectors so no section renderer is edited. */
           body.exporting-blueprint .blueprint-section {
             break-inside: avoid;
           }
-          body.exporting-blueprint .blueprint-section + .blueprint-section:not(.blueprint-section-empty) {
-            break-before: page;
-            page-break-before: always;
-          }
-          /* Collapse empty sections: the :not(...-empty) above suppresses the
-             page break BEFORE an empty ("Not yet complete") section, so a run of
-             empties flows together instead of spending a page each; a populated
-             section after a run still breaks (the :not() is on the 2nd operand).
-             This rule tightens an empty section's footprint so the run packs —
-             the inline marginBottom:64 needs !important to override. 16px is a
-             browser-pass starting value, not a final tuned number. */
+          /* Compact empty sections so a run of empty ("Not yet complete") CTAs packs together — the inline marginBottom:64 needs !important to override. 16px is a browser-pass starting value, not a final tuned number. */
           body.exporting-blueprint .blueprint-section-empty {
             margin-bottom: 16px !important;
           }
