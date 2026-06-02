@@ -67,7 +67,7 @@ export default function SiteFooter() {
             ClearPath
           </div>
           <p style={{ fontFamily: T.FONT_BODY, color: T.PARCHMENT, fontSize: '0.875rem', lineHeight: 1.6, opacity: 0.85, margin: '0 0 20px', maxWidth: '260px' }}>
-            Empowering women with clarity and confidence through the most complex financial transitions.
+            Financial clarity through divorce.
           </p>
           <Link
             href="/contact"
