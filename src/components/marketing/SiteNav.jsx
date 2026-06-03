@@ -87,7 +87,13 @@ function AuthControls({ block = false, onNavigate }) {
       </Show>
       <Show when="signed-in">
         <Link href="/dashboard" {...linkProps}>Dashboard</Link>
-        <UserButton />
+        {/* Brand the Clerk avatar to navy/gold — the default purple clashes with the palette. */}
+        <UserButton
+          appearance={{
+            variables: { colorPrimary: T.NAVY, colorText: T.NAVY_DEEP, fontFamily: T.FONT_BODY },
+            elements: { avatarBox: { width: 32, height: 32, boxShadow: `0 0 0 1.5px ${T.GOLD}` } },
+          }}
+        />
       </Show>
     </>
   );
