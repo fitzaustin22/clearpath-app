@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { useM2Store } from '@/src/stores/m2Store';
 import { useM1Store } from '@/src/stores/m1Store';
@@ -275,6 +276,23 @@ export default function M2ModulePage({ userTier = 'essentials' }) {
       }}
     >
       <div style={{ maxWidth: 960, margin: '0 auto' }}>
+
+        {/* Back link */}
+        <Link
+          href="/dashboard"
+          style={{
+            fontFamily: SOURCE,
+            fontSize: 14,
+            color: NAVY,
+            opacity: 0.6,
+            textDecoration: 'none',
+            display: 'inline-block',
+            marginBottom: 24,
+          }}
+        >
+          ← Back to Dashboard
+        </Link>
+
         {/* Section 1 — Module header */}
         <section>
           <h1

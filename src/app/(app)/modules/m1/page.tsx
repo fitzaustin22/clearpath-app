@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import { T } from '@/src/lib/brand/tokens';
 import ReadinessAssessment from '@/src/components/m1/ReadinessAssessment';
 import BudgetGapCalculator from '@/src/components/m1/BudgetGapCalculator';
 
@@ -5,6 +7,19 @@ export default function M1Page() {
   return (
     <main style={{ backgroundColor: "#FAF8F2", minHeight: "100vh", padding: "60px 24px" }}>
       <div style={{ maxWidth: "800px", margin: "0 auto" }}>
+        <Link
+          href="/dashboard"
+          style={{
+            fontFamily: T.FONT_BODY,
+            fontSize: 14,
+            color: T.NAVY_55,
+            textDecoration: 'none',
+            display: 'inline-block',
+            marginBottom: 24,
+          }}
+        >
+          ← Back to Dashboard
+        </Link>
         <p style={{ color: "#C8A96E", fontSize: "13px", letterSpacing: "2px", textTransform: "uppercase" }}>Module 1</p>
         <h1 style={{ fontFamily: "Playfair Display, serif", color: "#1B2A4A", fontSize: "2.5rem", margin: "12px 0 24px" }}>Permission to Explore</h1>
         <p style={{ color: "rgba(27,42,74,0.7)", fontSize: "1.1rem", lineHeight: 1.8, marginBottom: "48px" }}>
