@@ -73,3 +73,23 @@ create policy "Users can view own tool data" on public.tool_data
 
 create policy "Users can write own tool data" on public.tool_data
   for all using (auth.uid() = user_id);
+
+-- Lead-magnet email capture (added 2026-06-02 — homepage Financial Clarity
+-- Checklist). PUBLIC, unauthenticated inserts arrive via the service-role key
+-- (supabaseAdmin), which bypasses RLS. The API route lower-cases email before
+-- insert, so a plain unique(email, magnet_id) gives case-insensitive dedupe AND
+-- matches the upsert's ON CONFLICT (email, magnet_id) target.
+create table public.leads (
+  id uuid primary key default uuid_generate_v4(),
+  email text not null,
+  magnet_id text not null,
+  source text,
+  consent_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (email, magnet_id)
+);
+
+-- RLS on (every table in an exposed schema). No policies: only the service-role
+-- key writes (it bypasses RLS); anon/authenticated get no access — leads are
+-- never client-readable.
+alter table public.leads enable row level security;
