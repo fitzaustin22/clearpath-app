@@ -77,6 +77,13 @@ export const T = {
   SHADOW_CARD:    '0 1px 3px rgba(27, 42, 74, 0.06), 0 1px 2px rgba(27, 42, 74, 0.04)',
   SHADOW_TOOLTIP: '0 4px 12px rgba(27, 42, 74, 0.15)',
 
+  // Marketing homepage re-skin (2026-06-03): additive elevation tokens from the
+  // Claude Design handoff. LIFT = featured Challenge card + the hero Blueprint
+  // document; FLOAT = the floating clarity-stat card. Additive only — zero edits
+  // to existing keys.
+  SHADOW_LIFT:  '0 18px 44px rgba(27, 42, 74, 0.13), 0 4px 12px rgba(27, 42, 74, 0.06)',
+  SHADOW_FLOAT: '0 24px 48px rgba(27, 42, 74, 0.20)',
+
   FONT_DISPLAY: 'var(--font-newsreader), "Newsreader", "Cormorant Garamond", Georgia, serif',
   FONT_BODY:    'var(--font-inter), "Inter", "Source Sans 3", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
   FONT_NUMERIC: 'var(--font-newsreader), "Newsreader", Georgia, serif',
