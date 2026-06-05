@@ -1,8 +1,8 @@
 /**
  * BlueprintSidebar — smoke tests for the right-column sidebar:
  *
- *   1. Full Access shows Preview + Export buttons (both wire to one trigger).
- *   2. Free / Essentials shows the inline locked CTA, no Preview/Export buttons.
+ *   1. Full Access shows the single Export button (no Preview button).
+ *   2. Free / Essentials shows the inline locked CTA, not the Export button.
  *   3. The stat number reflects deriveProgressCopy's percentage.
  *   4. The progress copy never mentions "attorney" (D1 consumer framing rule).
  *   5. UP NEXT card surfaces the ACTIVE card label and the right module copy.
@@ -37,7 +37,7 @@ function buildSections() {
 afterEach(() => cleanup());
 
 describe('BlueprintSidebar — tier gating', () => {
-  it('Full Access (navigator) shows BOTH Preview and Export buttons', () => {
+  it('Full Access (navigator) shows the single Export button', () => {
     render(
       <BlueprintSidebar
         sections={buildSections()}
@@ -47,12 +47,25 @@ describe('BlueprintSidebar — tier gating', () => {
         userTier="navigator"
       />
     );
-    expect(screen.getByTestId('schematic-preview-button')).toBeTruthy();
     expect(screen.getByTestId('schematic-export-button')).toBeTruthy();
     expect(screen.queryByTestId('schematic-export-locked')).toBeNull();
   });
 
-  it('Full Access (signature legacy) gets the same unlocked buttons', () => {
+  it('Full Access (navigator) does NOT render a Preview button', () => {
+    render(
+      <BlueprintSidebar
+        sections={buildSections()}
+        completedCount={4}
+        partialCount={2}
+        activeStoreKey="s4"
+        userTier="navigator"
+      />
+    );
+    expect(screen.queryByTestId('schematic-preview-button')).toBeNull();
+    expect(screen.queryByText(/preview/i)).toBeNull();
+  });
+
+  it('Full Access (signature legacy) gets the unlocked Export button', () => {
     render(
       <BlueprintSidebar
         sections={buildSections()}
@@ -62,11 +75,11 @@ describe('BlueprintSidebar — tier gating', () => {
         userTier="signature"
       />
     );
-    expect(screen.getByTestId('schematic-preview-button')).toBeTruthy();
     expect(screen.getByTestId('schematic-export-button')).toBeTruthy();
+    expect(screen.queryByTestId('schematic-preview-button')).toBeNull();
   });
 
-  it('Essentials shows the locked CTA, NOT the Preview/Export buttons', () => {
+  it('Essentials shows the locked CTA with reconciled copy, not the Export button', () => {
     render(
       <BlueprintSidebar
         sections={buildSections()}
@@ -77,7 +90,7 @@ describe('BlueprintSidebar — tier gating', () => {
       />
     );
     expect(screen.getByTestId('schematic-export-locked')).toBeTruthy();
-    expect(screen.queryByTestId('schematic-preview-button')).toBeNull();
+    expect(screen.getByText('Unlock Blueprint Export')).toBeTruthy();
     expect(screen.queryByTestId('schematic-export-button')).toBeNull();
   });
 
@@ -202,6 +215,7 @@ describe('BlueprintSidebar — UP NEXT', () => {
     const txt = screen.getByTestId('schematic-sidebar').textContent;
     expect(txt).toContain('Every section is written');
     expect(txt).toContain('Blueprint complete');
+    expect(txt).not.toContain('Preview');
     expect(screen.queryByTestId('schematic-continue-link')).toBeNull();
   });
 });

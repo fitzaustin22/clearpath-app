@@ -3,12 +3,12 @@
 /**
  * BlueprintSidebar — the 372px right column from the schematic design.
  *
- * Reuses the existing M7 export entry point. Per Phase 0 spec, BOTH the
- * "Preview document" (gold) and "Export draft" (outline) buttons wire to the
- * SAME `triggerExport()` defined in BlueprintExport.jsx — no new export
- * capability is invented. For Free / Essentials users the button cluster is
- * replaced with the existing BlueprintExportLockedTeaser inline, preserving
- * the tier-gating contract.
+ * Reuses the existing M7 export entry point. The single "Export Blueprint"
+ * (gold) button wires to `triggerBlueprintExport()` — no new export capability
+ * is invented. (A distinct Preview affordance is deferred to v1.x, once an
+ * inline preview modal + server-side PDF route exist.) For Free / Essentials
+ * users the button is replaced with the inline locked CTA, preserving the
+ * tier-gating contract.
  *
  * Stat card stays on the existing navy palette (T.NAVY). Stat number, progress
  * copy (consumer-framed via deriveProgressCopy), and the up-next title all
@@ -136,24 +136,6 @@ function StatCard({ percentComplete, copy, userTier }) {
           <button
             type="button"
             onClick={triggerBlueprintExport}
-            data-testid="schematic-preview-button"
-            style={{
-              backgroundColor: T.GOLD,
-              color: T.NAVY,
-              fontFamily: T.FONT_BODY,
-              fontWeight: 700,
-              fontSize: 13.5,
-              padding: '13px 22px',
-              border: 'none',
-              borderRadius: 8,
-              cursor: 'pointer',
-            }}
-          >
-            Preview document
-          </button>
-          <button
-            type="button"
-            onClick={triggerBlueprintExport}
             data-testid="schematic-export-button"
             style={{
               backgroundColor: 'transparent',
@@ -187,7 +169,7 @@ function StatCard({ percentComplete, copy, userTier }) {
               letterSpacing: 0.3,
             }}
           >
-            Unlock Preview & Export
+            Unlock Blueprint Export
           </Link>
           <p
             style={{
@@ -267,7 +249,7 @@ function UpNextCard({ activeStoreKey, sections }) {
             margin: 0,
           }}
         >
-          Use Preview or Export above to review or save a copy of the finished document.
+          Use Export above to save a copy of the finished document.
         </p>
       </div>
     );
