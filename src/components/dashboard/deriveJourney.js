@@ -48,7 +48,7 @@ export const JOURNEY = [
   { n: 4, key: 'm4', title: 'Tax Landscape',                 tier: 'navigator',  blurb: 'How filing status and basis change the math.',   gating: ['s4'] },
   { n: 5, key: 'm5', title: 'Value What Matters',            tier: 'navigator',  blurb: 'Weigh trade-offs against what you care about.',  gating: ['s8', 's9'] },
   { n: 6, key: 'm6', title: 'Negotiate from Strength',       tier: 'navigator',  blurb: 'Model settlements and walk in prepared.',        gating: ['s10', 's11'] },
-  { n: 7, key: 'm7', title: 'ClearPath Financial Blueprint', tier: 'navigator',  blurb: 'Assemble and export your attorney-ready file.',  gating: ['s12'] },
+  { n: 7, key: 'm7', title: 'ClearPath Financial Blueprint', tier: 'navigator',  blurb: 'Assemble and export your Blueprint.',  gating: ['s12'] },
 ];
 
 function moduleIsDone(mod, sections) {
@@ -114,7 +114,7 @@ export function deriveJourney({ sections, userTier = 'free', hydrated = true }) 
     nextStep = { kind: 'upgrade', title: `Module ${m.n} · ${m.title}`, blurb: m.blurb, ctaLabel: 'Upgrade to unlock', href: '/upgrade' };
   } else {
     // Fully-complete Navigator: nothing to sell. Quiet pointer to the Blueprint.
-    nextStep = { kind: 'blueprintComplete', title: 'Your Blueprint is ready', blurb: 'Every module is complete — review and export your attorney-ready file.', ctaLabel: 'View your Blueprint', href: '/blueprint' };
+    nextStep = { kind: 'blueprintComplete', title: 'Your Blueprint is ready', blurb: 'Every module is complete — review and export your Blueprint.', ctaLabel: 'View your Blueprint', href: '/blueprint' };
   }
 
   const done = countCompleteSections(safeSections);
