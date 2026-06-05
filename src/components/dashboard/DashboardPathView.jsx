@@ -94,7 +94,7 @@ function BlueprintCard({ blueprint }) {
       <div style={{ height: 8, borderRadius: 999, background: T.PARCHMENT_DEEP, margin: '13px 0 10px', overflow: 'hidden' }}>
         <div style={{ width: `${percent}%`, height: '100%', borderRadius: 999, background: `linear-gradient(90deg, ${T.GOLD}, ${T.GOLD_SOFT})` }} />
       </div>
-      <div style={{ fontFamily: T.FONT_BODY, fontSize: 13, color: T.INK_2, lineHeight: 1.5 }}>Each step you finish writes another page of your attorney-ready file.</div>
+      <div style={{ fontFamily: T.FONT_BODY, fontSize: 13, color: T.INK_2, lineHeight: 1.5 }}>Each step you finish writes another page of your Blueprint.</div>
     </Link>
   );
 }
