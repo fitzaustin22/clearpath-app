@@ -1,12 +1,35 @@
 'use client';
 
+/**
+ * BlueprintView — top-level client island for the /blueprint surface.
+ *
+ * Re-skin: the hero is now the dark recessed schematic inset on a warm cream
+ * page, with a stat / "what writes next" sidebar on the right. The 12
+ * BlueprintSection bodies still render below the hero (and into the gated
+ * Export PDF) unchanged. Wiring preserved verbatim:
+ *
+ *   • blueprintStore reads (sections, lastUpdated, getCompletedCount).
+ *   • Clerk useUser() drives the CLIENT field of the schematic title-block AND
+ *     the cover page (no hardcoded "SARAH M." anywhere).
+ *   • The M7 export entry point — `body.exporting-blueprint` + window.print()
+ *     — is invoked from the sidebar's Preview / Export buttons via the shared
+ *     `triggerBlueprintExport` helper. Same marker, same gate.
+ *   • Tier gating routes through the existing BlueprintExportLockedTeaser
+ *     equivalent inline in the sidebar's stat card for Free / Essentials.
+ *   • All `body.exporting-blueprint @media print` rules are preserved verbatim
+ *     so the gated export pipeline is byte-equivalent.
+ *
+ * `blueprint-export-hide` is added to the new hero + sidebar so the gated
+ * export PDF suppresses them (same mechanism as the navy header/footer in
+ * (app)/layout.tsx).
+ */
+
 import { useEffect, useMemo, useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import useBlueprintStore from '@/src/stores/blueprintStore';
 import BlueprintSection from '@/src/components/blueprint/BlueprintSection';
 import BlueprintCover from '@/src/components/blueprint/BlueprintCover';
-import BlueprintExport from '@/src/components/blueprint/BlueprintExport';
 import S1PersonalProfile from '@/src/components/blueprint/sections/S1PersonalProfile';
 import S2IncomeAnalysis from '@/src/components/blueprint/sections/S2IncomeAnalysis';
 import S3AssetInventory from '@/src/components/blueprint/sections/S3AssetInventory';
@@ -19,6 +42,10 @@ import S9HomeDecision from '@/src/components/blueprint/sections/S9HomeDecision';
 import S10NegotiationStrategy from '@/src/components/blueprint/sections/S10NegotiationStrategy';
 import S11SettlementEvaluation from '@/src/components/blueprint/sections/S11SettlementEvaluation';
 import S12ActionPlan from '@/src/components/blueprint/sections/S12ActionPlan';
+import SchematicInset from '@/src/components/blueprint/schematic/SchematicInset';
+import BlueprintSidebar from '@/src/components/blueprint/schematic/BlueprintSidebar';
+import { deriveActiveStoreKey } from '@/src/components/blueprint/schematic/deriveActive';
+import { T } from '@/src/lib/brand/tokens';
 
 const NAVY = '#1B2A4A';
 const GOLD = '#C8A96E';
@@ -103,13 +130,15 @@ export default function BlueprintView({ userTier = 'essentials' }) {
   const sections = useBlueprintStore((state) => state.sections);
   const lastUpdated = useBlueprintStore((state) => state.lastUpdated);
   const getCompletedCount = useBlueprintStore((state) => state.getCompletedCount);
-  const getProgressLabel = useBlueprintStore((state) => state.getProgressLabel);
+  const getPartialCount = useBlueprintStore((state) => state.getPartialCount);
 
   const [hydrated, setHydrated] = useState(false);
   const [back, setBack] = useState({ label: '← Back to Dashboard', dest: '/dashboard' });
 
   useEffect(() => {
     if (useBlueprintStore.persist?.hasHydrated?.()) {
+      // Mount-only hydration sync — M3 affidavit precedent (BlueprintCover too).
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setHydrated(true);
       return;
     }
@@ -119,6 +148,8 @@ export default function BlueprintView({ userTier = 'essentials' }) {
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
+    // Mount-only referrer read — M3 affidavit precedent.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setBack(computeBackLabel(document.referrer || ''));
   }, []);
 
@@ -144,43 +175,17 @@ export default function BlueprintView({ userTier = 'essentials' }) {
   };
 
   const completed = hydrated ? getCompletedCount() : 0;
-  const progressLabel = hydrated ? getProgressLabel() : '0 of 12 sections';
+  const partial = hydrated ? getPartialCount() : 0;
   const userName = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : '';
   const lastUpdatedLabel = hydrated ? formatLastUpdated(lastUpdated) : 'Not yet started';
+  const activeStoreKey = useMemo(
+    () => (hydrated ? deriveActiveStoreKey(sections) : null),
+    [hydrated, sections]
+  );
   const statusText = useMemo(
     () => (hydrated ? statusMessage(completed, sections) : statusMessage(0, sections)),
     [hydrated, completed, sections]
   );
-
-  const renderCircle = (key) => {
-    const status = hydrated ? sections[key].status : 'empty';
-    const base = {
-      width: 8,
-      height: 8,
-      borderRadius: '50%',
-      flexShrink: 0,
-      display: 'inline-block',
-    };
-    if (status === 'complete') {
-      return <span key={key} style={{ ...base, backgroundColor: GOLD }} aria-label={`${sections[key].label}: complete`} />;
-    }
-    if (status === 'partial') {
-      return (
-        <span
-          key={key}
-          style={{ ...base, backgroundColor: 'transparent', border: `1.5px solid ${GOLD}` }}
-          aria-label={`${sections[key].label}: partial`}
-        />
-      );
-    }
-    return (
-      <span
-        key={key}
-        style={{ ...base, backgroundColor: 'rgba(27,42,74,0.15)' }}
-        aria-label={`${sections[key].label}: empty`}
-      />
-    );
-  };
 
   return (
     <>
@@ -255,186 +260,208 @@ export default function BlueprintView({ userTier = 'essentials' }) {
              gutter — in print that overflows into one empty trailing sheet. Reset
              both for export. Secondary contributors (last-section marginBottom:64,
              disclaimer marginTop:48) are a browser-pass follow-up if one survives. */
-          body.exporting-blueprint .clearpath-blueprint-root {
+          body.exporting-blueprint .clearpath-blueprint-root,
+          body.exporting-blueprint .clearpath-blueprint-doc {
             min-height: auto !important;
             padding-bottom: 0 !important;
           }
         }
       `}</style>
+
       <div
-        className="clearpath-blueprint-root"
+        className="schematic-root clearpath-blueprint-root"
         style={{
-          backgroundColor: '#FFFFFF',
-          maxWidth: 720,
-          margin: '0 auto',
-          paddingLeft: 48,
-          paddingRight: 48,
-          paddingTop: 40,
-          paddingBottom: 120,
           minHeight: '100vh',
-          backgroundImage:
-            'linear-gradient(rgba(27,42,74,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(27,42,74,0.02) 1px, transparent 1px)',
-          backgroundSize: '20px 20px',
-          fontFamily: "var(--font-source-sans), 'Source Sans Pro', sans-serif",
+          backgroundColor: PARCHMENT,
+          fontFamily: T.FONT_BODY,
         }}
       >
         <BlueprintCover />
 
-        <button
-          type="button"
-          onClick={handleBack}
-          className="clearpath-blueprint-back"
-          style={{
-            background: 'transparent',
-            border: 'none',
-            padding: 0,
-            margin: 0,
-            marginBottom: 24,
-            fontFamily: 'inherit',
-            fontSize: 14,
-            fontWeight: 400,
-            color: 'rgba(27,42,74,0.6)',
-            cursor: 'pointer',
-          }}
-        >
-          {back.label}
-        </button>
+        <div className="schematic-hero blueprint-export-hide">
+          <div>
+            <button
+              type="button"
+              onClick={handleBack}
+              className="clearpath-blueprint-back"
+              style={{
+                background: 'transparent',
+                border: 'none',
+                padding: 0,
+                margin: '0 0 18px 0',
+                fontFamily: 'inherit',
+                fontSize: 13,
+                fontWeight: 400,
+                color: 'rgba(27,42,74,0.6)',
+                cursor: 'pointer',
+              }}
+            >
+              {back.label}
+            </button>
 
-        <header style={{ marginBottom: 28 }}>
-          <h1
-            className="clearpath-blueprint-title"
-            style={{
-              margin: 0,
-              fontFamily: "var(--font-playfair), 'Playfair Display', serif",
-              fontWeight: 700,
-              fontSize: 36,
-              lineHeight: 1.15,
-              color: NAVY,
-            }}
-          >
-            ClearPath Financial Blueprint
-          </h1>
-          <p
-            style={{
-              margin: '12px 0 0 0',
-              fontFamily: 'inherit',
-              fontWeight: 400,
-              fontSize: 18,
-              color: 'rgba(27,42,74,0.6)',
-            }}
-          >
-            {userName}
-          </p>
-          <p
-            style={{
-              margin: '6px 0 0 0',
-              fontFamily: 'inherit',
-              fontWeight: 400,
-              fontSize: 14,
-              color: 'rgba(27,42,74,0.4)',
-            }}
-          >
-            Draft — Last updated {lastUpdatedLabel}
-          </p>
-        </header>
+            <div
+              style={{
+                fontFamily: T.FONT_BODY,
+                fontWeight: 700,
+                fontSize: 11,
+                letterSpacing: 1,
+                textTransform: 'uppercase',
+                color: T.PILL_TEXT,
+              }}
+            >
+              Your Deliverable
+            </div>
 
-        <div style={{ marginBottom: 32 }}>
-          <BlueprintExport userTier={userTier} />
+            <h1
+              className="clearpath-blueprint-title"
+              style={{
+                margin: '14px 0 30px',
+                fontFamily: "var(--font-playfair), 'Playfair Display', serif",
+                fontWeight: 700,
+                fontSize: 42,
+                lineHeight: 1.05,
+                letterSpacing: -0.5,
+                color: NAVY,
+              }}
+            >
+              Your Blueprint is taking shape.
+            </h1>
+
+            <SchematicInset
+              sections={sections}
+              clientName={userName}
+              lastUpdatedISO={lastUpdated}
+            />
+          </div>
+
+          <BlueprintSidebar
+            sections={sections}
+            completedCount={completed}
+            partialCount={partial}
+            activeStoreKey={activeStoreKey}
+            userTier={userTier}
+          />
         </div>
 
         <div
+          className="clearpath-blueprint-doc"
           style={{
-            backgroundColor: PARCHMENT,
-            borderRadius: 8,
-            padding: 12,
-            marginBottom: 48,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            flexWrap: 'wrap',
+            backgroundColor: '#FFFFFF',
+            maxWidth: 720,
+            margin: '0 auto',
+            paddingLeft: 48,
+            paddingRight: 48,
+            paddingTop: 40,
+            paddingBottom: 120,
+            backgroundImage:
+              'linear-gradient(rgba(27,42,74,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(27,42,74,0.02) 1px, transparent 1px)',
+            backgroundSize: '20px 20px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {SECTION_ORDER.map(renderCircle)}
-          </div>
-          <span
-            style={{
-              fontFamily: 'inherit',
-              fontWeight: 400,
-              fontSize: 14,
-              color: 'rgba(27,42,74,0.6)',
-            }}
-          >
-            {progressLabel}
-          </span>
-        </div>
-
-        <div>
-          {SECTION_ORDER.map((key) => {
-            const section = sections[key];
-            const Renderer = SECTION_RENDERERS[key];
-            const number = parseInt(key.replace('s', ''), 10);
-            return (
-              <BlueprintSection
-                key={key}
-                id={`section-${number}`}
-                number={number}
-                label={section.label}
-                status={hydrated ? section.status : 'empty'}
-                sourceModule={section.sourceModule}
-              >
-                <Renderer data={section.data} status={section.status} />
-              </BlueprintSection>
-            );
-          })}
-        </div>
-
-        <footer style={{ marginTop: 24 }}>
-          <div style={{ borderTop: '1px solid rgba(200,169,110,0.4)', paddingTop: 24 }}>
+          <header className="blueprint-export-hide" style={{ marginBottom: 28 }}>
             <h2
               style={{
                 margin: 0,
                 fontFamily: "var(--font-playfair), 'Playfair Display', serif",
                 fontWeight: 700,
-                fontSize: 18,
+                fontSize: 28,
+                lineHeight: 1.15,
                 color: NAVY,
               }}
             >
-              Blueprint Status
+              ClearPath Financial Blueprint
             </h2>
             <p
               style={{
-                margin: '10px 0 0 0',
+                margin: '8px 0 0 0',
                 fontFamily: 'inherit',
                 fontWeight: 400,
                 fontSize: 15,
                 color: 'rgba(27,42,74,0.6)',
+              }}
+            >
+              {userName}
+            </p>
+            <p
+              style={{
+                margin: '4px 0 0 0',
+                fontFamily: 'inherit',
+                fontWeight: 400,
+                fontSize: 13,
+                color: 'rgba(27,42,74,0.4)',
+              }}
+            >
+              Draft — Last updated {lastUpdatedLabel}
+            </p>
+          </header>
+
+          <div>
+            {SECTION_ORDER.map((key) => {
+              const section = sections[key];
+              const Renderer = SECTION_RENDERERS[key];
+              const number = parseInt(key.replace('s', ''), 10);
+              return (
+                <BlueprintSection
+                  key={key}
+                  id={`section-${number}`}
+                  number={number}
+                  label={section.label}
+                  status={hydrated ? section.status : 'empty'}
+                  sourceModule={section.sourceModule}
+                >
+                  <Renderer data={section.data} status={section.status} />
+                </BlueprintSection>
+              );
+            })}
+          </div>
+
+          <footer style={{ marginTop: 24 }}>
+            <div style={{ borderTop: `1px solid ${GOLD}`, opacity: 1, paddingTop: 24, borderColor: 'rgba(200,169,110,0.4)' }}>
+              <h2
+                style={{
+                  margin: 0,
+                  fontFamily: "var(--font-playfair), 'Playfair Display', serif",
+                  fontWeight: 700,
+                  fontSize: 18,
+                  color: NAVY,
+                }}
+              >
+                Blueprint Status
+              </h2>
+              <p
+                style={{
+                  margin: '10px 0 0 0',
+                  fontFamily: 'inherit',
+                  fontWeight: 400,
+                  fontSize: 15,
+                  color: 'rgba(27,42,74,0.6)',
+                  lineHeight: 1.5,
+                }}
+              >
+                {statusText}
+              </p>
+            </div>
+
+            <p
+              style={{
+                marginTop: 48,
+                marginBottom: 0,
+                fontFamily: 'inherit',
+                fontWeight: 400,
+                fontSize: 13,
+                fontStyle: 'italic',
+                color: 'rgba(27,42,74,0.3)',
                 lineHeight: 1.5,
               }}
             >
-              {statusText}
+              This document is a working draft for educational and planning purposes only. It
+              does not constitute financial, legal, or tax advice. The calculations and
+              estimates shown are simplified and may not reflect your actual financial
+              situation. For guidance specific to your circumstances, consult a Certified
+              Divorce Financial Analyst®, CPA, or attorney.
             </p>
-          </div>
-
-          <p
-            style={{
-              marginTop: 48,
-              marginBottom: 0,
-              fontFamily: 'inherit',
-              fontWeight: 400,
-              fontSize: 13,
-              fontStyle: 'italic',
-              color: 'rgba(27,42,74,0.3)',
-              lineHeight: 1.5,
-            }}
-          >
-            This document is a working draft for educational and planning purposes only. It
-            does not constitute financial, legal, or tax advice. The calculations and
-            estimates shown are simplified and may not reflect your actual financial
-            situation. For guidance specific to your circumstances, consult a Certified
-            Divorce Financial Analyst®, CPA, or attorney.
-          </p>
-        </footer>
+          </footer>
+        </div>
       </div>
     </>
   );
