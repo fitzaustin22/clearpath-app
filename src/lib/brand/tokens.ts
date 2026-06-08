@@ -53,6 +53,10 @@ export const T = {
   GOLD_FOCUS_RING: 'rgba(200, 169, 110, 0.20)',
 
   PARCHMENT:      '#FAF8F2',
+  // Marketing (2026-06-08): alternating section background — sits tonally
+  // between PARCHMENT and PARCHMENT_DEEP. Used by /about (mission + contact)
+  // and reused by /resources for alternating section bands.
+  SECTION_TINT:   '#F6F2E8',
   PARCHMENT_DEEP: '#F1E9D3',
   CARD:           '#FFFFFF',
 
