@@ -114,7 +114,17 @@ describe('prePopulateQDROInputs — no write-back + DI signature (§10.7)', () =
     const m2Store = m2With([{ id: 'ret1', category: 'retirement', label: 'R' }]);
     const a = prePopulateQDROInputs({ m1Store: { anything: true }, m2Store, m3Store: { foo: 9 } });
     const b = prePopulateQDROInputs({ m1Store: null, m2Store, m3Store: null });
-    expect(a).toEqual(b);
+    const stripTimestamps = (o) =>
+      JSON.parse(JSON.stringify(o), (key, value) => (key === 'timestamp' ? undefined : value));
+    expect(stripTimestamps(a)).toEqual(stripTimestamps(b));
+    const timestamps = Object.values(a.assets.ret1._prePopSources)
+      .filter(Boolean)
+      .map((s) => s.timestamp);
+    expect(timestamps).toHaveLength(2);
+    for (const ts of timestamps) {
+      expect(typeof ts).toBe('string');
+      expect(Number.isNaN(Date.parse(ts))).toBe(false);
+    }
   });
 });
 
