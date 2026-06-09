@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { useM1Store } from './m1Store';
 import { useM2Store } from './m2Store';
+import { computeCategoryTotals } from '@/src/lib/m2Sections';
 
 // TODO: Swap localStorage for Supabase persistence for authenticated Essentials+ users
 
@@ -852,19 +853,26 @@ export const useM3Store = create(
           const items = m2State.maritalEstateInventory.items || [];
 
           if (items.length > 0 && !updated.prePopulated.fromM2) {
-            const sumByCategory = (cat) =>
-              round2(
-                items
-                  .filter((i) => i.category === cat)
-                  .reduce((s, i) => s + (Number(i.currentValue) || 0), 0)
-              );
+            // Shared M2 aggregator: assets net of outstandingBalance (M2 shows
+            // "Real Estate (Net Equity)"), liabilities at currentValue. The
+            // affidavit's six slots are coarser than the M2 category enum:
+            // workingCapital is M2's single cash+brokerage bucket (no
+            // cash/investment split exists at the store level), so it lands
+            // whole in cashAccounts; vested equity comp maps to investments;
+            // businessInterests and life-insurance cash value sit in otherAssets.
+            const totals = computeCategoryTotals(items);
+            const categoryTotal = (key) => totals[key]?.total || 0;
 
-            const realProperty = sumByCategory('realEstate');
-            const cashAccounts = sumByCategory('bankAccounts');
-            const investments = sumByCategory('investments');
-            const retirementAccounts = sumByCategory('retirementAccounts');
+            const realProperty = round2(categoryTotal('realEstate'));
+            const cashAccounts = round2(categoryTotal('workingCapital'));
+            const investments = round2(
+              categoryTotal('stockOptions') + categoryTotal('corporateIncentives')
+            );
+            const retirementAccounts = round2(
+              categoryTotal('retirement') + categoryTotal('pensions')
+            );
             const otherAssets = round2(
-              sumByCategory('otherAssets') + sumByCategory('lifeInsurance')
+              categoryTotal('otherAssets') + categoryTotal('businessInterests')
             );
             const personalProperty = round2(
               m2State.personalPropertyInventory?.summary?.totalValue || 0
@@ -884,9 +892,9 @@ export const useM3Store = create(
             };
             updated.sections.assets.loaded = true;
 
-            const loans = sumByCategory('loans');
-            const creditCards = sumByCategory('creditCards');
-            const otherDebt = sumByCategory('otherDebt');
+            const loans = round2(categoryTotal('loans'));
+            const creditCards = round2(categoryTotal('creditCards'));
+            const otherDebt = round2(categoryTotal('otherDebt'));
             const totalLiabilities = round2(loans + creditCards + otherDebt);
 
             updated.sections.liabilities.summary = {
