@@ -1,0 +1,332 @@
+{
+  "fixtureId": "F3",
+  "title": "Edge Ellis",
+  "clientState": "DC",
+  "persona": {
+    "name": "Riva Ellis",
+    "age": 47,
+    "city": "Washington, DC",
+    "marriageYears": 4
+  },
+  "stores": {
+    "m1-store": {
+      "readinessAssessment": {
+        "answers": [
+          { "questionId": "q1", "score": 2 },
+          { "questionId": "q2", "score": 2 },
+          { "questionId": "q3", "score": 2 },
+          { "questionId": "q4", "score": 2 },
+          { "questionId": "q5", "score": 2 },
+          { "questionId": "q6", "score": 2 },
+          { "questionId": "q7", "score": 2 },
+          { "questionId": "q8", "score": 1 },
+          { "questionId": "q9", "score": 1 },
+          { "questionId": "q10", "score": 1 }
+        ],
+        "completed": true
+      },
+      "budgetGap": {
+        "inputs": {
+          "grossIncome": 7250,
+          "payFrequency": "monthly",
+          "expectedShare": 100,
+          "housing": 3050,
+          "utilities": 290,
+          "groceries": 840,
+          "transportation": 350,
+          "healthInsurance": 410,
+          "childcare": 1450,
+          "debtPayments": 320,
+          "personal": 420
+        },
+        "completed": true,
+        "emailCaptured": true
+      }
+    },
+    "m2-store": {
+      "maritalEstateInventory": {
+        "marriageDate": "2022-01-10",
+        "items": [
+          {
+            "id": "pensions-f3cb",
+            "category": "pensions",
+            "description": "Lumen Health cash-balance pension",
+            "dateAcquired": null,
+            "titleholder": "self",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 68000,
+            "costBasis": null,
+            "outstandingBalance": null,
+            "classification": "commingled",
+            "classificationSource": "user",
+            "notes": "Participation began before the marriage — coverture applies"
+          },
+          {
+            "id": "realEstate-f3home",
+            "category": "realEstate",
+            "description": "Condo — Capitol Hill",
+            "dateAcquired": "2025-02-15",
+            "titleholder": "joint",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 640000,
+            "costBasis": 525000,
+            "outstandingBalance": 295000,
+            "classification": "marital",
+            "classificationSource": "user",
+            "notes": "Bought after selling prior residence — sold-then-bought pattern"
+          },
+          {
+            "id": "workingCapital-f3zero",
+            "category": "workingCapital",
+            "description": "Dormant savings — Riverside Bank",
+            "dateAcquired": null,
+            "titleholder": "self",
+            "sourceOfPayment": "separate-funds",
+            "currentValue": 0,
+            "costBasis": null,
+            "outstandingBalance": null,
+            "classification": "separate",
+            "classificationSource": "auto",
+            "notes": "Zero balance — must render and foot without dividing"
+          },
+          {
+            "id": "workingCapital-f3chk",
+            "category": "workingCapital",
+            "description": "Joint checking — Riverside Bank",
+            "dateAcquired": null,
+            "titleholder": "joint",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 15000,
+            "costBasis": null,
+            "outstandingBalance": null,
+            "classification": "marital",
+            "classificationSource": "auto",
+            "notes": ""
+          },
+          {
+            "id": "creditCards-f3amex",
+            "category": "creditCards",
+            "description": "Pinnacle Amex",
+            "dateAcquired": null,
+            "titleholder": "joint",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 4200,
+            "costBasis": null,
+            "outstandingBalance": null,
+            "classification": "marital",
+            "classificationSource": "auto",
+            "notes": ""
+          }
+        ]
+      },
+      "documentChecklist": {
+        "items": [
+          { "id": "doc-tax-01", "status": "collected" },
+          { "id": "doc-inc-01", "status": "collected" },
+          { "id": "doc-ret-01", "status": "collected" },
+          { "id": "doc-re-01", "status": "collected" }
+        ]
+      },
+      "personalPropertyInventory": {
+        "rooms": [],
+        "highValueItems": []
+      }
+    },
+    "clearpath-m3-store": {
+      "payStubDecoder": {
+        "completed": true,
+        "inputs": {
+          "hasEmploymentIncome": true,
+          "noIncomeConfirmed": false,
+          "payFrequency": "monthly",
+          "paychecksPerYear": 12,
+          "useCustomPaychecks": false,
+          "grossPayPerCheck": 7250,
+          "deductions": [
+            { "id": "fedTax", "perPaycheck": 980 },
+            { "id": "stateTax", "perPaycheck": 415 },
+            { "id": "socialSecurity", "perPaycheck": 449.5 },
+            { "id": "medicare", "perPaycheck": 105.13 },
+            { "id": "medical", "perPaycheck": 185 },
+            { "id": "dental", "perPaycheck": 20 },
+            { "id": "401k", "perPaycheck": 580 }
+          ],
+          "otherIncomeSources": []
+        }
+      },
+      "budgetModeler": {
+        "completed": true,
+        "current": {
+          "home": { "rentMortgage": 3050, "electricity": 160 },
+          "food": { "groceries": 840 },
+          "children": { "childcareWork": 1450 },
+          "insurance": { "healthDental": 410 },
+          "otherPayments": { "creditCardDebt": 320 }
+        },
+        "projected": {
+          "home": { "rentMortgage": 3050, "electricity": 150 },
+          "food": { "groceries": 780 },
+          "children": { "childcareWork": 1450 },
+          "insurance": { "healthDental": 450 },
+          "otherPayments": { "creditCardDebt": 240 }
+        }
+      }
+    },
+    "clearpath-m5": {
+      "pensionValuation": {
+        "assets": {
+          "pensions-f3cb": {
+            "inputs": {
+              "planType": "private_db_cash_balance",
+              "accrualStatus": "accruing",
+              "tierOverride": null,
+              "planName": "Lumen Health cash-balance pension",
+              "whoseplan": "Client",
+              "participantDOB": "1979-05-20",
+              "caseEffectiveDate": "2026-06-01",
+              "mortalityTable": "irs_417e",
+              "discountRateBps": 5234,
+              "cola": 2,
+              "planAdministratorOfferedLumpSum": null,
+              "currentAccountBalance": 68000,
+              "applyCoverture": true,
+              "dateOfHire": "2021-06-01",
+              "dateOfMarriage": "2022-01-10",
+              "maritalCutoffDate": "2023-03-10",
+              "expectedRetirementAge": 67
+            }
+          }
+        }
+      },
+      "homeDecision": {
+        "inputs": {
+          "currentFMV": 640000,
+          "existingMortgageBalance": 295000,
+          "existingMortgageRate": 0.0625,
+          "existingMortgageRemainingTermMonths": 360,
+          "monthlyPropertyTax": 510,
+          "monthlyInsurance": 145,
+          "monthlyHOA": 380,
+          "userPostDivorceGrossMonthlyIncome": 7250,
+          "userTotalMonthlyDebtPayments": 320,
+          "startingLiquidCash": 15000,
+          "userCreditScoreBand": "fair",
+          "userState": "DC",
+          "homeAcquisitionYear": 2025,
+          "propertyAppreciationRateReal": 0,
+          "spouseEquityShare": 0.5,
+          "buyoutAmount": null,
+          "refiRate": null,
+          "refiClosingCostsPercent": null,
+          "refiTerm": "30-year",
+          "realtorCommissionPercent": 0.05,
+          "saleClosingCostsPercent": 0.02,
+          "expectedFilingStatusAtSellNow": "single",
+          "userMovedOutYearsAgo": 0.5,
+          "occupancyYears": 3,
+          "interimCostSharePct": 50,
+          "stressTestUserPays100Pct": false,
+          "deferredSaleMortgageContinuity": "refi-at-current"
+        },
+        "userSelection": null
+      },
+      "supportEstimator": {
+        "inputs": {
+          "partyA": {
+            "grossMonthly": 7250,
+            "imputeIncome": false,
+            "imputedEarningCapacity": null,
+            "healthInsurance": 410,
+            "childcare": 1450,
+            "parentingTimeNights": 265,
+            "otherSupportObligations": 0
+          },
+          "partyB": {
+            "grossMonthly": 14583,
+            "imputeIncome": false,
+            "imputedEarningCapacity": null,
+            "healthInsurance": 0,
+            "childcare": 0,
+            "parentingTimeNights": 100,
+            "otherSupportObligations": 0
+          },
+          "numChildren": 2,
+          "state": "DC",
+          "marriageLengthYears": 4,
+          "nyCustodyConfig": null,
+          "temporal": "pendente_lite",
+          "depth": "standard",
+          "caseEffectiveDate": "2026-06-01",
+          "fullWorksheet": null
+        }
+      }
+    },
+    "clearpath-m6": {
+      "deferredCompAnalyzer": { "stubId": null, "analysis": null }
+    },
+    "clearpath-blueprint": {
+      "deferredCompStubs": [
+        {
+          "id": "dcs_f3_rsu",
+          "category": "corporateIncentives",
+          "company": "Lumen Health",
+          "grantDate": "2022-09-01",
+          "sharesGranted": 300,
+          "vestingSchedule": "4-year annual vest",
+          "strikePrice": null,
+          "deferredComp": true,
+          "createdAt": "2026-05-20T09:00:00.000Z"
+        }
+      ],
+      "costBasisEntries": [
+        {
+          "assetId": "realEstate-f3home",
+          "description": "Condo — Capitol Hill",
+          "category": "realEstate",
+          "fmv": 640000,
+          "costBasis": 525000,
+          "isPrimaryResidence": true
+        }
+      ],
+      "costBasisViewEnabled": true,
+      "costBasisFilingStatus": "single"
+    }
+  },
+  "replays": {
+    "dcaAnalyses": [
+      {
+        "stubId": "dcs_f3_rsu",
+        "analysis": {
+          "hireDate": "2021-06-01",
+          "grantDate": "2022-09-01",
+          "separationDate": "2023-03-10",
+          "state": "DC",
+          "fmv": "38.50",
+          "tranches": [
+            { "id": "tranche_f3_r1", "vestDate": "2024-09-01", "shares": "300" }
+          ],
+          "intentNote": ""
+        }
+      }
+    ]
+  },
+  "auditPins": {
+    "covertureFraction14Months": "PIN_PENDING_FITZ",
+    "cashBalancePassThroughPV": "PIN_PENDING_FITZ",
+    "s121PartialExclusionAmount": "PIN_PENDING_FITZ",
+    "builtaExtrapolatedFigure": "PIN_PENDING_FITZ",
+    "sensitivityLowMinus100bp": "PIN_PENDING_FITZ",
+    "sensitivityHighPlus100bp": "PIN_PENDING_FITZ"
+  },
+  "_notes": {
+    "covertureResolution": "Marital service window = max(hire 2021-06-01, marriage 2022-01-10) → min(cutoff 2023-03-10, retirement) = 2022-01-10 → 2023-03-10 = exactly 14 months of participation during marriage (tier3Coverture.js:84-108 rule, applied by the cash-balance engine when all four coverture dates are non-null, cashBalancePassthrough.js:26-30). 4dp boundary rendering exerciser.",
+    "row87000Resolution": "Party A gross monthly 7,250 × 12 = 87,000 — EXACTLY the DC schedule row 87000 (dcChildSupport.js:150), one of the two suspected source-data typo rows (dcChildSupport.js:9-11). As-implemented schedule values are fixture truth per the registry provenance note (dc_16_916_01_911).",
+    "dcCapResolution": "Combined gross (7,250 + 14,583) × 12 = 261,996 > INCOME_CAP 240,000 annual (dcChildSupport.js:412) → builta_2024 above-cap extrapolation path (computeHollandExtrapolation, dcChildSupport.js:547-557).",
+    "section121Partial": "Acquisition year 2025 → ownership < 2 years at a 2026 sale; movedOut 0.5 also stresses the use test (useTestEligibility.js:24-47) → §121 PARTIAL exclusion arithmetic (section121.js partial rules), per the sold-then-bought narrative.",
+    "cashBalancePinNote": "Per design: cash-balance PV pin is blocked on irc_417e3 ONLY if the engine discounts; pva_cashbalance_passthrough_v1 is balance pass-through (cashBalancePassthrough.js:30), so Fitz pins the pass-through value (coverture-adjusted marital share).",
+    "percentVsFractionTraps": "Encodes one of each unit family at the M5 wizard boundary: PVA cola = 2 (PERCENT, engine ÷100); HDA existingMortgageRate = 0.0625 (DECIMAL FRACTION); HDA interimCostSharePct = 50 (PERCENT 0-100, ×0.01 at calc boundary only).",
+    "sensitivityBounds": "±100bp sensitivity rows computed at both bounds around discountRateBps 5234 (tier engines compute base ± 0.01); fixture asserts the rendered rows remain distinguishable at whole-dollar rounding (D-V2-5 class).",
+    "zeroBalanceAccount": "workingCapital-f3zero carries currentValue 0 — renders, foots, and must not divide-by-zero anywhere downstream.",
+    "derivedFieldsOmitted": "All results/summary fields omitted — Phase 1 harness computes through production engines (A1 rule)."
+  }
+}

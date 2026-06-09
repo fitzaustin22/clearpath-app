@@ -1,0 +1,209 @@
+{
+  "fixtureId": "F2",
+  "title": "Partial Park",
+  "clientState": "VA",
+  "persona": {
+    "name": "Dana Park",
+    "age": 41,
+    "city": "Reston, VA",
+    "marriageYears": 12
+  },
+  "stores": {
+    "m1-store": {
+      "readinessAssessment": {
+        "answers": [
+          { "questionId": "q1", "score": 2 },
+          { "questionId": "q2", "score": 1 },
+          { "questionId": "q3", "score": 2 },
+          { "questionId": "q4", "score": 1 },
+          { "questionId": "q5", "score": 2 },
+          { "questionId": "q6", "score": 1 },
+          { "questionId": "q7", "score": 2 },
+          { "questionId": "q8", "score": 1 },
+          { "questionId": "q9", "score": 1 },
+          { "questionId": "q10", "score": 1 }
+        ],
+        "completed": true
+      },
+      "budgetGap": {
+        "inputs": {
+          "grossIncome": 7800,
+          "payFrequency": "semimonthly",
+          "expectedShare": 100,
+          "housing": 2750,
+          "utilities": 310,
+          "groceries": 720,
+          "transportation": 410,
+          "healthInsurance": 520,
+          "childcare": 0,
+          "debtPayments": 540,
+          "personal": 380
+        },
+        "completed": true,
+        "emailCaptured": true
+      }
+    },
+    "m2-store": {
+      "maritalEstateInventory": {
+        "marriageDate": "2014-05-24",
+        "items": [
+          {
+            "id": "workingCapital-f2chk",
+            "category": "workingCapital",
+            "description": "Checking — Apex FCU",
+            "dateAcquired": null,
+            "titleholder": "joint",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 28000,
+            "costBasis": null,
+            "outstandingBalance": null,
+            "classification": "marital",
+            "classificationSource": "auto",
+            "notes": ""
+          },
+          {
+            "id": "workingCapital-f2sav",
+            "category": "workingCapital",
+            "description": "Savings — Apex FCU",
+            "dateAcquired": null,
+            "titleholder": "joint",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 41000,
+            "costBasis": null,
+            "outstandingBalance": null,
+            "classification": "marital",
+            "classificationSource": "auto",
+            "notes": ""
+          },
+          {
+            "id": "otherAssets-f2car",
+            "category": "otherAssets",
+            "description": "2022 Subaru Outback",
+            "dateAcquired": "2022-03-12",
+            "titleholder": "self",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 24000,
+            "costBasis": 31000,
+            "outstandingBalance": 11500,
+            "classification": "marital",
+            "classificationSource": "auto",
+            "notes": ""
+          },
+          {
+            "id": "loans-f2auto",
+            "category": "loans",
+            "description": "Apex FCU auto loan",
+            "dateAcquired": null,
+            "titleholder": "self",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 11500,
+            "costBasis": null,
+            "outstandingBalance": null,
+            "classification": "marital",
+            "classificationSource": "auto",
+            "notes": ""
+          },
+          {
+            "id": "creditCards-f2cc",
+            "category": "creditCards",
+            "description": "Coastal Visa",
+            "dateAcquired": null,
+            "titleholder": "joint",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 9500,
+            "costBasis": null,
+            "outstandingBalance": null,
+            "classification": "marital",
+            "classificationSource": "auto",
+            "notes": ""
+          }
+        ]
+      },
+      "documentChecklist": {
+        "items": [
+          { "id": "doc-tax-01", "status": "collected" },
+          { "id": "doc-inc-01", "status": "collected" },
+          { "id": "doc-inc-02", "status": "collected" },
+          { "id": "doc-bank-01", "status": "collected" },
+          { "id": "doc-bank-02", "status": "located" },
+          { "id": "doc-debt-01", "status": "collected" }
+        ]
+      },
+      "personalPropertyInventory": {
+        "rooms": [
+          {
+            "name": "Home Office",
+            "items": [
+              {
+                "id": "pp-homeoffice-f2a",
+                "location": "Home Office",
+                "description": "Desktop workstation",
+                "serialNumber": null,
+                "quantity": 1,
+                "purchasedDuringMarriage": "yes",
+                "currentValue": 1400,
+                "whoKeeps": "self",
+                "notes": ""
+              }
+            ]
+          }
+        ],
+        "highValueItems": []
+      }
+    },
+    "clearpath-m3-store": {
+      "payStubDecoder": {
+        "completed": true,
+        "inputs": {
+          "hasEmploymentIncome": true,
+          "noIncomeConfirmed": false,
+          "payFrequency": "semimonthly",
+          "paychecksPerYear": 24,
+          "useCustomPaychecks": false,
+          "grossPayPerCheck": 7800,
+          "deductions": [
+            { "id": "fedTax", "perPaycheck": 1130 },
+            { "id": "stateTax", "perPaycheck": 372 },
+            { "id": "socialSecurity", "perPaycheck": 483.6 },
+            { "id": "medicare", "perPaycheck": 113.1 },
+            { "id": "medical", "perPaycheck": 210 },
+            { "id": "dental", "perPaycheck": 22 },
+            { "id": "401k", "perPaycheck": 980 }
+          ],
+          "otherIncomeSources": []
+        }
+      },
+      "budgetModeler": {
+        "completed": true,
+        "current": {
+          "home": { "rentMortgage": 2750, "electricity": 145 },
+          "food": { "groceries": 720 },
+          "transportation": { "fuel": 190, "autoPayment": 410 },
+          "insurance": { "healthDental": 520 },
+          "otherPayments": { "creditCardDebt": 540 },
+          "savings": { "emergencyFund": 150 }
+        },
+        "projected": {
+          "home": { "rentMortgage": 2300, "electricity": 130 },
+          "food": { "groceries": 640 },
+          "transportation": { "fuel": 180, "autoPayment": 410 },
+          "insurance": { "healthDental": 590 },
+          "otherPayments": { "creditCardDebt": 380 },
+          "savings": { "emergencyFund": 250 }
+        }
+      }
+    }
+  },
+  "auditPins": {
+    "s2NetIncomeDerivationFromPayStub": "PIN_PENDING_FITZ",
+    "budgetGapMonthlyFigure": "PIN_PENDING_FITZ",
+    "s3InventoryTotalsFooting": "PIN_PENDING_FITZ"
+  },
+  "_notes": {
+    "modulesOmitted": "M4–M7 store keys deliberately absent — Dana stopped after M3. Nine Blueprint sections render empty → D-V2-3 omission + scope disclosure at its largest surface; TOC correctness under omission.",
+    "ssWageCapResolution": "Gross annual 7,800 × 24 = 187,200 > SS_WAGE_CAP 168,600 (m3Store.js:100 — the 2024 base) → exercises the SS-cap warning path AND the ssa_wage_base ⚠ STALE registry treatment: fixture expects the rendered §2 figure to carry a year label per registry scope, making the stale constant a visible A2/A5 issue rather than a silent number.",
+    "k401LimitResolution": "401k deduction 980 × 24 = 23,520 > ANNUAL_401K_LIMIT 23,500 (m3Store.js:98) → exercises the limit warning; irs_401k_limits registry entry is year-pinned.",
+    "noMetadataPath": "§3/§5 face-value inventory carries NO metadata — exercises the no-metadata roster path through the A3 normalizer (drift case 6 family).",
+    "derivedFieldsOmitted": "All results/summary fields omitted — Phase 1 harness computes through production engines (A1 rule)."
+  }
+}

@@ -1,0 +1,521 @@
+{
+  "fixtureId": "F1",
+  "title": "Complete Carter",
+  "clientState": "MD",
+  "persona": {
+    "name": "Margaret Carter",
+    "age": 52,
+    "city": "Bethesda, MD",
+    "marriageYears": 24
+  },
+  "stores": {
+    "m1-store": {
+      "readinessAssessment": {
+        "answers": [
+          { "questionId": "q1", "score": 3 },
+          { "questionId": "q2", "score": 3 },
+          { "questionId": "q3", "score": 3 },
+          { "questionId": "q4", "score": 2 },
+          { "questionId": "q5", "score": 3 },
+          { "questionId": "q6", "score": 2 },
+          { "questionId": "q7", "score": 3 },
+          { "questionId": "q8", "score": 3 },
+          { "questionId": "q9", "score": 2 },
+          { "questionId": "q10", "score": 2 }
+        ],
+        "completed": true
+      },
+      "budgetGap": {
+        "inputs": {
+          "grossIncome": 34500,
+          "payFrequency": "monthly",
+          "expectedShare": 30,
+          "housing": 4200,
+          "utilities": 380,
+          "groceries": 950,
+          "transportation": 520,
+          "healthInsurance": 680,
+          "childcare": 800,
+          "debtPayments": 450,
+          "personal": 600
+        },
+        "completed": true,
+        "emailCaptured": true
+      }
+    },
+    "m2-store": {
+      "maritalEstateInventory": {
+        "marriageDate": "2002-06-15",
+        "items": [
+          {
+            "id": "realEstate-f1home",
+            "category": "realEstate",
+            "description": "Family home — Bethesda",
+            "dateAcquired": "2008-04-30",
+            "titleholder": "joint",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 850000,
+            "costBasis": 660000,
+            "outstandingBalance": 310000,
+            "classification": "marital",
+            "classificationSource": "user",
+            "notes": ""
+          },
+          {
+            "id": "pensions-f1db",
+            "category": "pensions",
+            "description": "Calvert Federal Systems pension (spouse)",
+            "dateAcquired": null,
+            "titleholder": "spouse",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 0,
+            "costBasis": null,
+            "outstandingBalance": null,
+            "classification": "marital",
+            "classificationSource": "auto",
+            "notes": "DB pension — valued in M5 PVA, not at face value here"
+          },
+          {
+            "id": "retirement-f1c401k",
+            "category": "retirement",
+            "description": "Spouse 401(k) — Calvert Federal",
+            "dateAcquired": null,
+            "titleholder": "spouse",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 410000,
+            "costBasis": null,
+            "outstandingBalance": null,
+            "classification": "marital",
+            "classificationSource": "auto",
+            "notes": ""
+          },
+          {
+            "id": "workingCapital-f1brok",
+            "category": "workingCapital",
+            "description": "Joint brokerage — Meridian",
+            "dateAcquired": "2012-08-01",
+            "titleholder": "joint",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 220000,
+            "costBasis": 150000,
+            "outstandingBalance": null,
+            "classification": "marital",
+            "classificationSource": "auto",
+            "notes": ""
+          },
+          {
+            "id": "workingCapital-f1chk",
+            "category": "workingCapital",
+            "description": "Joint checking",
+            "dateAcquired": null,
+            "titleholder": "joint",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 40000,
+            "costBasis": null,
+            "outstandingBalance": null,
+            "classification": "marital",
+            "classificationSource": "auto",
+            "notes": ""
+          },
+          {
+            "id": "creditCards-f1visa",
+            "category": "creditCards",
+            "description": "Capital Visa",
+            "dateAcquired": null,
+            "titleholder": "joint",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 9800,
+            "costBasis": null,
+            "outstandingBalance": null,
+            "classification": "marital",
+            "classificationSource": "auto",
+            "notes": ""
+          }
+        ]
+      },
+      "documentChecklist": {
+        "items": [
+          { "id": "doc-tax-01", "status": "collected" },
+          { "id": "doc-tax-02", "status": "collected" },
+          { "id": "doc-inc-01", "status": "collected" },
+          { "id": "doc-bank-01", "status": "collected" },
+          { "id": "doc-ret-01", "status": "collected" },
+          { "id": "doc-re-01", "status": "collected" },
+          { "id": "doc-debt-01", "status": "located" },
+          { "id": "doc-legal-01", "status": "collected" }
+        ]
+      },
+      "personalPropertyInventory": {
+        "rooms": [
+          {
+            "name": "Living Room",
+            "items": [
+              {
+                "id": "pp-livingroom-f1a",
+                "location": "Living Room",
+                "description": "Sectional sofa",
+                "serialNumber": null,
+                "quantity": 1,
+                "purchasedDuringMarriage": "yes",
+                "currentValue": 2200,
+                "whoKeeps": "undecided",
+                "notes": ""
+              }
+            ]
+          }
+        ],
+        "highValueItems": [
+          {
+            "id": "pp-jewelry-f1a",
+            "location": "Jewelry and Watches",
+            "description": "Diamond pendant",
+            "serialNumber": null,
+            "quantity": 1,
+            "purchasedDuringMarriage": "yes",
+            "currentValue": 4500,
+            "whoKeeps": "self",
+            "notes": ""
+          }
+        ]
+      }
+    },
+    "clearpath-m3-store": {
+      "payStubDecoder": {
+        "completed": true,
+        "inputs": {
+          "hasEmploymentIncome": true,
+          "noIncomeConfirmed": false,
+          "payFrequency": "biweekly",
+          "paychecksPerYear": 26,
+          "useCustomPaychecks": false,
+          "grossPayPerCheck": 3650,
+          "deductions": [
+            { "id": "fedTax", "perPaycheck": 430 },
+            { "id": "stateTax", "perPaycheck": 175 },
+            { "id": "socialSecurity", "perPaycheck": 226.3 },
+            { "id": "medicare", "perPaycheck": 52.93 },
+            { "id": "medical", "perPaycheck": 95 },
+            { "id": "dental", "perPaycheck": 18 },
+            { "id": "401k", "perPaycheck": 220 }
+          ],
+          "otherIncomeSources": []
+        }
+      },
+      "budgetModeler": {
+        "completed": true,
+        "current": {
+          "home": { "rentMortgage": 4200, "propertyTaxes": 890, "electricity": 180 },
+          "food": { "groceries": 950, "restaurantMeals": 240 },
+          "transportation": { "fuel": 220, "autoPayment": 0 },
+          "insurance": { "healthDental": 680, "auto": 130 },
+          "children": { "educationTuition": 0, "childcareWork": 800 },
+          "otherPayments": { "creditCardDebt": 450 },
+          "savings": { "emergencyFund": 200 }
+        },
+        "projected": {
+          "home": { "rentMortgage": 3400, "propertyTaxes": 890, "electricity": 160 },
+          "food": { "groceries": 850, "restaurantMeals": 160 },
+          "transportation": { "fuel": 200, "autoPayment": 0 },
+          "insurance": { "healthDental": 720, "auto": 130 },
+          "children": { "educationTuition": 0, "childcareWork": 800 },
+          "otherPayments": { "creditCardDebt": 300 },
+          "savings": { "emergencyFund": 350 }
+        }
+      }
+    },
+    "clearpath-m4": {
+      "filingStatusOptimizer": {
+        "inputs": {
+          "grossAnnualIncome": 94900,
+          "spouseGrossAnnualIncome": 320000,
+          "otherIncome": 0,
+          "dependents": 1,
+          "hasQualifyingChild": true,
+          "paidMoreThanHalfHouseholdCosts": true,
+          "separatedLastSixMonths": false,
+          "divorceTimeline": "beforeDec31"
+        }
+      },
+      "pitTaxDiscount": {
+        "inputs": {
+          "planBalance": 410000,
+          "planType": "401k",
+          "currentAge": 52,
+          "withdrawalStartAge": 65,
+          "withdrawalEndAge": 85,
+          "effectiveTaxRate": 25,
+          "discountRate": 5.0,
+          "totalCashAssets": 260000,
+          "showPropertyDivision": true
+        }
+      }
+    },
+    "clearpath-m5": {
+      "pensionValuation": {
+        "assets": {
+          "pensions-f1db": {
+            "inputs": {
+              "planType": "private_db_traditional",
+              "accrualStatus": "accruing",
+              "tierOverride": null,
+              "planName": "Calvert Federal Systems pension (spouse)",
+              "whoseplan": "Spouse",
+              "participantDOB": "1971-08-22",
+              "caseEffectiveDate": "2026-06-01",
+              "mortalityTable": "irs_417e",
+              "discountRateBps": 5234,
+              "cola": 0,
+              "planAdministratorOfferedLumpSum": null,
+              "planNRA": 65,
+              "dateOfHire": "1998-04-01",
+              "dateOfMarriage": "2002-06-15",
+              "maritalCutoffDate": "2026-03-31",
+              "expectedRetirementAge": 65,
+              "currentAccruedMonthlyBenefit": 4100,
+              "benefitSource": "official_statement",
+              "formOfBenefitOnStatement": "single_life",
+              "vestingStatus": "fully_vested"
+            }
+          }
+        }
+      },
+      "qdroDecision": {
+        "assets": {
+          "retirement-f1c401k": {
+            "userRole": "alternatePayee",
+            "planType": "dc",
+            "planName": "Spouse 401(k) — Calvert Federal",
+            "employer": "Calvert Federal Systems",
+            "decisions": {
+              "allocationType": "percentage",
+              "allocationValue": 50,
+              "receiptMethod": "rollover_ira",
+              "valuationDate": { "type": "divorce", "date": "2026-08-15" }
+            },
+            "pvSource": null,
+            "metadata": { "formulaId": null, "citations": [], "qdroPacketGeneratedAt": null }
+          }
+        }
+      },
+      "homeDecision": {
+        "inputs": {
+          "currentFMV": 850000,
+          "existingMortgageBalance": 310000,
+          "existingMortgageRate": 0.0375,
+          "existingMortgageRemainingTermMonths": 360,
+          "monthlyPropertyTax": 890,
+          "monthlyInsurance": 210,
+          "monthlyHOA": 0,
+          "userPostDivorceGrossMonthlyIncome": 10350,
+          "userTotalMonthlyDebtPayments": 450,
+          "startingLiquidCash": 260000,
+          "userCreditScoreBand": "good",
+          "userState": "MD",
+          "homeAcquisitionYear": 2008,
+          "propertyAppreciationRateReal": 0,
+          "spouseEquityShare": 0.5,
+          "buyoutAmount": null,
+          "refiRate": null,
+          "refiClosingCostsPercent": null,
+          "refiTerm": "30-year",
+          "realtorCommissionPercent": 0.05,
+          "saleClosingCostsPercent": 0.02,
+          "expectedFilingStatusAtSellNow": "single",
+          "userMovedOutYearsAgo": 0,
+          "occupancyYears": 6,
+          "interimCostSharePct": 50,
+          "stressTestUserPays100Pct": false,
+          "deferredSaleMortgageContinuity": "refi-at-current"
+        },
+        "userSelection": null
+      },
+      "supportEstimator": {
+        "inputs": {
+          "partyA": {
+            "grossMonthly": 7908,
+            "imputeIncome": false,
+            "imputedEarningCapacity": null,
+            "healthInsurance": 680,
+            "childcare": 800,
+            "parentingTimeNights": 240,
+            "otherSupportObligations": 0
+          },
+          "partyB": {
+            "grossMonthly": 26667,
+            "imputeIncome": false,
+            "imputedEarningCapacity": null,
+            "healthInsurance": 0,
+            "childcare": 0,
+            "parentingTimeNights": 125,
+            "otherSupportObligations": 0
+          },
+          "numChildren": 1,
+          "state": "MD",
+          "marriageLengthYears": 24,
+          "nyCustodyConfig": null,
+          "temporal": "post_divorce",
+          "depth": "standard",
+          "caseEffectiveDate": "2026-06-01",
+          "fullWorksheet": null
+        }
+      }
+    },
+    "clearpath-m6": {
+      "priorities": {
+        "items": [
+          { "id": "prio_f1_1", "item": "Keep the family home", "importance": "must-have" },
+          { "id": "prio_f1_2", "item": "Maximize retirement share", "importance": "would-like" },
+          { "id": "prio_f1_3", "item": "Keep the second car", "importance": "willing-to-trade" }
+        ]
+      },
+      "tradeOffs": {
+        "rows": [
+          {
+            "id": "trade_f1_1",
+            "get": { "label": "Keep the family home", "sourceId": "prio_f1_1" },
+            "give": [
+              {
+                "id": "give_f1_1",
+                "label": "Joint brokerage — Meridian",
+                "value": 220000,
+                "source": "m2-asset",
+                "sourceId": "workingCapital-f1brok"
+              }
+            ]
+          }
+        ]
+      },
+      "offerOrganizer": {
+        "offer": {
+          "assetItems": [
+            { "id": "offer_f1_a1", "label": "Family home equity", "toUser": "You" },
+            { "id": "offer_f1_a2", "label": "Joint brokerage — Meridian", "toUser": "Spouse" }
+          ],
+          "support": { "amount": 2400, "durationMonths": 96, "kind": "Spousal" },
+          "residence": { "disposition": "You keep it", "note": "" },
+          "retirement": { "divisionPct": 50, "note": "" },
+          "debts": [{ "id": "debt_f1_d1", "label": "Capital Visa", "toUser": "Spouse" }],
+          "otherTerms": "",
+          "priorityTags": {}
+        }
+      },
+      "deferredCompAnalyzer": { "stubId": null, "analysis": null }
+    },
+    "clearpath-m7": {
+      "actionPlan": {
+        "nextSteps": [
+          { "id": "step_f1_1", "step": "Schedule QDRO attorney consultation", "timeline": "30 days", "responsible": "Margaret" },
+          { "id": "step_f1_2", "step": "Order home appraisal", "timeline": "2 weeks", "responsible": "Margaret" }
+        ],
+        "professionals": [
+          { "id": "pro_f1_1", "role": "CDFA", "name": "A. Fitzpatrick", "contact": "" }
+        ],
+        "keyDates": [
+          { "id": "date_f1_1", "date": "2026-08-15", "event": "Mediation session" }
+        ]
+      }
+    },
+    "clearpath-blueprint": {
+      "deferredCompStubs": [
+        {
+          "id": "dcs_f1_options",
+          "category": "stockOptions",
+          "company": "Calvert Federal Systems",
+          "grantDate": "2010-05-01",
+          "sharesGranted": 4000,
+          "vestingSchedule": "25%/yr over 4 years",
+          "strikePrice": 22.5,
+          "deferredComp": true,
+          "createdAt": "2026-05-15T10:00:00.000Z"
+        },
+        {
+          "id": "dcs_f1_rsu",
+          "category": "corporateIncentives",
+          "company": "Calvert Federal Systems",
+          "grantDate": "2018-03-15",
+          "sharesGranted": 1200,
+          "vestingSchedule": "3-year cliff then quarterly",
+          "strikePrice": null,
+          "deferredComp": true,
+          "createdAt": "2026-05-15T10:05:00.000Z"
+        }
+      ],
+      "costBasisEntries": [
+        {
+          "assetId": "realEstate-f1home",
+          "description": "Family home — Bethesda",
+          "category": "realEstate",
+          "fmv": 850000,
+          "costBasis": 660000,
+          "isPrimaryResidence": true
+        },
+        {
+          "assetId": "workingCapital-f1brok",
+          "description": "Joint brokerage — Meridian",
+          "category": "workingCapital",
+          "fmv": 220000,
+          "costBasis": 150000,
+          "isPrimaryResidence": false,
+          "accountSubType": "brokerage"
+        }
+      ],
+      "costBasisViewEnabled": true,
+      "costBasisFilingStatus": "single"
+    }
+  },
+  "replays": {
+    "dcaAnalyses": [
+      {
+        "stubId": "dcs_f1_options",
+        "analysis": {
+          "hireDate": "1998-04-01",
+          "grantDate": "2010-05-01",
+          "separationDate": "2026-03-31",
+          "state": "MD",
+          "fmv": "61.00",
+          "tranches": [
+            { "id": "tranche_f1_o1", "vestDate": "2012-05-01", "shares": "2000" },
+            { "id": "tranche_f1_o2", "vestDate": "2014-05-01", "shares": "2000" }
+          ],
+          "intentNote": "Prefer to trade options value for home equity."
+        }
+      },
+      {
+        "stubId": "dcs_f1_rsu",
+        "analysis": {
+          "hireDate": "1998-04-01",
+          "grantDate": "2018-03-15",
+          "separationDate": "2026-03-31",
+          "state": "MD",
+          "fmv": "61.00",
+          "tranches": [
+            { "id": "tranche_f1_r1", "vestDate": "2021-03-15", "shares": "600" },
+            { "id": "tranche_f1_r2", "vestDate": "2027-03-15", "shares": "600" }
+          ],
+          "intentNote": ""
+        }
+      }
+    ]
+  },
+  "auditPins": {
+    "covertureFractionPensionTranche": "PIN_PENDING_FITZ",
+    "covertureMaritalSharePensionTranche": "PIN_PENDING_FITZ",
+    "pensionPVAtBaseSegmentRate": "PIN_PENDING_FITZ",
+    "hugTrancheValue": "PIN_PENDING_FITZ",
+    "nelsonTrancheValue": "PIN_PENDING_FITZ",
+    "hdaScenarioBNetProceedsAfter121": "PIN_PENDING_FITZ",
+    "mdAamlSupportFigure": "PIN_PENDING_FITZ",
+    "mdAamlDurationBand": "PIN_PENDING_FITZ",
+    "fsoFilingStatusDelta": "PIN_PENDING_FITZ",
+    "s3InventoryTotalFooting": "PIN_PENDING_FITZ"
+  },
+  "_notes": {
+    "taxYearTrap": "Fixture pins engine tax year 2026 (Rev. Proc. 2025-32, FilingStatusOptimizer.jsx:26,29). Harness must assert the normalizer SURFACES the blueprintStore.js:238 taxYear:2024 discrepancy as a flagged inconsistency — silent fixing is a test failure. If the standalone taxYear defect PR lands first, this assertion flips to plain agreement.",
+    "pvaFormulaIdLineage": "Harness asserts the V2 document model restores formulaId 'pva_db_tier3_coverture_v1' that v1 drops at the blueprint boundary (PVA.jsx:199-206).",
+    "mdCapResolution": "Combined gross monthly 34,575 (7,908 + 26,667) deliberately exceeds the MD child-support schedule cap of 30,000/mo (effectiveDateConstants.js:32-35) to exercise Voishan above-schedule discretion.",
+    "pinBlocked417e": "pensionPVAtBaseSegmentRate stays PIN_PENDING_FITZ until the irc_417e3 registry verification lands (placeholder 'IRS Notice 2026-XX', pensionValuation/effectiveDateConstants.js:14-17).",
+    "section121FullExclusion": "Home gain 850,000 − 660,000 = 190,000 < 250,000 single cap (section121.js:7) → full exclusion in HDA Scenario B.",
+    "qdroPacketCarrier": "qdroBlueprint carrier is derived state (writeQDROToBlueprint stamps savedProjection at save time) — omitted here; the harness generates it by replaying the QDRO save flow.",
+    "derivedFieldsOmitted": "All results/summary/metadata-derived store fields are omitted by design — the Phase 1 harness computes them through production engines from these inputs (A1 independent-recompute rule)."
+  }
+}

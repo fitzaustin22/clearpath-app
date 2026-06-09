@@ -1,0 +1,112 @@
+{
+  "fixtureId": "F4b",
+  "title": "Minimal May+",
+  "clientState": "VA",
+  "persona": {
+    "name": "Jo May",
+    "age": 38,
+    "city": "Alexandria, VA",
+    "marriageYears": 9
+  },
+  "stores": {
+    "m1-store": {
+      "readinessAssessment": {
+        "answers": [
+          { "questionId": "q1", "score": 2 },
+          { "questionId": "q2", "score": 2 },
+          { "questionId": "q3", "score": 2 },
+          { "questionId": "q4", "score": 2 },
+          { "questionId": "q5", "score": 2 },
+          { "questionId": "q6", "score": 2 },
+          { "questionId": "q7", "score": 2 },
+          { "questionId": "q8", "score": 2 },
+          { "questionId": "q9", "score": 2 },
+          { "questionId": "q10", "score": 2 }
+        ],
+        "completed": true
+      },
+      "budgetGap": {
+        "inputs": {},
+        "completed": false,
+        "emailCaptured": true
+      }
+    },
+    "m2-store": {
+      "maritalEstateInventory": {
+        "marriageDate": "2017-04-08",
+        "items": [
+          {
+            "id": "workingCapital-f4bchk",
+            "category": "workingCapital",
+            "description": "Checking — Dominion CU",
+            "dateAcquired": null,
+            "titleholder": "joint",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 12000,
+            "costBasis": null,
+            "outstandingBalance": null,
+            "classification": "marital",
+            "classificationSource": "auto",
+            "notes": ""
+          },
+          {
+            "id": "creditCards-f4bcc",
+            "category": "creditCards",
+            "description": "Harbor Mastercard",
+            "dateAcquired": null,
+            "titleholder": "joint",
+            "sourceOfPayment": "marital-funds",
+            "currentValue": 6800,
+            "costBasis": null,
+            "outstandingBalance": null,
+            "classification": "marital",
+            "classificationSource": "auto",
+            "notes": ""
+          }
+        ]
+      },
+      "documentChecklist": {
+        "items": [
+          { "id": "doc-tax-01", "status": "collected" },
+          { "id": "doc-inc-01", "status": "collected" },
+          { "id": "doc-bank-01", "status": "collected" },
+          { "id": "doc-bank-02", "status": "collected" },
+          { "id": "doc-debt-01", "status": "collected" },
+          { "id": "doc-legal-01", "status": "located" }
+        ]
+      },
+      "personalPropertyInventory": {
+        "rooms": [
+          {
+            "name": "Living Room",
+            "items": [
+              {
+                "id": "pp-livingroom-f4ba",
+                "location": "Living Room",
+                "description": "Television and console",
+                "serialNumber": null,
+                "quantity": 1,
+                "purchasedDuringMarriage": "yes",
+                "currentValue": 900,
+                "whoKeeps": "undecided",
+                "notes": ""
+              }
+            ]
+          }
+        ],
+        "highValueItems": []
+      }
+    }
+  },
+  "auditPins": {
+    "s3InventoryTotalsFooting": "PIN_PENDING_FITZ",
+    "readinessTierBoundaryValue": "PIN_PENDING_FITZ"
+  },
+  "_notes": {
+    "exactlyAtFloor": "Exactly TWO modules complete (M1 readiness + M2 documentation/inventories) — the D-V2-6 floor. Harness asserts the pre-export interstitial lists exactly the omitted sections and the generated document carries the scope disclosure (D-V2-3).",
+    "readinessBoundaryResolution": "All ten answers score 2 → totalScore exactly 20, ON the tier cut (classify: <=20 → 'preparing', ReadinessAssessment.jsx:103-106). The fixture renders whatever tier the code assigns — as-implemented truth; the pinned boundary value records it.",
+    "nonMethodologyReword": "M1 readiness renders as ClearPath's structured self-assessment (registry §7 reword) — A5-M Category 2 must NOT fire on it; that non-firing is itself the test of the reword.",
+    "degradesHonestly": "Near-empty document: A4 pagination at minimum content, no trailing blank page.",
+    "budgetGapNotCompleted": "Budget Gap untouched (inputs {}, completed false) — module-completion semantics derive from the readiness tool alone for M1; the floor counts modules, not tools."
+  }
+}
