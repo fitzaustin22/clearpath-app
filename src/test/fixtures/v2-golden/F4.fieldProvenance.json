@@ -1,0 +1,22 @@
+{
+  "fixtureId": "F4",
+  "_fieldProvenance": {
+    "fixtureId": "fixture schema · V2-Fixture-Design (vault) — fixture identifier",
+    "title": "fixture schema · V2-Fixture-Design §F4 — persona title",
+    "clientState": "fixture schema · V2-Fixture-Design 'Jurisdiction allocation' (D-V2-8) — F4 = VA",
+    "persona.name": "fixture schema · V2-Fixture-Design §F4 narrative — fictional",
+    "persona.age": "fixture schema · V2-Fixture-Design §F4 narrative",
+    "persona.city": "fixture schema · V2-Fixture-Design §F4 narrative",
+    "persona.marriageYears": "fixture schema · V2-Fixture-Design §F4 narrative",
+    "stores.m1-store.readinessAssessment.answers[].questionId": "m1Store.js:12, ReadinessAssessment.jsx:62-71 · input — 'q1'..'q10'",
+    "stores.m1-store.readinessAssessment.answers[].score": "m1Store.js:12, ReadinessAssessment.jsx:75-80 · input — sums 9 → 'exploring' (RA:103-106)",
+    "stores.m1-store.readinessAssessment.completed": "m1Store.js:13, set :48 · completion flag — the ONLY completed tool in F4",
+    "stores.m1-store.budgetGap.inputs": "m1Store.js:18 · input — empty object (Budget Gap never started)",
+    "stores.m1-store.budgetGap.completed": "m1Store.js:19 · completion flag — false by design (below-floor state)",
+    "stores.m1-store.budgetGap.emailCaptured": "m1Store.js:21 · input — email gate passed at signup",
+    "auditPins": "V2-Fixture-Design §F4 · empty by design — no document is generated below the export floor, so there is nothing to pin",
+    "_notes.belowExportFloor": "fixture annotation · V2-Fixture-Design §F4 exercises (D-V2-6 floor refusal)",
+    "_notes.readinessTier": "fixture annotation · semantic resolution record",
+    "_notes.purchaseAllowed": "fixture annotation · D-V2-6 rationale"
+  }
+}

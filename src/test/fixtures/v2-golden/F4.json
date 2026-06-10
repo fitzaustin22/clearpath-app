@@ -1,0 +1,41 @@
+{
+  "fixtureId": "F4",
+  "title": "Minimal May",
+  "clientState": "VA",
+  "persona": {
+    "name": "Jo May",
+    "age": 38,
+    "city": "Alexandria, VA",
+    "marriageYears": 9
+  },
+  "stores": {
+    "m1-store": {
+      "readinessAssessment": {
+        "answers": [
+          { "questionId": "q1", "score": 1 },
+          { "questionId": "q2", "score": 1 },
+          { "questionId": "q3", "score": 1 },
+          { "questionId": "q4", "score": 1 },
+          { "questionId": "q5", "score": 1 },
+          { "questionId": "q6", "score": 1 },
+          { "questionId": "q7", "score": 1 },
+          { "questionId": "q8", "score": 1 },
+          { "questionId": "q9", "score": 1 },
+          { "questionId": "q10", "score": 0 }
+        ],
+        "completed": true
+      },
+      "budgetGap": {
+        "inputs": {},
+        "completed": false,
+        "emailCaptured": true
+      }
+    }
+  },
+  "auditPins": {},
+  "_notes": {
+    "belowExportFloor": "Exactly ONE tool completed (M1 readiness only) — below the D-V2-6 floor of ≥2 modules. Harness asserts the export action REFUSES with the explanation register; no document is generated, so F4 has no audit pins and no A5-M review.",
+    "readinessTier": "Score sums 9 → 'exploring' (classify, ReadinessAssessment.jsx:103-106). The reworded non-methodology readiness framing is asserted in F4b, where a document actually renders.",
+    "purchaseAllowed": "Jo bought the $499 add-on anyway — D-V2-6 permits purchase at any completion level; only the export gates."
+  }
+}
