@@ -72,7 +72,7 @@
     "stores.clearpath-m5.pensionValuation.assets.pensions-f3cb.inputs.participantDOB": "CommonFields.jsx:55 · input",
     "stores.clearpath-m5.pensionValuation.assets.pensions-f3cb.inputs.caseEffectiveDate": "CommonFields.jsx:66 · input",
     "stores.clearpath-m5.pensionValuation.assets.pensions-f3cb.inputs.mortalityTable": "CommonFields.jsx:34-38,79 · input",
-    "stores.clearpath-m5.pensionValuation.assets.pensions-f3cb.inputs.discountRateBps": "CommonFields.jsx:91 · input — 5234 bps (/100000 convention)",
+    "stores.clearpath-m5.pensionValuation.assets.pensions-f3cb.inputs.discountRateBps": "CommonFields.jsx:91 · input — legacy bps field, INERT since the §417(e) repair (PR #69): rate math follows the resolver's segment2Pct percent-verbatim convention (pensionValuation/effectiveDateConstants.js); echoed in results.metadata only (the cash-balance pass-through path applies no discounting at all)",
     "stores.clearpath-m5.pensionValuation.assets.pensions-f3cb.inputs.cola": "CommonFields.jsx:103 · input — 2 PERCENT (engine ÷100) — percent-unit family exerciser",
     "stores.clearpath-m5.pensionValuation.assets.pensions-f3cb.inputs.planAdministratorOfferedLumpSum": "CommonFields.jsx:115 · input — null",
     "stores.clearpath-m5.pensionValuation.assets.pensions-f3cb.inputs.currentAccountBalance": "CashBalanceFields.jsx:70 · input — pass-through PV base (cashBalancePassthrough.js)",

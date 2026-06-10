@@ -505,9 +505,11 @@
     "nelsonTrancheValue": "PIN_PENDING_FITZ",
     "hdaScenarioBNetProceedsAfter121": "PIN_PENDING_FITZ",
     "mdAamlSupportFigure": "PIN_PENDING_FITZ",
-    "mdAamlDurationBand": "PIN_PENDING_FITZ",
     "fsoFilingStatusDelta": "PIN_PENDING_FITZ",
     "s3InventoryTotalFooting": "PIN_PENDING_FITZ"
+  },
+  "auditAssertions": {
+    "mdAamlDurationBand": "PIN_PENDING_FITZ"
   },
   "_notes": {
     "taxYearTrap": "Fixture pins engine tax year 2026 (Rev. Proc. 2025-32, FilingStatusOptimizer.jsx:26,29). Harness must assert the normalizer SURFACES the blueprintStore.js:238 taxYear:2024 discrepancy as a flagged inconsistency — silent fixing is a test failure. If the standalone taxYear defect PR lands first, this assertion flips to plain agreement.",

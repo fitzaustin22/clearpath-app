@@ -41,7 +41,7 @@
     "stores.m2-store.personalPropertyInventory.rooms[].items[].notes": "m2Store.js:702 · input",
     "stores.m2-store.personalPropertyInventory.highValueItems": "m2Store.js:376 · input — empty array",
     "auditPins.s3InventoryTotalsFooting": "V2-Fixture-Design §F4b audit pins · PIN_PENDING_FITZ",
-    "auditPins.readinessTierBoundaryValue": "V2-Fixture-Design §F4b audit pins · PIN_PENDING_FITZ — records the tier the code assigns at score 20 (as-implemented truth)",
+    "auditAssertions.readinessTierBoundaryValue": "V2-Fixture-Design §F4b audit pins · PIN_PENDING_FITZ — records the tier the code assigns at score 20 (as-implemented truth); categorical lane (tier LABEL string, ReadinessAssessment.jsx:103-107; relocated from auditPins: smoke requires numeric pins, the tier is a label)",
     "_notes.exactlyAtFloor": "fixture annotation · V2-Fixture-Design §F4b exercises (D-V2-6 interstitial + D-V2-3 disclosure)",
     "_notes.readinessBoundaryResolution": "fixture annotation · semantic resolution record (translation gate rule 2)",
     "_notes.nonMethodologyReword": "fixture annotation · registry §7 non-methodology resolution",
