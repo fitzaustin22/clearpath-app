@@ -16,9 +16,9 @@
     "path": "in_pay_status",
     "formulaId": "pva_db_inpaystatus_v1",
     "pv": {
-      "best": 614022,
-      "low": 568342,
-      "high": 666724
+      "best": 608870,
+      "low": 563861,
+      "high": 660764
     },
     "coverture": null,
     "maritalPortion": null,

@@ -18,9 +18,9 @@
     "path": "tier_1",
     "formulaId": "pva_db_tier1_v1",
     "pv": {
-      "best": 438587,
-      "low": 405958,
-      "high": 476231
+      "best": 434907,
+      "low": 402758,
+      "high": 471975
     },
     "coverture": null,
     "maritalPortion": null,

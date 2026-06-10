@@ -12,7 +12,10 @@ export { calculateCashBalance } from './cashBalancePassthrough.js';
 // Shared utilities
 export { computeAnnuityFactor } from './annuityFactor.js';
 export { lookupMortalityTable } from './mortalityTables/index.js';
-export { IRS_417E_SEGMENT_2_RATES, lookupAtDate } from './effectiveDateConstants.js';
+// lookupAtDate re-export removed with the v1 §417(e) repair (2026-06-10): its
+// expiration-window semantics don't fit the most-recent-month-≤-date
+// convention and nothing pension-side consumed it.
+export { IRS_417E_SEGMENT_2_RATES, resolveSegment2Rate } from './effectiveDateConstants.js';
 
 // Constants
 export { CITATIONS_BY_PATH } from './citations.js';

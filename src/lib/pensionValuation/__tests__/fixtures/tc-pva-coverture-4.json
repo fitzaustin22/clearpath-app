@@ -22,14 +22,14 @@
     "formulaId": "pva_db_tier3_coverture_v1",
     "pv": {
       "total": {
-        "best": 190845,
-        "low": 154543,
-        "high": 237284
+        "best": 186565,
+        "low": 151183,
+        "high": 231790
       },
       "marital": {
-        "best": 156387,
-        "low": 126640,
-        "high": 194441
+        "best": 152880,
+        "low": 123886,
+        "high": 189939
       }
     },
     "coverture": {

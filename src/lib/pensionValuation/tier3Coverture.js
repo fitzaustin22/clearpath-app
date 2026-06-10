@@ -1,5 +1,6 @@
 import { computeAnnuityFactor } from './annuityFactor.js';
 import { CITATIONS_BY_PATH } from './citations.js';
+import { resolveSegment2Rate } from './effectiveDateConstants.js';
 
 // ─── Private date utilities ─────────────────────────────────
 // Centralized here per §7.4.3a (coverture is the most date-intensive path).
@@ -141,9 +142,12 @@ export function calculateTier3Coverture(inputs, surfaceCallout) {
     ? Math.min(Math.floor(participantAgeToday), 119)
     : inputs.expectedRetirementAge;
 
-  // See tier1And2.js for the /100000 vs /10000 discountRateBps note (spec
-  // §7.3.1 e.g. vs §7.4 formula inconsistency; /100000 matches §417(e) reality).
-  const baseDiscount = inputs.discountRateBps / 100000;
+  // §417(e) segment-2 statutory rate resolved by valuation date (v1 repair
+  // 2026-06-10; see tier1And2.js + docs/verification/417e-evidence-memo).
+  // Applied annual discount = segment2Pct / 100 exactly; discountRateBps no
+  // longer feeds the math.
+  const rateResolution = resolveSegment2Rate(asOfDate);
+  const baseDiscount = rateResolution.segment2Pct / 100;
   const cola = inputs.cola / 100;
 
   // STEP T3.4 + T3.5 + T3.6 — total PV at given discount rate
@@ -159,7 +163,7 @@ export function calculateTier3Coverture(inputs, surfaceCallout) {
   };
 
   const pvTotalBest = computeTotalPv(baseDiscount);
-  // STEP T3.8 — Sensitivity (coverture held constant per P-4)
+  // STEP T3.8 — Sensitivity: segment2Pct ± 1.00 (rendered as ±100bp; coverture held constant per P-4)
   const pvTotalLow = computeTotalPv(baseDiscount + 0.01);
   const pvTotalHigh = computeTotalPv(baseDiscount - 0.01);
 
@@ -180,7 +184,11 @@ export function calculateTier3Coverture(inputs, surfaceCallout) {
       formulaId: 'pva_db_tier3_coverture_v1',
       path: 'tier_3',
       mortalityTable: inputs.mortalityTable,
-      discountRateBps: inputs.discountRateBps,
+      discountRateBps: inputs.discountRateBps ?? null, // legacy echo — not applied
+      segment2Pct: rateResolution.segment2Pct,
+      rateMonth: rateResolution.rateMonth,
+      noticeId: rateResolution.noticeId,
+      rateResolutionFlags: rateResolution.flags,
       cola: inputs.cola,
       formOfBenefitOnStatement: inputs.formOfBenefitOnStatement ?? null,
       formOfBenefitInPay: null,

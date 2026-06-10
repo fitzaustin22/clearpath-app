@@ -20,7 +20,7 @@
     "callout": {
       "type": "lump_sum_offer_divergence",
       "offer": 130000,
-      "toolPv": 165783,
+      "toolPv": 161035,
       "diff": -35783,
       "pctDiffSign": "negative",
       "pctDiffAbsoluteAtLeast": 0.1

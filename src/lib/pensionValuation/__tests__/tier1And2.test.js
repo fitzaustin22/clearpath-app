@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { calculateTier1Or2 } from '../tier1And2.js';
 import { computeAnnuityFactor } from '../annuityFactor.js';
+import { resolveSegment2Rate } from '../effectiveDateConstants.js';
 
 const fixturesDir = path.join(path.dirname(fileURLToPath(import.meta.url)), 'fixtures');
 const loadFixture = (n) => JSON.parse(readFileSync(path.join(fixturesDir, n), 'utf-8'));
@@ -68,11 +69,14 @@ describe('Tier 1/2 calc engine (§7.4.2)', () => {
   test('TC-PVA-Tier1-4: already past NRA — yearsToNRA clamps to 0', () => {
     const { f, result } = runFixture('tc-pva-tier1-4.json');
     closePV(result.pv.best, f.expected.pv.best, 'pv.best');
-    // PV must equal monthlyBenefit × 12 × annuityFactor(67) since deferralFactor = 1
+    // PV must equal monthlyBenefit × 12 × annuityFactor(67) since deferralFactor = 1.
+    // Cross-derivation uses the statutory rate resolved for the fixture's
+    // valuation date (§417(e) repair 2026-06-10) — never a hardcoded rate.
+    const fixtureRate = resolveSegment2Rate(f.inputs.caseEffectiveDate).segment2Pct / 100;
     const expectedAf67 = computeAnnuityFactor({
       age: 67,
       mortalityTable: 'irs_417e',
-      discountRate: 0.05234,
+      discountRate: fixtureRate,
       cola: 0,
     });
     const expectedPvNoDeferral = 3000 * 12 * expectedAf67;
@@ -83,19 +87,21 @@ describe('Tier 1/2 calc engine (§7.4.2)', () => {
   });
 
   test('TC-PVA-Tier1-5 [R5b-1]: annuityFactorAge = floor(currentAge) NOT planNRA', () => {
-    const { result } = runFixture('tc-pva-tier1-5.json');
+    const { f, result } = runFixture('tc-pva-tier1-5.json');
     // Regression guard: if engine had used planNRA (65) instead of floor(67.333) = 67,
     // PV would equal monthlyBenefit × 12 × af(65). Confirm it does NOT.
+    // Rate from the resolver for the fixture's valuation date (§417(e) repair).
+    const fixtureRate = resolveSegment2Rate(f.inputs.caseEffectiveDate).segment2Pct / 100;
     const afAt65 = computeAnnuityFactor({
       age: 65,
       mortalityTable: 'irs_417e',
-      discountRate: 0.05234,
+      discountRate: fixtureRate,
       cola: 0,
     });
     const afAt67 = computeAnnuityFactor({
       age: 67,
       mortalityTable: 'irs_417e',
-      discountRate: 0.05234,
+      discountRate: fixtureRate,
       cola: 0,
     });
     const wrongPv = 3000 * 12 * afAt65;   // what we'd see if engine used planNRA
