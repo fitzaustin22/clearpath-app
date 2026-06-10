@@ -137,6 +137,53 @@ describe('calculateSellNow', () => {
     expect(r.section121.excludedAmount).toBe(0);
     expect(r.metadata.useTestPassed).toBe(false);
   });
+
+  it('TC-HDA-12 — §121(c): short ownership reduces the cap (F3 shape: acquisition = currentYear − 1, movedOut 0.5)', () => {
+    const r = calculateSellNow({
+      ...SHARED_INPUTS_BASE,
+      costBasisFilingStatus: 'single',
+      expectedFilingStatusAtSellNow: 'single',
+      homeAcquisitionYear: 2025,
+      currentYear: 2026,
+      userMovedOutYearsAgo: 0.5,
+      realtorCommissionPercent: 0,
+      saleClosingCostsPercent: 0,
+    });
+    // gain = 600,000 − 350,000 = 250,000; ownership (2026−2025)×12 = 12mo,
+    // use = 12 − round(0.5×12) = 6mo → qualifying 6 → cap = 250,000 × 6/24 = 62,500
+    expect(r.section121).toEqual({ excludedAmount: 62_500, taxableGain: 187_500 });
+    expect(r.metadata.section121OwnershipMonths).toBe(12);
+    expect(r.metadata.section121UseMonths).toBe(6);
+  });
+
+  it('TC-HDA-13 — §121 legacy proof: no acquisition-year/current-year facts → full-cap behavior unchanged', () => {
+    const withoutYearFacts = { ...SHARED_INPUTS_BASE };
+    delete withoutYearFacts.homeAcquisitionYear;
+    delete withoutYearFacts.currentYear;
+    const r = calculateSellNow({
+      ...withoutYearFacts,
+      realtorCommissionPercent: 0,
+      saleClosingCostsPercent: 0,
+    });
+    // gain = 250,000 ≤ MFJ cap 500,000 → fully excluded, byte-identical to the
+    // pre-§121(c) result; metadata months report null (underivable)
+    expect(r.section121).toEqual({ excludedAmount: 250_000, taxableGain: 0 });
+    expect(r.metadata.section121OwnershipMonths).toBeNull();
+    expect(r.metadata.section121UseMonths).toBeNull();
+  });
+
+  it('TC-HDA-14 — §121(c) long ownership (≥24 qualifying months) keeps the full cap', () => {
+    const r = calculateSellNow({
+      ...SHARED_INPUTS_BASE,
+      realtorCommissionPercent: 0,
+      saleClosingCostsPercent: 0,
+    });
+    // acquisition 2018 @ currentYear 2026 → 96mo ownership, movedOut 0 → use 96
+    // → qualifying ≥ 24 → full MFJ cap; gain 250,000 fully excluded (unchanged)
+    expect(r.section121).toEqual({ excludedAmount: 250_000, taxableGain: 0 });
+    expect(r.metadata.section121OwnershipMonths).toBe(96);
+    expect(r.metadata.section121UseMonths).toBe(96);
+  });
 });
 
 describe('calculateDeferredSale', () => {

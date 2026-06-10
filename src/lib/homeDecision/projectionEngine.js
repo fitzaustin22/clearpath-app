@@ -200,10 +200,25 @@ export function calculateSellNow(inputs) {
     expectedFilingStatusAtSellNow,
     costBasisFilingStatus,
     userMovedOutYearsAgo = 0,
+    homeAcquisitionYear,
+    currentYear,
     costBasis = 0,
   } = inputs;
 
   const useTest = evaluateUseTest({ userMovedOutYearsAgo });
+
+  // §121(c) period facts at the flow's native year granularity (the same
+  // continuous-ownership assumption as ownershipTestEligibility). Underivable
+  // (missing year facts) → null → calculateSection121Exclusion applies the
+  // full cap, byte-identical to the pre-§121(c) behavior.
+  const ownershipMonths =
+    Number.isFinite(currentYear) && Number.isFinite(homeAcquisitionYear)
+      ? Math.max(0, (currentYear - homeAcquisitionYear) * 12)
+      : null;
+  const useMonths =
+    ownershipMonths === null
+      ? null
+      : Math.max(0, ownershipMonths - Math.round(userMovedOutYearsAgo * 12));
 
   const grossSaleProceeds =
     currentFMV * (1 - realtorCommissionPercent - saleClosingCostsPercent);
@@ -220,7 +235,11 @@ export function calculateSellNow(inputs) {
     taxOnGainPostSection121 = section121.taxableGain * CAPITAL_GAINS_RATE;
     callouts.push(useTest.callout);
   } else if (gainAtSale > 0) {
-    section121 = calculateSection121Exclusion({ gain: gainAtSale, filingStatusAtSale });
+    section121 = calculateSection121Exclusion({
+      gain: gainAtSale,
+      filingStatusAtSale,
+      ...(ownershipMonths === null ? {} : { ownershipMonths, useMonths }),
+    });
     taxOnGainPostSection121 = section121.taxableGain * CAPITAL_GAINS_RATE;
   } else {
     section121 = { excludedAmount: 0, taxableGain: 0 };
@@ -252,6 +271,9 @@ export function calculateSellNow(inputs) {
       filingStatusAtSale,
       userMovedOutYearsAgo,
       useTestPassed: useTest.passes,
+      // §121(c) disclosure facts (D-V2-7): the periods actually applied.
+      section121OwnershipMonths: ownershipMonths,
+      section121UseMonths: useMonths,
     },
   };
 }
