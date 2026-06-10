@@ -72,7 +72,7 @@ function text(blocks, id, label, value, opts) {
 // ── Per-section extractors ───────────────────────────────────────────────────
 // Each receives the section's `data` and a ctx { appendix } and returns blocks.
 
-function extractS1(data, ctx) {
+function extractS1(data) {
   const meta = normalizeUnmappedSection('readinessAssessment', 'clearpath-blueprint:s1', [
     // Registry §7: proprietary self-assessment, reworded to non-methodology.
     'non_methodology_by_design',
