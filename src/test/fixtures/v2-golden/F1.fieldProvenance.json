@@ -120,7 +120,7 @@
     "stores.clearpath-m5.pensionValuation.assets.pensions-f1db.inputs.participantDOB": "CommonFields.jsx:55 · input — ISO date; required all compute paths",
     "stores.clearpath-m5.pensionValuation.assets.pensions-f1db.inputs.caseEffectiveDate": "CommonFields.jsx:66 · input — ISO date|null",
     "stores.clearpath-m5.pensionValuation.assets.pensions-f1db.inputs.mortalityTable": "CommonFields.jsx:34-38,79 · input — 'irs_417e'|'pub_2010'|'rp_2014'",
-    "stores.clearpath-m5.pensionValuation.assets.pensions-f1db.inputs.discountRateBps": "CommonFields.jsx:91 · input — integer bps, /100000 convention (tier1And2.js:47-52): 5234 = 5.234%, matches pinned segment-2 rate (pensionValuation/effectiveDateConstants.js:14-17)",
+    "stores.clearpath-m5.pensionValuation.assets.pensions-f1db.inputs.discountRateBps": "CommonFields.jsx:91 · input — legacy bps field, INERT since the §417(e) repair (PR #69): engines resolve the statutory rate via resolveSegment2Rate(caseEffectiveDate) — IRS-published segment2Pct VERBATIM (5.34 means 5.34%), applied as segment2Pct/100, convention: most recent published month ≤ valuation date (pensionValuation/effectiveDateConstants.js) — and echo this input in results.metadata only",
     "stores.clearpath-m5.pensionValuation.assets.pensions-f1db.inputs.cola": "CommonFields.jsx:103 · input — percent units 0-10 (engine ÷100, tier1And2.js:53)",
     "stores.clearpath-m5.pensionValuation.assets.pensions-f1db.inputs.planAdministratorOfferedLumpSum": "CommonFields.jsx:115 · input — number|null",
     "stores.clearpath-m5.pensionValuation.assets.pensions-f1db.inputs.planNRA": "Tier1And2Fields.jsx:77, Tier3Fields.jsx:89 · input — integer",
