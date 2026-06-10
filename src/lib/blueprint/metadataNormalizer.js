@@ -17,17 +17,17 @@
  */
 
 import { resolveCitationStrings, synthesizeCitations } from './citationRegistry.js';
+import { ENGINE_TAX_YEAR } from '../tax/taxYear.js';
 
 /**
- * Engine tax year the FSO computes against (FilingStatusOptimizer.jsx
- * `const TAX_YEAR = 2026`, sourced from Rev. Proc. 2025-32). The constant is
- * module-private in the component, so this mirror exists for the
- * store-vs-engine mismatch flag; a source-reading tripwire test asserts this
- * mirror never drifts from the component. blueprintStore.js:238 currently
- * hardcodes `taxYear: 2024` into §4 payloads — the mismatch flag below is the
- * F1 trap encoding (V2-Fixture-Design §F1).
+ * Engine tax year, single-sourced from src/lib/tax/taxYear.js (taxYear rider,
+ * 2026-06-10) — no longer a hand-kept mirror. The store-vs-engine mismatch
+ * flag below stays load-bearing: freshly-written §4 payloads now agree by
+ * construction, but PERSISTED legacy states (written while the store
+ * hardcoded 2024) still surface the discrepancy at read time, which is
+ * exactly the honest-disclosure behavior A3 requires.
  */
-export const KNOWN_ENGINE_TAX_YEAR = 2026;
+export const KNOWN_ENGINE_TAX_YEAR = ENGINE_TAX_YEAR;
 
 /**
  * Engine path → formulaId, mirroring src/lib/pensionValuation per-path ids

@@ -1,6 +1,7 @@
 // src/stores/blueprintStore.js
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { ENGINE_TAX_YEAR } from '@/src/lib/tax/taxYear';
 
 /**
  * Derive §6 sourceModule from which slots in `data` are populated, per §10.8's
@@ -235,7 +236,9 @@ const useBlueprintStore = create(
               scenarios: filingStatusData.scenarios,
               maxSavings: filingStatusData.maxSavings,
               divorceTimeline: filingStatusData.divorceTimeline,
-              taxYear: 2024,
+              // Sourced from the engine's Rev. Proc.-pinned constant (taxYear
+              // rider, 2026-06-10) — previously a stale 2024 literal.
+              taxYear: ENGINE_TAX_YEAR,
             },
           },
         },
