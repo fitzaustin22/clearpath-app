@@ -99,7 +99,9 @@
     }
   },
   "auditPins": {
-    "s3InventoryTotalsFooting": "PIN_PENDING_FITZ",
+    "s3InventoryTotalsFooting": "PIN_PENDING_FITZ"
+  },
+  "auditAssertions": {
     "readinessTierBoundaryValue": "PIN_PENDING_FITZ"
   },
   "_notes": {

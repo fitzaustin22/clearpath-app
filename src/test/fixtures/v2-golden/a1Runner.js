@@ -31,19 +31,33 @@ function recomputeInventoryAssetFooting(fixture) {
 }
 
 /**
- * Slot-name → recomputer registry. One real recomputer establishes the
- * pattern (both fixture spellings of the §3 footing slot); the remaining
- * slots register as named Phase 2 work so a pinned fixture reports them
- * honestly instead of pretending coverage.
+ * Slot-name → recomputer registry (numeric lane). One real recomputer
+ * establishes the pattern (both fixture spellings of the §3 footing slot);
+ * the remaining slots register as named Phase 2 work so a pinned fixture
+ * reports them honestly instead of pretending coverage.
  */
 export const SLOT_RECOMPUTERS = {
   s3InventoryTotalFooting: recomputeInventoryAssetFooting,
   s3InventoryTotalsFooting: recomputeInventoryAssetFooting,
 };
 
+/**
+ * Categorical lane: slotName → (fixture) => string. Audit truths that are
+ * labels, not numbers (readiness tier, AAML duration band), live in the
+ * fixture's `auditAssertions` block and compare strict === against the
+ * model/engine-derived categorical. Empty at Phase 1 — real categorical
+ * recomputers are Phase 2 scope, so pinned categorical slots report as
+ * named Phase 2 work, exactly like unregistered numeric slots.
+ */
+export const CATEGORICAL_RECOMPUTERS = {};
+
 export function runA1(fixture) {
   const pins = fixture.auditPins || {};
-  const unpinnedSlots = Object.entries(pins)
+  const assertions = fixture.auditAssertions || {};
+
+  // Pending slots in EITHER lane refuse the run — numeric pins first, then
+  // categorical assertions (consumers rely on this merge order).
+  const unpinnedSlots = [...Object.entries(pins), ...Object.entries(assertions)]
     .filter(([, v]) => v === PIN_LITERAL)
     .map(([slot]) => slot);
 
@@ -56,7 +70,7 @@ export function runA1(fixture) {
     };
   }
 
-  const results = Object.entries(pins).map(([slot, pinnedValue]) => {
+  const numericResults = Object.entries(pins).map(([slot, pinnedValue]) => {
     const recompute = SLOT_RECOMPUTERS[slot];
     if (!recompute) return { slot, status: 'recompute_not_implemented_phase2', pinnedValue };
     const recomputed = recompute(fixture);
@@ -68,5 +82,21 @@ export function runA1(fixture) {
     };
   });
 
-  return { fixtureId: fixture.fixtureId, status: 'executed', results };
+  const categoricalResults = Object.entries(assertions).map(([slot, pinnedValue]) => {
+    const recompute = CATEGORICAL_RECOMPUTERS[slot];
+    if (!recompute) return { slot, status: 'recompute_not_implemented_phase2', pinnedValue };
+    const recomputed = recompute(fixture);
+    return {
+      slot,
+      status: recomputed === pinnedValue ? 'match' : 'mismatch',
+      recomputed,
+      pinnedValue,
+    };
+  });
+
+  return {
+    fixtureId: fixture.fixtureId,
+    status: 'executed',
+    results: [...numericResults, ...categoricalResults],
+  };
 }

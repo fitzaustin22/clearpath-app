@@ -10,7 +10,7 @@ import F3 from '../../../test/fixtures/v2-golden/F3.json';
 import F4 from '../../../test/fixtures/v2-golden/F4.json';
 import F4b from '../../../test/fixtures/v2-golden/F4b.json';
 import { seedFixtureStores } from '../../../test/fixtures/v2-golden/seedFixtureStores.js';
-import { runA1, PIN_LITERAL } from '../../../test/fixtures/v2-golden/a1Runner.js';
+import { runA1, PIN_LITERAL, CATEGORICAL_RECOMPUTERS } from '../../../test/fixtures/v2-golden/a1Runner.js';
 import { buildDocumentModel, SECTION_ORDER, VALUE_CLASSES } from '../documentModel.js';
 import { KNOWN_ENGINE_TAX_YEAR } from '../metadataNormalizer.js';
 import { hasKey, SYNTHESIS_MAP } from '../citationRegistry.js';
@@ -154,9 +154,14 @@ describe('F1 trap encodings', () => {
 });
 
 describe('A1 runner — data-driven pin gating (both directions)', () => {
-  it.each(['F1', 'F2', 'F3', 'F4', 'F4b'])('%s gates on its ACTUAL slot state', (id) => {
+  it.each(['F1', 'F2', 'F3', 'F4', 'F4b'])('%s gates on its ACTUAL slot state across both lanes', (id) => {
     const fixture = FIXTURES[id];
-    const expectedUnpinned = Object.entries(fixture.auditPins || {})
+    // Pending slots in EITHER lane block A1 — numeric pins first, then
+    // categorical assertions, mirroring the runner's merge order.
+    const expectedUnpinned = [
+      ...Object.entries(fixture.auditPins || {}),
+      ...Object.entries(fixture.auditAssertions || {}),
+    ]
       .filter(([, v]) => v === PIN_LITERAL)
       .map(([slot]) => slot);
     const outcome = runA1(fixture);
@@ -173,27 +178,71 @@ describe('A1 runner — data-driven pin gating (both directions)', () => {
     const pinned = JSON.parse(JSON.stringify(F4b));
     // Hand-footing of F4b's fixture inputs: 12,000 (checking, asset) + 900 (TV,
     // personal property); the 6,800 credit card is a liability and excluded.
+    // The categorical slot gets a synthetic placeholder (NOT the real tier —
+    // that stays Fitz's pass); with no categorical recomputer registered it
+    // reports as named Phase 2 work.
     pinned.auditPins = { s3InventoryTotalsFooting: 12900 };
+    pinned.auditAssertions = { readinessTierBoundaryValue: 'phase2_categorical_example' };
     const outcome = runA1(pinned);
     expect(outcome.status).toBe('executed');
     expect(outcome.results).toEqual([
       { slot: 's3InventoryTotalsFooting', status: 'match', recomputed: 12900, pinnedValue: 12900 },
+      {
+        slot: 'readinessTierBoundaryValue',
+        status: 'recompute_not_implemented_phase2',
+        pinnedValue: 'phase2_categorical_example',
+      },
     ]);
   });
 
   it('a wrong pin is reported as a mismatch, never silently accepted', () => {
     const pinned = JSON.parse(JSON.stringify(F4b));
     pinned.auditPins = { s3InventoryTotalsFooting: 99999 };
+    pinned.auditAssertions = {};
     const outcome = runA1(pinned);
     expect(outcome.status).toBe('executed');
     expect(outcome.results[0].status).toBe('mismatch');
   });
 
-  it('pinned slots without a registered recomputer report as named Phase 2 work', () => {
+  it('pinned numeric slots without a registered recomputer report as named Phase 2 work', () => {
     const pinned = JSON.parse(JSON.stringify(F4b));
-    pinned.auditPins = { readinessTierBoundaryValue: 20 };
+    pinned.auditPins = { mdAamlSupportFigure: 12345 };
+    pinned.auditAssertions = {};
     const outcome = runA1(pinned);
     expect(outcome.status).toBe('executed');
     expect(outcome.results[0].status).toBe('recompute_not_implemented_phase2');
+  });
+
+  it('a pending categorical slot blocks A1 exactly like a pending numeric pin', () => {
+    const pinned = JSON.parse(JSON.stringify(F4b));
+    pinned.auditPins = { s3InventoryTotalsFooting: 12900 };
+    pinned.auditAssertions = { readinessTierBoundaryValue: PIN_LITERAL };
+    const outcome = runA1(pinned);
+    expect(outcome.status).toBe('refused');
+    expect(outcome.unpinnedSlots).toEqual(['readinessTierBoundaryValue']);
+    expect(outcome.reason).toContain('readinessTierBoundaryValue');
+  });
+
+  it('a pinned categorical slot compares strict === against its registered recomputer', () => {
+    const pinned = JSON.parse(JSON.stringify(F4b));
+    pinned.auditPins = { s3InventoryTotalsFooting: 12900 };
+    pinned.auditAssertions = { readinessTierBoundaryValue: 'synthetic_tier' };
+    // Temporary registry entry — removed in finally; the real categorical
+    // recomputers are Phase 2 scope.
+    CATEGORICAL_RECOMPUTERS.readinessTierBoundaryValue = () => 'synthetic_tier';
+    try {
+      const match = runA1(pinned).results.find((r) => r.slot === 'readinessTierBoundaryValue');
+      expect(match).toEqual({
+        slot: 'readinessTierBoundaryValue',
+        status: 'match',
+        recomputed: 'synthetic_tier',
+        pinnedValue: 'synthetic_tier',
+      });
+      CATEGORICAL_RECOMPUTERS.readinessTierBoundaryValue = () => 'a_different_tier';
+      const mismatch = runA1(pinned).results.find((r) => r.slot === 'readinessTierBoundaryValue');
+      expect(mismatch.status).toBe('mismatch');
+    } finally {
+      delete CATEGORICAL_RECOMPUTERS.readinessTierBoundaryValue;
+    }
   });
 });

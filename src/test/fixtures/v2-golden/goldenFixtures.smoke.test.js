@@ -87,6 +87,28 @@ describe.each(FIXTURES)('golden fixture $id', ({ id, fixture, sidecar }) => {
     }
   });
 
+  it('emits every audit-assertion slot as the PIN_PENDING_FITZ literal or a non-empty string', () => {
+    // Categorical lane: design truths that are labels, not numbers (e.g. a
+    // readiness tier, an AAML duration band). Same pending semantics as
+    // auditPins; once pinned, the expected value is an exact string the A1
+    // runner compares with strict ===. Numbers belong in auditPins.
+    const assertions = fixture.auditAssertions ?? {};
+    expect(isPlainObject(assertions)).toBe(true);
+    for (const [slot, expectedValue] of Object.entries(assertions)) {
+      const valid =
+        expectedValue === PIN_LITERAL ||
+        (typeof expectedValue === 'string' && expectedValue.trim().length > 0);
+      expect(
+        valid,
+        `auditAssertions.${slot} must be PIN_PENDING_FITZ or a non-empty string, got: ${JSON.stringify(expectedValue)}`
+      ).toBe(true);
+      expect(
+        typeof expectedValue,
+        `auditAssertions.${slot} must be a string (numeric pins belong in auditPins)`
+      ).toBe('string');
+    }
+  });
+
   it('has a _fieldProvenance sidecar covering every field path', () => {
     expect(sidecar.fixtureId).toBe(id);
     const provenanceMap = sidecar._fieldProvenance;
@@ -100,4 +122,29 @@ describe.each(FIXTURES)('golden fixture $id', ({ id, fixture, sidecar }) => {
 
 it('design allocation covers exactly the five golden fixtures', () => {
   expect(Object.keys(DESIGN_STATE_ALLOCATION).sort()).toEqual(['F1', 'F2', 'F3', 'F4', 'F4b']);
+});
+
+it('slot counts by block: 19 numeric pins + 2 categorical assertions, per fixture', () => {
+  // The two label-shaped design truths (F4b readiness tier, F1 AAML duration
+  // band) live in auditAssertions; every numeric audit value stays in
+  // auditPins. Counts are pinned per fixture so a slot silently moving or
+  // vanishing reds this spec.
+  const EXPECTED_SLOT_COUNTS = {
+    F1: { pins: 9, assertions: 1 },
+    F2: { pins: 3, assertions: 0 },
+    F3: { pins: 6, assertions: 0 },
+    F4: { pins: 0, assertions: 0 },
+    F4b: { pins: 1, assertions: 1 },
+  };
+  let totalPins = 0;
+  let totalAssertions = 0;
+  for (const { id, fixture } of FIXTURES) {
+    const pins = Object.keys(fixture.auditPins ?? {}).length;
+    const assertions = Object.keys(fixture.auditAssertions ?? {}).length;
+    expect({ id, pins, assertions }).toEqual({ id, ...EXPECTED_SLOT_COUNTS[id] });
+    totalPins += pins;
+    totalAssertions += assertions;
+  }
+  expect(totalPins).toBe(19);
+  expect(totalAssertions).toBe(2);
 });

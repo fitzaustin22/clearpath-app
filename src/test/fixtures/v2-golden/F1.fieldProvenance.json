@@ -269,7 +269,7 @@
     "auditPins.nelsonTrancheValue": "V2-Fixture-Design §F1 audit pins · PIN_PENDING_FITZ",
     "auditPins.hdaScenarioBNetProceedsAfter121": "V2-Fixture-Design §F1 audit pins · PIN_PENDING_FITZ",
     "auditPins.mdAamlSupportFigure": "V2-Fixture-Design §F1 audit pins · PIN_PENDING_FITZ",
-    "auditPins.mdAamlDurationBand": "V2-Fixture-Design §F1 audit pins · PIN_PENDING_FITZ",
+    "auditAssertions.mdAamlDurationBand": "V2-Fixture-Design §F1 audit pins · PIN_PENDING_FITZ — categorical lane (band LABEL string, aaml-spousal.js:44-49; relocated from auditPins: smoke requires numeric pins, the band is a label)",
     "auditPins.fsoFilingStatusDelta": "V2-Fixture-Design §F1 audit pins · PIN_PENDING_FITZ",
     "auditPins.s3InventoryTotalFooting": "V2-Fixture-Design §F1 audit pins · PIN_PENDING_FITZ",
     "_notes.taxYearTrap": "fixture annotation · V2-Fixture-Design §F1 trap encodings",
