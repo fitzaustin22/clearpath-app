@@ -1,5 +1,6 @@
 import { computeAnnuityFactor } from './annuityFactor.js';
 import { CITATIONS_BY_PATH } from './citations.js';
+import { resolveSegment2Rate } from './effectiveDateConstants.js';
 
 function yearsBetween(d1, d2) {
   const [y1, m1, day1] = d1.split('-').map(Number);
@@ -27,9 +28,12 @@ export function calculateInPayStatus(inputs, surfaceCallout) {
   const currentAge = yearsBetween(inputs.participantDOB, asOfDate);
   const annuityFactorAge = Math.min(Math.floor(currentAge), 119);
 
-  // See tier1And2.js for the /100000 vs /10000 discountRateBps note (spec
-  // §7.3.1 e.g. vs §7.4 formula inconsistency; /100000 matches §417(e) reality).
-  const baseDiscount = inputs.discountRateBps / 100000;
+  // §417(e) segment-2 statutory rate resolved by valuation date (v1 repair
+  // 2026-06-10; see tier1And2.js + docs/verification/417e-evidence-memo).
+  // Applied annual discount = segment2Pct / 100 exactly; discountRateBps no
+  // longer feeds the math.
+  const rateResolution = resolveSegment2Rate(asOfDate);
+  const baseDiscount = rateResolution.segment2Pct / 100;
   const cola = inputs.cola / 100;
 
   // STEPS IP.2 + IP.3 — immediate annuity PV (no deferral)
@@ -44,7 +48,7 @@ export function calculateInPayStatus(inputs, surfaceCallout) {
   };
 
   const pvBest = computePv(baseDiscount);
-  // STEP IP.4 — Sensitivity bracket (±100bp)
+  // STEP IP.4 — Sensitivity bracket: segment2Pct ± 1.00 (rendered as ±100bp)
   const pvLow = computePv(baseDiscount + 0.01);
   const pvHigh = computePv(baseDiscount - 0.01);
 
@@ -58,7 +62,11 @@ export function calculateInPayStatus(inputs, surfaceCallout) {
       formulaId: 'pva_db_inpaystatus_v1',
       path: 'in_pay_status',
       mortalityTable: inputs.mortalityTable,
-      discountRateBps: inputs.discountRateBps,
+      discountRateBps: inputs.discountRateBps ?? null, // legacy echo — not applied
+      segment2Pct: rateResolution.segment2Pct,
+      rateMonth: rateResolution.rateMonth,
+      noticeId: rateResolution.noticeId,
+      rateResolutionFlags: rateResolution.flags,
       cola: inputs.cola,
       formOfBenefitOnStatement: null,
       formOfBenefitInPay: inputs.formOfBenefitInPay ?? null,

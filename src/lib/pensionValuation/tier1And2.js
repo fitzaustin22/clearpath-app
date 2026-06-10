@@ -1,5 +1,6 @@
 import { computeAnnuityFactor } from './annuityFactor.js';
 import { CITATIONS_BY_PATH } from './citations.js';
+import { resolveSegment2Rate } from './effectiveDateConstants.js';
 
 // yearsBetween inlined here (and in inPayStatus) to keep the build-prompt 14-file
 // inventory exact. Both call sites use the same fractional-year formula.
@@ -38,12 +39,13 @@ export function calculateTier1Or2(inputs, surfaceCallout) {
     ? Math.min(Math.floor(participantAgeToday), 119)
     : inputs.planNRA;
 
-  // discountRateBps uses the spec's non-standard "ten-thousandths of a percent"
-  // convention per §7.3.1 ("e.g., 5234 = 5.234%") — divisor is /100000, NOT /10000.
-  // The spec's formula text at §7.4.2 STEP T1.4 / §7.4.3 STEP T3.4 / §7.4.4 STEP IP.2
-  // shows /10000 but that contradicts the §7.3.1 e.g. and produces a ~52% rate that
-  // is inconsistent with §417(e) reality. Queued as spec-amendment item.
-  const baseDiscount = inputs.discountRateBps / 100000;
+  // §417(e) segment-2 statutory rate resolved by valuation date (v1 repair
+  // 2026-06-10; evidence: docs/verification/417e-evidence-memo-2026-06-10.md).
+  // Applied annual discount = segment2Pct / 100 exactly. The legacy
+  // discountRateBps input is no longer consumed by the rate math (echoed in
+  // metadata only, for persisted-shape continuity).
+  const rateResolution = resolveSegment2Rate(asOfDate);
+  const baseDiscount = rateResolution.segment2Pct / 100;
   const cola = inputs.cola / 100;
 
   // STEPS T1.3 + T1.4 + T1.5 — PV at a given discount rate
@@ -59,7 +61,7 @@ export function calculateTier1Or2(inputs, surfaceCallout) {
   };
 
   const pvBest = computePv(baseDiscount);
-  // STEP T1.6 — Sensitivity bracket (±100bp on discount rate)
+  // STEP T1.6 — Sensitivity bracket: segment2Pct ± 1.00 (rendered as ±100bp)
   const pvLow = computePv(baseDiscount + 0.01);   // higher rate → lower PV
   const pvHigh = computePv(baseDiscount - 0.01);  // lower rate → higher PV
 
@@ -75,7 +77,11 @@ export function calculateTier1Or2(inputs, surfaceCallout) {
       formulaId,
       path: inputs.path,
       mortalityTable: inputs.mortalityTable,
-      discountRateBps: inputs.discountRateBps,
+      discountRateBps: inputs.discountRateBps ?? null, // legacy echo — not applied
+      segment2Pct: rateResolution.segment2Pct,
+      rateMonth: rateResolution.rateMonth,
+      noticeId: rateResolution.noticeId,
+      rateResolutionFlags: rateResolution.flags,
       cola: inputs.cola,
       formOfBenefitOnStatement: inputs.formOfBenefitOnStatement ?? null,
       formOfBenefitInPay: null,

@@ -17,9 +17,9 @@
   },
   "expected": {
     "pv": {
-      "best": 165783,
-      "low": 126443,
-      "high": 218973
+      "best": 161035,
+      "low": 122915,
+      "high": 212531
     },
     "monotonicityProperty": "pvLow < pvBest < pvHigh"
   }

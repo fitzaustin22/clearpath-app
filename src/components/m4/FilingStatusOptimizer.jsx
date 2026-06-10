@@ -14,11 +14,12 @@ import {
 import { useM4Store } from '@/src/stores/m4Store';
 import { useM3Store } from '@/src/stores/m3Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';
+import { ENGINE_TAX_YEAR } from '@/src/lib/tax/taxYear';
 
 // ============================================================
 // TAX YEAR CONFIGURATION
 // To update for a new tax year:
-// 1. Update TAX_YEAR constant
+// 1. Update ENGINE_TAX_YEAR in src/lib/tax/taxYear.js (single source of truth)
 // 2. Update bracket thresholds in TAX_BRACKETS
 // 3. Update STANDARD_DEDUCTIONS
 // 4. Update CHILD_TAX_CREDIT
@@ -26,7 +27,7 @@ import useBlueprintStore from '@/src/stores/blueprintStore';
 // Current source: IRS Revenue Procedure 2025-32 (for tax year 2026)
 // ============================================================
 
-const TAX_YEAR = 2026;
+const TAX_YEAR = ENGINE_TAX_YEAR;
 
 const TAX_BRACKETS = {
   single: [

@@ -174,14 +174,20 @@ describe('A3 case 7 — unknown future shape degrades honestly', () => {
   });
 });
 
-describe('engine-year mirror tripwire', () => {
-  it('KNOWN_ENGINE_TAX_YEAR matches the actual TAX_YEAR constant in the FSO source', () => {
+describe('engine-year single-source tripwire (taxYear rider, 2026-06-10)', () => {
+  it('KNOWN_ENGINE_TAX_YEAR matches the canonical constant in src/lib/tax/taxYear.js', () => {
+    const src = fs.readFileSync(path.resolve(__dirname, '../../tax/taxYear.js'), 'utf8');
+    const match = src.match(/export const ENGINE_TAX_YEAR = (\d{4});/);
+    expect(match, 'ENGINE_TAX_YEAR constant not found in src/lib/tax/taxYear.js').not.toBeNull();
+    expect(Number(match[1])).toBe(KNOWN_ENGINE_TAX_YEAR);
+  });
+
+  it('the FSO consumes the single source — no local year literal remains', () => {
     const src = fs.readFileSync(
       path.resolve(__dirname, '../../../components/m4/FilingStatusOptimizer.jsx'),
       'utf8'
     );
-    const match = src.match(/const TAX_YEAR = (\d{4});/);
-    expect(match, 'TAX_YEAR constant not found in FilingStatusOptimizer.jsx').not.toBeNull();
-    expect(Number(match[1])).toBe(KNOWN_ENGINE_TAX_YEAR);
+    expect(src).toMatch(/const TAX_YEAR = ENGINE_TAX_YEAR;/);
+    expect(src.match(/const TAX_YEAR = \d{4};/)).toBeNull();
   });
 });

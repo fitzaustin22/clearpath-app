@@ -23,7 +23,7 @@
     "callout": {
       "type": "lump_sum_offer_divergence",
       "offer": 152676,
-      "toolPv": 190845,
+      "toolPv": 186565,
       "pvTotal": 190845,
       "pvMarital": 60964,
       "regressionRule": "toolPv must equal pv.total.best (NOT pv.marital.best)"
