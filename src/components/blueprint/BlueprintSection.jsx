@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { isEmptyStatus } from './sectionInclusion';
 
 const NAVY = '#1B2A4A';
 const GOLD = '#C8A96E';
@@ -32,7 +33,10 @@ function emptyStateText(sectionKey, sourceModule, label) {
 
 export default function BlueprintSection({ id, number, label, status, sourceModule, children }) {
   const sectionKey = `s${number}`;
-  const isEmpty = status === 'empty';
+  // Factored predicate (V2 Phase 1) — same `status === 'empty'` check this
+  // line always was; sectionInclusion.js is the single home so the V2
+  // document model reuses it without re-deciding inclusion.
+  const isEmpty = isEmptyStatus(status);
   const isComplete = status === 'complete';
   const isPartial = status === 'partial';
 
