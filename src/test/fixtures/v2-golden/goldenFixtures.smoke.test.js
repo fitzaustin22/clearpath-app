@@ -63,13 +63,20 @@ describe.each(FIXTURES)('golden fixture $id', ({ id, fixture, sidecar }) => {
     expect(fixture.clientState).toBe(DESIGN_STATE_ALLOCATION[id]);
   });
 
-  it('emits every audit-pin slot as the PIN_PENDING_FITZ literal', () => {
+  it('emits every audit-pin slot as the PIN_PENDING_FITZ literal or a finite pinned number', () => {
     const pins = fixture.auditPins;
     expect(isPlainObject(pins)).toBe(true);
     for (const [slot, pinValue] of Object.entries(pins)) {
-      expect(pinValue, `auditPins.${slot} must stay unpinned until Fitz hand-computes it`).toBe(
-        PIN_LITERAL
-      );
+      // A slot is either awaiting Fitz's hand-computed pin (the literal) or is
+      // already pinned to a finite number. Anything else (null, NaN, other
+      // strings) is a corrupt slot. Pinning remains Fitz's pass — this spec
+      // must never turn his first pinned value into a red main.
+      const valid =
+        pinValue === PIN_LITERAL || (typeof pinValue === 'number' && Number.isFinite(pinValue));
+      expect(
+        valid,
+        `auditPins.${slot} must be PIN_PENDING_FITZ or a finite number, got: ${JSON.stringify(pinValue)}`
+      ).toBe(true);
     }
     // F4 generates no document (below the D-V2-6 floor) and therefore pins nothing;
     // every other fixture must carry at least one pin slot.
