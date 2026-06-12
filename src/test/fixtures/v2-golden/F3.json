@@ -311,12 +311,12 @@
     ]
   },
   "auditPins": {
-    "covertureFraction14Months": "PIN_PENDING_FITZ",
-    "cashBalancePassThroughPV": "PIN_PENDING_FITZ",
-    "s121PartialExclusionAmount": "PIN_PENDING_FITZ",
-    "builtaExtrapolatedFigure": "PIN_PENDING_FITZ",
-    "sensitivityLowMinus100bp": "PIN_PENDING_FITZ",
-    "sensitivityHighPlus100bp": "PIN_PENDING_FITZ"
+    "covertureFraction14Months": 0.05,
+    "cashBalancePassThroughPV": 3400,
+    "s121PartialExclusionAmount": 62500,
+    "builtaExtrapolatedFigure": 3863,
+    "sensitivityLowMinus100bp": 3400,
+    "sensitivityHighPlus100bp": 3400
   },
   "_notes": {
     "covertureResolution": "Marital service window = max(hire 2021-06-01, marriage 2022-01-10) → min(cutoff 2023-03-10, retirement) = 2022-01-10 → 2023-03-10 = exactly 14 months of participation during marriage (tier3Coverture.js:84-108 rule, applied by the cash-balance engine when all four coverture dates are non-null, cashBalancePassthrough.js:26-30). 4dp boundary rendering exerciser.",
