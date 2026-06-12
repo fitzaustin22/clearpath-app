@@ -99,10 +99,10 @@
     }
   },
   "auditPins": {
-    "s3InventoryTotalsFooting": "PIN_PENDING_FITZ"
+    "s3InventoryTotalsFooting": 12900
   },
   "auditAssertions": {
-    "readinessTierBoundaryValue": "PIN_PENDING_FITZ"
+    "readinessTierBoundaryValue": "preparing"
   },
   "_notes": {
     "exactlyAtFloor": "Exactly TWO modules complete (M1 readiness + M2 documentation/inventories) — the D-V2-6 floor. Harness asserts the pre-export interstitial lists exactly the omitted sections and the generated document carries the scope disclosure (D-V2-3).",

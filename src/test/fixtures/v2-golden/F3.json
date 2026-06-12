@@ -311,12 +311,12 @@
     ]
   },
   "auditPins": {
-    "covertureFraction14Months": "PIN_PENDING_FITZ",
-    "cashBalancePassThroughPV": "PIN_PENDING_FITZ",
-    "s121PartialExclusionAmount": "PIN_PENDING_FITZ",
-    "builtaExtrapolatedFigure": "PIN_PENDING_FITZ",
-    "sensitivityLowMinus100bp": "PIN_PENDING_FITZ",
-    "sensitivityHighPlus100bp": "PIN_PENDING_FITZ"
+    "covertureFraction14Months": 0.05,
+    "cashBalancePassThroughPV": 3400,
+    "s121PartialExclusionAmount": 62500,
+    "builtaExtrapolatedFigure": 3863,
+    "sensitivityLowMinus100bp": 3400,
+    "sensitivityHighPlus100bp": 3400
   },
   "_notes": {
     "covertureResolution": "Marital service window = max(hire 2021-06-01, marriage 2022-01-10) → min(cutoff 2023-03-10, retirement) = 2022-01-10 → 2023-03-10 = exactly 14 months of participation during marriage (tier3Coverture.js:84-108 rule, applied by the cash-balance engine when all four coverture dates are non-null, cashBalancePassthrough.js:26-30). 4dp boundary rendering exerciser.",
@@ -325,7 +325,7 @@
     "section121Partial": "Acquisition year 2025 → ownership < 2 years at a 2026 sale; movedOut 0.5 also stresses the use test (useTestEligibility.js:24-47) → §121 PARTIAL exclusion arithmetic (section121.js partial rules), per the sold-then-bought narrative.",
     "cashBalancePinNote": "Per design: cash-balance PV pin is blocked on irc_417e3 ONLY if the engine discounts; pva_cashbalance_passthrough_v1 is balance pass-through (cashBalancePassthrough.js:30), so Fitz pins the pass-through value (coverture-adjusted marital share).",
     "percentVsFractionTraps": "Encodes one of each unit family at the M5 wizard boundary: PVA cola = 2 (PERCENT, engine ÷100); HDA existingMortgageRate = 0.0625 (DECIMAL FRACTION); HDA interimCostSharePct = 50 (PERCENT 0-100, ×0.01 at calc boundary only).",
-    "sensitivityBounds": "±100bp sensitivity rows computed at both bounds around discountRateBps 5234 (tier engines compute base ± 0.01); fixture asserts the rendered rows remain distinguishable at whole-dollar rounding (D-V2-5 class).",
+    "sensitivityBounds": "The cash-balance path is rate-free (pva_cashbalance_passthrough_v1 balance passthrough, cashBalancePassthrough.js) — no discount rate enters, so the sensitivity bracket is degenerate by design: low = high = best. discountRateBps has been inert since PR #69 (echoed in metadata, never applied); the sensitivity pins record the degenerate passthrough values.",
     "zeroBalanceAccount": "workingCapital-f3zero carries currentValue 0 — renders, foots, and must not divide-by-zero anywhere downstream.",
     "derivedFieldsOmitted": "All results/summary fields omitted — Phase 1 harness computes through production engines (A1 rule)."
   }

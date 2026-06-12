@@ -195,9 +195,9 @@
     }
   },
   "auditPins": {
-    "s2NetIncomeDerivationFromPayStub": "PIN_PENDING_FITZ",
-    "budgetGapMonthlyFigure": "PIN_PENDING_FITZ",
-    "s3InventoryTotalsFooting": "PIN_PENDING_FITZ"
+    "s2NetIncomeDerivationFromPayStub": 10938.6,
+    "budgetGapMonthlyFigure": 9970,
+    "s3InventoryTotalsFooting": 94400
   },
   "_notes": {
     "modulesOmitted": "M4–M7 store keys deliberately absent — Dana stopped after M3. Nine Blueprint sections render empty → D-V2-3 omission + scope disclosure at its largest surface; TOC correctness under omission.",

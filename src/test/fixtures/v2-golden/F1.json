@@ -498,24 +498,24 @@
     ]
   },
   "auditPins": {
-    "covertureFractionPensionTranche": "PIN_PENDING_FITZ",
-    "covertureMaritalSharePensionTranche": "PIN_PENDING_FITZ",
-    "pensionPVAtBaseSegmentRate": "PIN_PENDING_FITZ",
-    "hugTrancheValue": "PIN_PENDING_FITZ",
-    "nelsonTrancheValue": "PIN_PENDING_FITZ",
-    "hdaScenarioBNetProceedsAfter121": "PIN_PENDING_FITZ",
-    "mdAamlSupportFigure": "PIN_PENDING_FITZ",
-    "fsoFilingStatusDelta": "PIN_PENDING_FITZ",
-    "s3InventoryTotalFooting": "PIN_PENDING_FITZ"
+    "covertureFractionPensionTranche": 0.6204,
+    "covertureMaritalSharePensionTranche": 227048,
+    "pensionPVAtBaseSegmentRate": 365975,
+    "hugTrancheValue": 35380,
+    "nelsonTrancheValue": 32696,
+    "hdaScenarioBNetProceedsAfter121": 240250,
+    "mdAamlSupportFigure": 5922,
+    "fsoFilingStatusDelta": 3582,
+    "s3InventoryTotalFooting": 1526700
   },
   "auditAssertions": {
-    "mdAamlDurationBand": "PIN_PENDING_FITZ"
+    "mdAamlDurationBand": "20+ years (permanent)"
   },
   "_notes": {
     "taxYearTrap": "Fixture pins engine tax year 2026 (Rev. Proc. 2025-32, FilingStatusOptimizer.jsx:26,29). Harness must assert the normalizer SURFACES the blueprintStore.js:238 taxYear:2024 discrepancy as a flagged inconsistency — silent fixing is a test failure. If the standalone taxYear defect PR lands first, this assertion flips to plain agreement.",
     "pvaFormulaIdLineage": "Harness asserts the V2 document model restores formulaId 'pva_db_tier3_coverture_v1' that v1 drops at the blueprint boundary (PVA.jsx:199-206).",
     "mdCapResolution": "Combined gross monthly 34,575 (7,908 + 26,667) deliberately exceeds the MD child-support schedule cap of 30,000/mo (effectiveDateConstants.js:32-35) to exercise Voishan above-schedule discretion.",
-    "pinBlocked417e": "pensionPVAtBaseSegmentRate stays PIN_PENDING_FITZ until the irc_417e3 registry verification lands (placeholder 'IRS Notice 2026-XX', pensionValuation/effectiveDateConstants.js:14-17).",
+    "pinBlocked417e": "RESOLVED: the 417(e) blocker cleared 2026-06-10 — irc_417e3 registry entry flipped verified and the repair (PR #69) landed the Notice-verified segment-2 table in pensionValuation/effectiveDateConstants.js. Pension pins are live: pensionPVAtBaseSegmentRate and the coverture slots are pinned (PR #71).",
     "section121FullExclusion": "Home gain 850,000 − 660,000 = 190,000 < 250,000 single cap (section121.js:7) → full exclusion in HDA Scenario B.",
     "qdroPacketCarrier": "qdroBlueprint carrier is derived state (writeQDROToBlueprint stamps savedProjection at save time) — omitted here; the harness generates it by replaying the QDRO save flow.",
     "derivedFieldsOmitted": "All results/summary/metadata-derived store fields are omitted by design — the Phase 1 harness computes them through production engines from these inputs (A1 independent-recompute rule)."
