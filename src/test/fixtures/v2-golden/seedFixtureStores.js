@@ -661,5 +661,6 @@ export function buildToolInputs(fixture) {
       analysis: r.analysis || {},
     };
   });
-  return { pensionAssets, dcaAnalyses };
+  const fso = stores['clearpath-m4']?.filingStatusOptimizer?.inputs ?? null;
+  return { pensionAssets, dcaAnalyses, fso };
 }

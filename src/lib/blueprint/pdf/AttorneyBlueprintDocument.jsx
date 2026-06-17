@@ -167,7 +167,7 @@ export function buildRenderPlan(model, opts = {}) {
     title: 'Methodologies and Authorities',
     intro:
       methodologyEntryCount > 0
-        ? 'Each computed value in this document is produced by one of the methods below. Methods are applied as described; no value reflects judgment outside the stated method.'
+        ? 'Each computed value in this document is produced by one of the methods below, applied as described. An authority annotated “methodology under review” has not yet been independently confirmed against its primary source; that pending-verification status is a disclosure about the citation only and does not change how the disclosed method is applied or computed.'
         : 'This document cites no external methodology authorities. Its figures are arithmetic sums of client-entered values and ClearPath’s structured readiness self-assessment (scale disclosed in Section 1). The rounding contract and provenance below apply.',
     entries: (model.appendices?.methodology?.entries ?? []).map((e) => ({
       name: e.shortCite,
