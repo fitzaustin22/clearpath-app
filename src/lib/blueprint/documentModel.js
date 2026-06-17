@@ -459,11 +459,19 @@ function extractCostBasisEntries(entries) {
     const before = blocks.length;
     num(blocks, `carrier.cbe.${e.assetId}.fmv`, 'Fair market value', e.fmv, 'currency_actual', src);
     num(blocks, `carrier.cbe.${e.assetId}.costBasis`, 'Cost basis', e.costBasis, 'currency_actual', src);
+    // Disclose the outstanding mortgage where the net-equity basis is below FMV
+    // (real estate) so the basis foots on the document's own terms:
+    // net-equity basis = FMV − outstanding mortgage (A5-M Cat 3 — the implied-
+    // but-undisclosed mortgage bridging FMV to the basis).
+    const mortgage = (Number(e.fmv) || 0) - (Number(e.baseline) || 0);
+    if (mortgage > 0.005) {
+      num(blocks, `carrier.cbe.${e.assetId}.mortgage`, 'Less: outstanding mortgage', Math.round(mortgage * 100) / 100, 'currency_actual', src);
+    }
     // Net-equity valuation basis (real estate = FMV − outstanding mortgage; all
     // other classes = FMV). Disclosed so tax-adjusted value foots on the
     // document's own terms: tax-adjusted = net-equity basis − estimated tax
     // (D-V2-7 / A5-M Cat 3 — the $0-tax-but-below-FMV footing flag).
-    num(blocks, `carrier.cbe.${e.assetId}.baseline`, 'Net-equity valuation basis', e.baseline, 'currency_projection', src);
+    num(blocks, `carrier.cbe.${e.assetId}.baseline`, 'Net-equity valuation basis (FMV − mortgage)', e.baseline, 'currency_projection', src);
     num(blocks, `carrier.cbe.${e.assetId}.builtInGain`, 'Built-in gain (FMV − cost basis)', e.builtInGain, 'currency_projection', src);
     num(blocks, `carrier.cbe.${e.assetId}.estimatedTax`, 'Estimated hidden tax', e.estimatedTax, 'currency_projection', src);
     num(blocks, `carrier.cbe.${e.assetId}.taxAdjustedValue`, 'Tax-adjusted value (net-equity basis − estimated tax)', e.taxAdjustedValue, 'currency_projection', src);
