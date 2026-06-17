@@ -17,13 +17,48 @@
  * its own A5-H panel seat. Until then they resolve to the unresolved path.
  */
 
+/**
+ * Verification state of record, mirrored from the vault
+ * (Roadmap/v1.x/V2-Citation-Registry.md). Spec §6 authoring rule: an entry
+ * renders its cite as settled authority ONLY when verified; the Phase 2
+ * renderer reads `entry.verified` to drive the verified-vs-"methodology under
+ * review" treatment (Acceptance Spec §4-A2). Flips are Fitz's, by primary-
+ * source verification; this map records the verifications of record:
+ *   - 18 flipped 2026-06-12 (DMV support block incl. Voishan/Builta, AAML
+ *     formula+duration+Boemio, NY-CSSA fallback, tax/mortality constants),
+ *     evidence memos A/B/C/D + engine corrections PR #72.
+ *   - irc_417e3 flipped 2026-06-10 (repair PR #69; 417e-evidence memo).
+ * Keys ABSENT here stay unverified seeds (verified:false, verifiedDate:null).
+ */
+const VERIFIED_DATES = Object.freeze({
+  aaml_30_20_40: '2026-06-12',
+  aaml_duration_schedule: '2026-06-12',
+  boemio_2010: '2026-06-12',
+  va_16_1_278_17_1: '2026-06-12',
+  va_20_108_2: '2026-06-12',
+  va_20_103: '2026-06-12',
+  va_20_107_1: '2026-06-12',
+  md_fl_12_201_202_204: '2026-06-12',
+  md_fl_11_106: '2026-06-12',
+  voishan_1992: '2026-06-12',
+  dc_16_916_01_911: '2026-06-12',
+  dc_16_913: '2026-06-12',
+  builta_2024: '2026-06-12',
+  hhs_ocse_income_shares: '2026-06-12',
+  irs_notice_2025_40: '2026-06-12',
+  rev_proc_2025_32: '2026-06-12',
+  ssa_wage_base: '2026-06-12',
+  irs_401k_limits: '2026-06-12',
+  irc_417e3: '2026-06-10',
+});
+
 const entry = (key, shortCite, fullCite, scopeNote) => ({
   key,
   shortCite,
   fullCite,
   scopeNote,
-  verified: false,
-  verifiedDate: null,
+  verified: Object.prototype.hasOwnProperty.call(VERIFIED_DATES, key),
+  verifiedDate: VERIFIED_DATES[key] ?? null,
 });
 
 export const REGISTRY = Object.freeze({
@@ -225,6 +260,12 @@ export const REGISTRY = Object.freeze({
     'IRC § 121(d)(3)',
     '26 U.S.C. § 121(d)(3)',
     'Spousal ownership/use tacking — drives the copy correction of the § 1041 misattribution.'
+  ),
+  treas_reg_1_121_3: entry(
+    'treas_reg_1_121_3',
+    'Treas. Reg. § 1.121-3',
+    'Treas. Reg. § 1.121-3',
+    "Reduced maximum exclusion — unforeseen-circumstances qualification; divorce enumerated at § 1.121-3(e)(2)(iii)(D); basis for the engine's categorical §121(c) partial qualification (no user-facing reason input). Implemented PR #70."
   ),
   irc_1041: entry(
     'irc_1041',

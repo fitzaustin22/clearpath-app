@@ -8,6 +8,8 @@ import {
   isInputsFreshDefault,
 } from '@/src/stores/prePopulate';
 import { calculateSupport } from '@/src/lib/supportEstimator';
+import useBlueprintStore from '@/src/stores/blueprintStore';
+import { buildSupportAnalysisPayload } from '@/src/lib/blueprintSupportPayload';
 import { InputsPanel } from './inputs/InputsPanel.jsx';
 import ResultsPanel from './ResultsPanel.jsx';
 import { Banner } from './inputs/_fields.jsx';
@@ -347,6 +349,11 @@ export function SupportEstimator({ disablePrePop = false }) {
     try {
       const result = calculateSupport(inputs);
       setResults(result);
+      // V2 §8 writer: assemble the disclosed-methodology support analysis into
+      // Blueprint §8 (the consumer S8 surface already expects this shape; this
+      // closes the pre-existing v1 writerless-§8 gap). Consumer-neutral — it
+      // only adds §8 content, never alters other estimator behavior.
+      useBlueprintStore.getState().updateSupportAnalysis(buildSupportAnalysisPayload(result, inputs));
     } catch (err) {
       // Translate dev-facing throws to user-friendly copy. Never leak raw err.message.
       const msg = err?.message ?? '';

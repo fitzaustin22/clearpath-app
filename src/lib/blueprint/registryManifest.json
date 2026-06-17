@@ -1,6 +1,6 @@
 {
   "note": "Key-set parity tripwire against accidental citationRegistry.js edits. NOT vault parity (vault unreachable from CI) — vault parity is reviewed at PR time against the PR-body key listing.",
-  "count": 41,
+  "count": 42,
   "keys": [
     "aaml_30_20_40",
     "aaml_duration_schedule",
@@ -34,6 +34,7 @@
     "cooper_v_ibm_2006",
     "irc_121",
     "irc_121_d_3",
+    "treas_reg_1_121_3",
     "irc_1041",
     "irc_7703",
     "irc_24_ctc_2026",

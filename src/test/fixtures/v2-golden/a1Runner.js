@@ -10,46 +10,75 @@
  * JSON (never from store state). Slots without a registered recomputer report
  * 'recompute_not_implemented_phase2' — full A1 100% is the Phase 2 gate.
  */
-import { LIABILITY_KEYS } from '@/src/lib/m2Sections';
+import {
+  recomputeInventoryAssetFooting,
+  recomputePensionPVAtBaseSegmentRate,
+  recomputeMaritalPVBest,
+  recomputeCovertureFraction,
+  recomputeSensitivityMaritalLow,
+  recomputeSensitivityMaritalHigh,
+  recomputeMdAamlSupportFigure,
+  recomputeBuiltaExtrapolatedFigure,
+  recomputeMdAamlDurationBand,
+  recomputeHdaScenarioBNetProceedsAfter121,
+  recomputeS121PartialExclusionAmount,
+  recomputeHugTrancheValue,
+  recomputeNelsonTrancheValue,
+  recomputeFsoFilingStatusDelta,
+  recomputeS2NetIncomeDerivationFromPayStub,
+  recomputeBudgetGapMonthlyFigure,
+  recomputeReadinessTierBoundaryValue,
+} from './a1Recomputers';
 
 export const PIN_LITERAL = 'PIN_PENDING_FITZ';
 
-/** §3 inventory footing — assets (incl. personal property) from fixture JSON. */
-function recomputeInventoryAssetFooting(fixture) {
-  const mei = fixture.stores?.['m2-store']?.maritalEstateInventory;
-  const ppi = fixture.stores?.['m2-store']?.personalPropertyInventory;
-  let total = 0;
-  for (const item of mei?.items || []) {
-    if (LIABILITY_KEYS.has(item.category)) continue; // LIABILITY_KEYS is a Set (m2Sections.js:102)
-    total += Number(item.currentValue) || 0;
-  }
-  for (const room of ppi?.rooms || []) {
-    for (const item of room.items || []) total += (Number(item.currentValue) || 0) * (item.quantity || 1);
-  }
-  for (const item of ppi?.highValueItems || []) total += (Number(item.currentValue) || 0) * (item.quantity || 1);
-  return total;
-}
-
 /**
- * Slot-name → recomputer registry (numeric lane). One real recomputer
- * establishes the pattern (both fixture spellings of the §3 footing slot);
- * the remaining slots register as named Phase 2 work so a pinned fixture
- * reports them honestly instead of pretending coverage.
+ * Slot-name → recomputer registry (numeric lane). Every pinned numeric slot
+ * across F1/F2/F3/F4b dispatches to a registered recomputer that re-derives the
+ * value INDEPENDENTLY from the fixture source-of-truth JSON (spec §4-A1). Two
+ * slot names share one engine where the fixtures pin the same field on
+ * different fixtures (the §3 footing spellings; the marital-PV-best field on
+ * F1 tier-3 vs F3 cash-balance; the coverture fraction on both pensions).
  */
 export const SLOT_RECOMPUTERS = {
+  // §3 inventory footing (both fixture spellings)
   s3InventoryTotalFooting: recomputeInventoryAssetFooting,
   s3InventoryTotalsFooting: recomputeInventoryAssetFooting,
+  // §2 income + M1 budget gap (F2)
+  s2NetIncomeDerivationFromPayStub: recomputeS2NetIncomeDerivationFromPayStub,
+  budgetGapMonthlyFigure: recomputeBudgetGapMonthlyFigure,
+  // F1 pension (tier-3 coverture / §417(e) PV)
+  pensionPVAtBaseSegmentRate: recomputePensionPVAtBaseSegmentRate,
+  covertureFractionPensionTranche: recomputeCovertureFraction,
+  covertureMaritalSharePensionTranche: recomputeMaritalPVBest,
+  // F3 pension (cash-balance passthrough; degenerate ±100bp)
+  covertureFraction14Months: recomputeCovertureFraction,
+  cashBalancePassThroughPV: recomputeMaritalPVBest,
+  sensitivityLowMinus100bp: recomputeSensitivityMaritalLow,
+  sensitivityHighPlus100bp: recomputeSensitivityMaritalHigh,
+  // F1 deferred comp (per-tranche Hug/Nelson intrinsic value)
+  hugTrancheValue: recomputeHugTrancheValue,
+  nelsonTrancheValue: recomputeNelsonTrancheValue,
+  // F1 home decision + F3 §121 partial
+  hdaScenarioBNetProceedsAfter121: recomputeHdaScenarioBNetProceedsAfter121,
+  s121PartialExclusionAmount: recomputeS121PartialExclusionAmount,
+  // Support (F1 MD AAML / F3 DC Builta)
+  mdAamlSupportFigure: recomputeMdAamlSupportFigure,
+  builtaExtrapolatedFigure: recomputeBuiltaExtrapolatedFigure,
+  // F1 filing-status delta
+  fsoFilingStatusDelta: recomputeFsoFilingStatusDelta,
 };
 
 /**
  * Categorical lane: slotName → (fixture) => string. Audit truths that are
- * labels, not numbers (readiness tier, AAML duration band), live in the
+ * labels, not numbers (F4b readiness tier, F1 AAML duration band) live in the
  * fixture's `auditAssertions` block and compare strict === against the
- * model/engine-derived categorical. Empty at Phase 1 — real categorical
- * recomputers are Phase 2 scope, so pinned categorical slots report as
- * named Phase 2 work, exactly like unregistered numeric slots.
+ * engine/classifier-derived categorical.
  */
-export const CATEGORICAL_RECOMPUTERS = {};
+export const CATEGORICAL_RECOMPUTERS = {
+  mdAamlDurationBand: recomputeMdAamlDurationBand,
+  readinessTierBoundaryValue: recomputeReadinessTierBoundaryValue,
+};
 
 export function runA1(fixture) {
   const pins = fixture.auditPins || {};

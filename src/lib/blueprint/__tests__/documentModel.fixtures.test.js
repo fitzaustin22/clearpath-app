@@ -9,11 +9,11 @@ import F2 from '../../../test/fixtures/v2-golden/F2.json';
 import F3 from '../../../test/fixtures/v2-golden/F3.json';
 import F4 from '../../../test/fixtures/v2-golden/F4.json';
 import F4b from '../../../test/fixtures/v2-golden/F4b.json';
-import { seedFixtureStores } from '../../../test/fixtures/v2-golden/seedFixtureStores.js';
+import { seedFixtureStores, buildToolInputs } from '../../../test/fixtures/v2-golden/seedFixtureStores.js';
 import { runA1, PIN_LITERAL, CATEGORICAL_RECOMPUTERS } from '../../../test/fixtures/v2-golden/a1Runner.js';
 import { buildDocumentModel, SECTION_ORDER, VALUE_CLASSES } from '../documentModel.js';
 import { KNOWN_ENGINE_TAX_YEAR } from '../metadataNormalizer.js';
-import { hasKey, SYNTHESIS_MAP } from '../citationRegistry.js';
+import { hasKey, getEntry, SYNTHESIS_MAP } from '../citationRegistry.js';
 
 const FIXTURES = { F1, F2, F3, F4, F4b };
 const MODELS = {};
@@ -53,7 +53,10 @@ beforeAll(() => {
       qdroBlueprint: JSON.parse(JSON.stringify(state.qdroBlueprint)),
       costBasisEntries: JSON.parse(JSON.stringify(state.costBasisEntries)),
     };
-    MODELS[id] = buildDocumentModel(SEEDED_STATES[id], { jurisdiction: fixture.clientState });
+    MODELS[id] = buildDocumentModel(SEEDED_STATES[id], {
+      jurisdiction: fixture.clientState,
+      toolInputs: buildToolInputs(fixture),
+    });
   }
 });
 
@@ -67,11 +70,12 @@ describe('document model populated per fixture (Phase 1 gate)', () => {
     expect(model.appendices.provenance.methodologyAttribution.text).toMatch(/ClearPath/);
   });
 
-  it('F1 populates every section except the writerless s8, plus all three carriers', () => {
+  it('F1 populates ALL twelve sections (incl. s8, now that the §8 writer landed) plus all three carriers', () => {
     const model = MODELS.F1;
-    expect(model.scopeDisclosure.omittedSections).toEqual(['s8']);
+    // The §8 Support Analysis writer (V2 Phase 2) closes the v1 gap: F1 now
+    // omits NOTHING.
+    expect(model.scopeDisclosure.omittedSections).toEqual([]);
     for (const s of model.sections) {
-      if (s.id === 's8') continue;
       expect(s.included, s.id).toBe(true);
       expect(s.blocks.length, s.id).toBeGreaterThan(0);
     }
@@ -80,12 +84,27 @@ describe('document model populated per fixture (Phase 1 gate)', () => {
     expect(model.carriers.qdroBlueprint.length).toBeGreaterThan(0);
   });
 
+  it('F1 §8 renders the support blocks with verified DMV citations resolved to registry keys', () => {
+    const s8 = MODELS.F1.sections.find((s) => s.id === 's8');
+    expect(s8.included).toBe(true);
+    const total = s8.blocks.find((b) => b.id === 's8.totalMonthlySupport');
+    expect(total, 's8.totalMonthlySupport block').toBeTruthy();
+    // MD support persists §11-106 / §12-204 / Boemio / Voishan — all verified.
+    expect(total.citations).toEqual(
+      expect.arrayContaining(['md_fl_11_106', 'md_fl_12_201_202_204', 'boemio_2010', 'voishan_1992']),
+    );
+    // F1 has a spousal figure (AAML cap binds at 5922).
+    expect(s8.blocks.some((b) => b.id === 's8.spousalSupport.monthly')).toBe(true);
+  });
+
   it('F2 scope disclosure lists exactly the predicate-omitted sections', () => {
     expect(MODELS.F2.scopeDisclosure.omittedSections).toEqual(['s4', 's6', 's8', 's9', 's10', 's11', 's12']);
   });
 
   it('F3 scope disclosure lists exactly the predicate-omitted sections', () => {
-    expect(MODELS.F3.scopeDisclosure.omittedSections).toEqual(['s4', 's8', 's10', 's11', 's12']);
+    // §8 now present (F3 carries DC support estimator inputs → the §8 writer
+    // populates it); s8 drops out of the omitted set.
+    expect(MODELS.F3.scopeDisclosure.omittedSections).toEqual(['s4', 's10', 's11', 's12']);
   });
 
   it('F4b scope disclosure lists exactly the predicate-omitted sections', () => {
@@ -110,8 +129,18 @@ describe('document model populated per fixture (Phase 1 gate)', () => {
     const pit = findMeta('s6', 's6.pit.');
     expect(pit.citations).toEqual(SYNTHESIS_MAP.pit);
     expect(pit.flags).toContain('citation_synthesized_from_registry');
-    const s2 = findMeta('s2', 's2.');
-    expect(s2.citations).toEqual(SYNTHESIS_MAP.payStubDecoder);
+    // §2 synthesis is now placed per-line (A5-M Cat 2b fix): ssa_wage_base on
+    // the Social-Security deduction, irs_401k_limits on the 401(k) deduction;
+    // the income/sum lines carry no marker. Union = SYNTHESIS_MAP.payStubDecoder.
+    const s2blocks = model.sections.find((s) => s.id === 's2').blocks;
+    const ssMeta = s2blocks.find((b) => b.id === 's2.deduction.socialSecurity')?.meta;
+    const k401Meta = s2blocks.find((b) => b.id === 's2.deduction.401k')?.meta;
+    expect(ssMeta.citations).toEqual(['ssa_wage_base']);
+    expect(ssMeta.flags).toContain('citation_synthesized_from_registry');
+    expect(k401Meta.citations).toEqual(['irs_401k_limits']);
+    const s2union = [...new Set(s2blocks.flatMap((b) => b.citations))];
+    expect(s2union.sort()).toEqual([...SYNTHESIS_MAP.payStubDecoder].sort());
+    expect(s2blocks.find((b) => b.id === 's2.grossMonthlyIncome').citations).toEqual([]);
     const tav = MODELS.F1.carriers.costBasisEntries[0].meta;
     expect(tav.citations).toEqual(SYNTHESIS_MAP.taxAdjustedAssetView);
     const qdroBlock = model.sections
@@ -174,24 +203,19 @@ describe('A1 runner — data-driven pin gating (both directions)', () => {
     }
   });
 
-  it('a fully-pinned fixture executes the recompute path and matches the real footing', () => {
+  it('a fully-pinned fixture executes the recompute path; footing and categorical both match (Phase 2)', () => {
     const pinned = JSON.parse(JSON.stringify(F4b));
     // Hand-footing of F4b's fixture inputs: 12,000 (checking, asset) + 900 (TV,
     // personal property); the 6,800 credit card is a liability and excluded.
-    // The categorical slot gets a synthetic placeholder (NOT the real tier —
-    // that stays Fitz's pass); with no categorical recomputer registered it
-    // reports as named Phase 2 work.
+    // Phase 2 registers both lanes: readiness classify on F4b's ten answers
+    // (× 2 = 20 → ≤ 20 → 'preparing') recomputes the categorical too.
     pinned.auditPins = { s3InventoryTotalsFooting: 12900 };
-    pinned.auditAssertions = { readinessTierBoundaryValue: 'phase2_categorical_example' };
+    pinned.auditAssertions = { readinessTierBoundaryValue: 'preparing' };
     const outcome = runA1(pinned);
     expect(outcome.status).toBe('executed');
     expect(outcome.results).toEqual([
       { slot: 's3InventoryTotalsFooting', status: 'match', recomputed: 12900, pinnedValue: 12900 },
-      {
-        slot: 'readinessTierBoundaryValue',
-        status: 'recompute_not_implemented_phase2',
-        pinnedValue: 'phase2_categorical_example',
-      },
+      { slot: 'readinessTierBoundaryValue', status: 'match', recomputed: 'preparing', pinnedValue: 'preparing' },
     ]);
   });
 
@@ -204,9 +228,11 @@ describe('A1 runner — data-driven pin gating (both directions)', () => {
     expect(outcome.results[0].status).toBe('mismatch');
   });
 
-  it('pinned numeric slots without a registered recomputer report as named Phase 2 work', () => {
+  it('a pinned slot with no registered recomputer still reports as named work, never silent', () => {
+    // All real fixture slots now have recomputers; this exercises the runner's
+    // defensive path for a slot name outside both registries.
     const pinned = JSON.parse(JSON.stringify(F4b));
-    pinned.auditPins = { mdAamlSupportFigure: 12345 };
+    pinned.auditPins = { __no_such_recomputer__: 12345 };
     pinned.auditAssertions = {};
     const outcome = runA1(pinned);
     expect(outcome.status).toBe('executed');
@@ -226,23 +252,99 @@ describe('A1 runner — data-driven pin gating (both directions)', () => {
   it('a pinned categorical slot compares strict === against its registered recomputer', () => {
     const pinned = JSON.parse(JSON.stringify(F4b));
     pinned.auditPins = { s3InventoryTotalsFooting: 12900 };
-    pinned.auditAssertions = { readinessTierBoundaryValue: 'synthetic_tier' };
-    // Temporary registry entry — removed in finally; the real categorical
-    // recomputers are Phase 2 scope.
-    CATEGORICAL_RECOMPUTERS.readinessTierBoundaryValue = () => 'synthetic_tier';
+    pinned.auditAssertions = { __synthetic_categorical__: 'synthetic_tier' };
+    // Use a synthetic slot so we never overwrite/delete the now-PERMANENT
+    // readinessTierBoundaryValue registration (Phase 2). Removed in finally.
+    CATEGORICAL_RECOMPUTERS.__synthetic_categorical__ = () => 'synthetic_tier';
     try {
-      const match = runA1(pinned).results.find((r) => r.slot === 'readinessTierBoundaryValue');
+      const match = runA1(pinned).results.find((r) => r.slot === '__synthetic_categorical__');
       expect(match).toEqual({
-        slot: 'readinessTierBoundaryValue',
+        slot: '__synthetic_categorical__',
         status: 'match',
         recomputed: 'synthetic_tier',
         pinnedValue: 'synthetic_tier',
       });
-      CATEGORICAL_RECOMPUTERS.readinessTierBoundaryValue = () => 'a_different_tier';
-      const mismatch = runA1(pinned).results.find((r) => r.slot === 'readinessTierBoundaryValue');
+      CATEGORICAL_RECOMPUTERS.__synthetic_categorical__ = () => 'a_different_tier';
+      const mismatch = runA1(pinned).results.find((r) => r.slot === '__synthetic_categorical__');
       expect(mismatch.status).toBe('mismatch');
     } finally {
-      delete CATEGORICAL_RECOMPUTERS.readinessTierBoundaryValue;
+      delete CATEGORICAL_RECOMPUTERS.__synthetic_categorical__;
     }
+  });
+});
+
+describe('document model — finalized appendices + document ID (Phase 2)', () => {
+  const citedKeysOf = (model) => {
+    const set = new Set();
+    for (const s of model.sections) for (const b of s.blocks) for (const k of b.citations) set.add(k);
+    for (const carrier of Object.values(model.carriers)) for (const b of carrier) for (const k of b.citations) set.add(k);
+    return set;
+  };
+
+  it('Appendix A renders EXCLUSIVELY from registry keys cited in the model (closed set, complete coverage)', () => {
+    const model = MODELS.F1;
+    const entries = model.appendices.methodology.entries;
+    expect(entries.length).toBeGreaterThan(0);
+    const cited = citedKeysOf(model);
+    for (const e of entries) {
+      expect(hasKey(e.key), e.key).toBe(true); // closed set
+      expect(cited.has(e.key), `${e.key} listed in Appendix A but not cited in the model`).toBe(true);
+      const reg = getEntry(e.key);
+      expect(e.fullCite).toBe(reg.fullCite);
+      expect(e.shortCite).toBe(reg.shortCite);
+      expect(e.verified).toBe(reg.verified); // verified flag drives renderer treatment
+    }
+    const entryKeys = new Set(entries.map((e) => e.key));
+    for (const k of cited) expect(entryKeys.has(k), `${k} cited but missing from Appendix A`).toBe(true);
+  });
+
+  it('F1 Appendix A exercises BOTH verified and unverified ("under review") entries', () => {
+    const entries = MODELS.F1.appendices.methodology.entries;
+    const verified = entries.filter((e) => e.verified).map((e) => e.key);
+    const unverified = entries.filter((e) => !e.verified).map((e) => e.key);
+    expect(verified).toEqual(expect.arrayContaining(['md_fl_11_106', 'boemio_2010', 'rev_proc_2025_32']));
+    expect(unverified).toEqual(expect.arrayContaining(['deering_md_1981', 'sutherland_pit', 'hug_1984']));
+  });
+
+  it('rounding-contract + provenance disclosures are finalized (slot/attribution preserved, status off placeholder)', () => {
+    const a = MODELS.F1.appendices;
+    expect(a.methodology.roundingContractDisclosure.slot).toBe('d_v2_5_rounding_contract');
+    expect(a.methodology.roundingContractDisclosure.status).not.toBe('placeholder_phase2');
+    expect(a.methodology.roundingContractDisclosure.summary).toMatch(/cent/);
+    expect(a.provenance.methodologyAttribution.text).toBe(
+      'Methodologies developed by ClearPath, founded by Austin Fitzpatrick, CDFA®',
+    );
+    expect(a.provenance.methodologyAttribution.status).not.toBe('placeholder_phase2');
+  });
+
+  it('stamps a deterministic CP-BP-YYYY-NNNN document ID (year from preparedDate, hash from content)', () => {
+    for (const id of ['F1', 'F2', 'F3', 'F4b']) {
+      expect(MODELS[id].documentId, id).toMatch(/^CP-BP-\d{4}-\d{4}$/);
+    }
+    const a = buildDocumentModel(SEEDED_STATES.F1, { jurisdiction: 'MD', preparedDate: '2026-06-01' });
+    const b = buildDocumentModel(SEEDED_STATES.F1, { jurisdiction: 'MD', preparedDate: '2026-06-01' });
+    expect(a.documentId).toBe(b.documentId); // deterministic
+    expect(a.documentId).toMatch(/^CP-BP-2026-\d{4}$/);
+    // Different fixtures hash to different IDs (content-sensitive).
+    expect(MODELS.F1.documentId).not.toBe(MODELS.F3.documentId);
+  });
+
+  it('F1 cost-basis primary residence adds §121(d)(3) spousal-tacking at the block level (meta unchanged)', () => {
+    const primaryBlocks = MODELS.F1.carriers.costBasisEntries.filter((b) =>
+      b.id.includes('realEstate-f1home'),
+    );
+    expect(primaryBlocks.length).toBeGreaterThan(0);
+    for (const b of primaryBlocks) {
+      expect(b.citations).toEqual(
+        expect.arrayContaining(['ltcg_15_simplification', 'irc_121', 'irc_1041', 'irc_121_d_3']),
+      );
+      // The normalized meta / SYNTHESIS_MAP.taxAdjustedAssetView contract stays put.
+      expect(b.meta.citations).toEqual(['ltcg_15_simplification', 'irc_121', 'irc_1041']);
+    }
+    // A non-primary-residence cost-basis entry does NOT get the tacking cite.
+    const brokerageBlocks = MODELS.F1.carriers.costBasisEntries.filter((b) =>
+      b.id.includes('workingCapital-f1brok'),
+    );
+    for (const b of brokerageBlocks) expect(b.citations).not.toContain('irc_121_d_3');
   });
 });

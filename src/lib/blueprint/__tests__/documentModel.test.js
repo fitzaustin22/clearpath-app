@@ -104,9 +104,13 @@ describe('buildDocumentModel — contract', () => {
     const pv = s6.blocks.find((b) => b.id === 's6.pva.headlinePV');
     expect(pv.lineage.formulaId).toBe('pva_db_tier3_coverture_v1');
     expect(pv.meta.flags).toContain('formula_id_restored_from_engine_knowledge');
-    expect(pv.citations).toEqual(['bender_dc_1972']);
+    // The coverture/jurisdiction authority (from the path citations) PLUS the
+    // §417(e) present-value method (appended on non-cash-balance PV blocks).
+    expect(pv.citations).toEqual(['bender_dc_1972', 'irc_417e3']);
     const frac = s6.blocks.find((b) => b.id === 's6.pva.coverturePercent');
     expect(frac.valueClass).toBe('fraction');
+    // The coverture fraction also cites the time-rule method.
+    expect(frac.citations).toContain('coverture_time_rule');
   });
 
   it('resolved deferred-comp stubs emit Hug/Nelson numeric blocks with the resolved two-key citation', () => {
@@ -144,17 +148,25 @@ describe('buildDocumentModel — contract', () => {
     expect(frac.value).toBe(0.6);
   });
 
-  it('cost-basis entries carry the TAV synthesis on every numeric block', () => {
+  it('cost-basis entries carry the TAV synthesis; a primary residence adds §121(d)(3) at the block level', () => {
     const state = emptyState();
     state.costBasisEntries = [
       { assetId: 'a1', category: 'realEstate', fmv: 500000, costBasis: 300000, builtInGain: 200000, estimatedTax: 0, taxAdjustedValue: 190000, isPrimaryResidence: true },
+      { assetId: 'a2', category: 'workingCapital', accountSubType: 'brokerage', fmv: 100000, costBasis: 60000, builtInGain: 40000, estimatedTax: 6000, taxAdjustedValue: 94000, isPrimaryResidence: false },
     ];
     const model = buildDocumentModel(state, { jurisdiction: 'VA' });
     const blocks = model.carriers.costBasisEntries;
     expect(blocks.length).toBeGreaterThan(0);
     for (const b of blocks) {
       assertBlockContract(b);
-      expect(b.citations).toEqual(['ltcg_15_simplification', 'irc_121', 'irc_1041']);
+      // The normalized meta / SYNTHESIS_MAP.taxAdjustedAssetView contract is constant.
+      expect(b.meta.citations).toEqual(['ltcg_15_simplification', 'irc_121', 'irc_1041']);
+      if (b.id.includes('a1')) {
+        // Primary residence: spousal-tacking §121(d)(3) added at the block level.
+        expect(b.citations).toEqual(['ltcg_15_simplification', 'irc_121', 'irc_1041', 'irc_121_d_3']);
+      } else {
+        expect(b.citations).toEqual(['ltcg_15_simplification', 'irc_121', 'irc_1041']);
+      }
     }
   });
 });
