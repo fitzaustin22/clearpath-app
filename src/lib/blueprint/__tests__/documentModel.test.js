@@ -104,9 +104,13 @@ describe('buildDocumentModel — contract', () => {
     const pv = s6.blocks.find((b) => b.id === 's6.pva.headlinePV');
     expect(pv.lineage.formulaId).toBe('pva_db_tier3_coverture_v1');
     expect(pv.meta.flags).toContain('formula_id_restored_from_engine_knowledge');
-    expect(pv.citations).toEqual(['bender_dc_1972']);
+    // The coverture/jurisdiction authority (from the path citations) PLUS the
+    // §417(e) present-value method (appended on non-cash-balance PV blocks).
+    expect(pv.citations).toEqual(['bender_dc_1972', 'irc_417e3']);
     const frac = s6.blocks.find((b) => b.id === 's6.pva.coverturePercent');
     expect(frac.valueClass).toBe('fraction');
+    // The coverture fraction also cites the time-rule method.
+    expect(frac.citations).toContain('coverture_time_rule');
   });
 
   it('resolved deferred-comp stubs emit Hug/Nelson numeric blocks with the resolved two-key citation', () => {

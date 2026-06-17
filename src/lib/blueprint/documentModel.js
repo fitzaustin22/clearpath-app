@@ -228,6 +228,15 @@ function extractS6(data, ctx) {
     const src = { inputs: ['clearpath-m5:pensionValuation.assets'], meta };
     const v = data.pva;
     num(blocks, 's6.pva.headlinePV', 'Defined-benefit pension — present value', v.headlinePV, 'currency_projection', src);
+    // The present-value METHOD is § 417(e)(3) (segment rate + mortality); the
+    // path citations are the coverture/jurisdiction authorities for the marital
+    // SHARE. Cite irc_417e3 (verified) on the PV block so the PV formula appears
+    // in Appendix A and the value is reproducible (A5-M Cat 3). Cash-balance PV
+    // is the account balance (its own authorities), so skip it there.
+    if (v.headlinePV !== null && v.headlinePV !== undefined && v.path !== 'cash_balance' && v.path !== 'flag_only') {
+      const pvBlock = blocks[blocks.length - 1];
+      if (!pvBlock.citations.includes('irc_417e3')) pvBlock.citations.push('irc_417e3');
+    }
     num(blocks, 's6.pva.maritalPV', 'Defined-benefit pension — marital portion present value', v.maritalPV, 'currency_projection', src);
     num(blocks, 's6.pva.coverturePercent', 'Defined-benefit pension — coverture fraction', v.coverturePercent, 'fraction', src);
     // The coverture fraction is produced by the time-rule method regardless of
@@ -578,7 +587,8 @@ const PHASE2_ASSUMPTION_PLACEHOLDERS = Object.freeze(
  */
 const METHODOLOGY_DESCRIPTIONS = Object.freeze({
   // §417(e) / pension PV apparatus
-  irc_417e3: 'Present value of an accrued defined-benefit pension, discounted under the § 417(e)(3) segment-rate structure.',
+  irc_417e3:
+    'Present value of an accrued defined-benefit pension: PV = monthly benefit × 12 × an annuity-due factor × the deferral discount to the valuation date. The annuity-due factor is the sum, over each future year the participant survives, of the survival probability ÷ (1 + segment-2 rate)^year, using the § 417(e)(3) segment-rate structure and the applicable mortality table (survival probabilities); the deferral discount is (1 + segment-2 rate)^(−years to assumed retirement).',
   reg_1_417e_1: 'Implementing regulation for the § 417(e)(3) present-value determination.',
   soa_commutation: 'Actuarial commutation basis for the present-value determination.',
   irs_notice_2025_40: 'Applicable § 417(e) mortality table (2026 unisex) used in the present-value determination.',
@@ -591,8 +601,8 @@ const METHODOLOGY_DESCRIPTIONS = Object.freeze({
   bender_dc_1972: 'Coverture (time-rule) marital-share authority.',
   mosley_va_1994: 'Coverture (time-rule) marital-share authority.',
   deering_md_1981: 'Coverture (time-rule) marital-share authority for a defined-benefit pension.',
-  hug_1984: 'Time-rule allocation of deferred compensation by service from hire to vesting (marital share). California authority applied as a valuation METHOD; not a statement that California law governs this matter.',
-  nelson_1986: 'Time-rule allocation of deferred compensation by service from grant to vesting (marital share). California authority applied as a valuation METHOD; not a statement that California law governs this matter.',
+  hug_1984: 'Deferred-comp time rule, measured in DAYS (distinct from the pension coverture month-count): marital fraction = days from date of HIRE to the earlier of separation and the tranche vesting date ÷ days from date of hire to the tranche vesting date (clamped 0–1); marital shares = round(granted shares × fraction). California authority applied as a valuation METHOD; not a statement that California law governs this matter.',
+  nelson_1986: 'Deferred-comp time rule, measured in DAYS: marital fraction = days from the GRANT date to the earlier of separation and the tranche vesting date ÷ days from the grant date to the tranche vesting date (clamped 0–1); marital shares = round(granted shares × fraction). California authority applied as a valuation METHOD; not a statement that California law governs this matter.',
   // Support — DMV
   aaml_30_20_40:
     'Benchmark spousal-support estimate: the LESSER of (a) 30% of payor gross income minus 20% of payee gross income and (b) 40% of combined gross income minus payee gross income, floored at zero.',
@@ -601,7 +611,7 @@ const METHODOLOGY_DESCRIPTIONS = Object.freeze({
   kaufman_guidelines: 'Educational reference only — not applied to compute any figure.',
   md_fl_11_106: 'Maryland statutory alimony factors.',
   md_fl_12_201_202_204: 'Maryland child-support guideline framework and schedule.',
-  voishan_1992: 'Maryland authority on above-schedule child support (court discretion).',
+  voishan_1992: 'Maryland authority on above-schedule child support: where combined income exceeds the top of the statutory guideline schedule, the award is committed to the court’s discretion; ClearPath uses the top-of-schedule basic obligation as a conservative computational baseline, then apportions by income share.',
   dc_16_913: 'District of Columbia alimony factors.',
   dc_16_916_01_911:
     'District of Columbia child-support guideline and pendente lite authority: the basic obligation is read from the published income-shares schedule (D.C. Code § 16-916.01a) at the combined gross income and number of children, then apportioned between the parents by income share.',
@@ -618,7 +628,7 @@ const METHODOLOGY_DESCRIPTIONS = Object.freeze({
   irc_24_ctc_2026: 'Child Tax Credit applied in the filing-status comparison.',
   sutherland_pit:
     'Point-in-time tax discount on a tax-deferred balance: discount rate = TR ÷ [((1 + i)^n − 1)(1 − TR) + 1], where TR is the effective tax rate, i the annual discount rate, and n the years to the withdrawal midpoint; the dollar discount is the account balance times this rate.',
-  irc_121: 'Capital-gain exclusion on the sale of a principal residence.',
+  irc_121: 'Capital-gain exclusion on the sale of a principal residence: up to $250,000 of gain (single) or $500,000 (married filing jointly) is excluded; where the gain is below the applicable cap it is fully excluded, leaving zero taxable gain and therefore zero estimated tax.',
   irc_121_d_3: 'Spousal ownership/use tacking for the principal-residence gain exclusion.',
   treas_reg_1_121_3: 'Reduced (partial) principal-residence exclusion under the unforeseen-circumstances qualification.',
   irc_1041: 'Carryover basis for property transferred incident to divorce.',

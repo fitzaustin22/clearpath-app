@@ -72,7 +72,7 @@ function sectionPlan(section) {
     // any mortgage) less estimated tax, with jointly-titled assets split 50/50.
     // They are not expected to foot column-to-column (A5-M Cat 3 clarification).
     notes.push(
-      'Face value reflects the Module 2 division allocation; tax-adjusted value reflects net equity (after any mortgage) less estimated tax, with jointly-titled assets split equally. The two are on different bases and are not expected to reconcile line-to-line.',
+      'Face value reflects the Module 2 division allocation; tax-adjusted value reflects net equity (after any mortgage) less estimated tax. Each party’s tax-adjusted figure is one half of the combined tax-adjusted value of the jointly-titled assets itemized in the Tax-Adjusted Asset Values block (a 50/50 split of jointly-titled property). The two columns are on different bases and are not expected to reconcile line-to-line.',
     );
   }
   if (section.id === 's2') {
