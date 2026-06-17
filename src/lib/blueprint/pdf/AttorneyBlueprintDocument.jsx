@@ -66,7 +66,10 @@ function sectionPlan(section) {
       'Account-balance plan: present value equals the account balance and is not rate-sensitive (no ±100 bp discount-rate sensitivity).',
     );
   }
-  if (section.id === 's5') {
+  // Only when a tax-adjusted column actually renders (a cost-basis entry exists)
+  // — otherwise the note dangles, referencing values that aren't on the page
+  // (A5-M Cat 3, F4b face-value-only §5).
+  if (section.id === 's5' && section.blocks.some((b) => b.id.includes('.taxAdjusted.'))) {
     // Face value and tax-adjusted value are on DIFFERENT bases — face reflects
     // the Module 2 division allocation; tax-adjusted reflects net equity (after
     // any mortgage) less estimated tax, with jointly-titled assets split 50/50.

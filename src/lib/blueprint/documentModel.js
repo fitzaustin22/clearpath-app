@@ -323,8 +323,11 @@ function extractS8(data) {
     // child support = basic obligation × the obligor's share of (alimony-first-
     // adjusted) combined income. (D-V2-7 / A5-M Cat 3.)
     num(blocks, 's8.childSupport.basicObligation', 'Child support — basic monthly obligation (guideline schedule / above-cap floor)', m.childBasicObligationMonthly, 'currency_projection', src);
-    num(blocks, 's8.childSupport.payorAdjustedIncome', 'Child support — obligor monthly income, alimony-first adjusted', m.payorAdjustedMonthly, 'currency_actual', src);
-    num(blocks, 's8.childSupport.payeeAdjustedIncome', 'Child support — obligee monthly income, alimony-first adjusted', m.payeeAdjustedMonthly, 'currency_actual', src);
+    // Whole-dollar (projection class) so they foot against the whole-dollar
+    // spousal figure: obligor adjusted = payor gross − spousal; obligee adjusted
+    // = payee gross + spousal (A5-M Cat 3 footing).
+    num(blocks, 's8.childSupport.payorAdjustedIncome', 'Child support — obligor monthly income, alimony-first adjusted (gross − spousal)', m.payorAdjustedMonthly, 'currency_projection', src);
+    num(blocks, 's8.childSupport.payeeAdjustedIncome', 'Child support — obligee monthly income, alimony-first adjusted (gross + spousal)', m.payeeAdjustedMonthly, 'currency_projection', src);
     num(blocks, 's8.childSupport.monthly', 'Child support — monthly (obligor share of basic obligation)', data.childSupport.monthly, 'currency_projection', src);
     num(blocks, 's8.childSupport.children', 'Children', data.childSupport.children, 'count', src);
   }
@@ -622,7 +625,7 @@ const METHODOLOGY_DESCRIPTIONS = Object.freeze({
   dc_16_916_01_911:
     'District of Columbia child-support guideline and pendente lite authority: the basic obligation is read from the published income-shares schedule (D.C. Code § 16-916.01a) at the combined gross income and number of children, then apportioned between the parents by income share.',
   builta_2024:
-    'District of Columbia above-cap child support: where combined income exceeds the $240,000 schedule cap, the basic obligation is extrapolated linearly using the slope between the last two published schedule rows, applied to combined income above the cap.',
+    'District of Columbia above-cap child support: where combined income exceeds the $240,000 schedule cap, the award is committed to the court’s discretion. ClearPath applies the statutory top-of-schedule basic obligation (the disclosed basic-obligation figure); the Builta straight-line extrapolation above the cap is a discretionary overlay and is not applied here.',
   va_16_1_278_17_1: 'Virginia pendente lite spousal-support formula.',
   va_20_103: 'Virginia pendente lite support authority.',
   va_20_108_2: 'Virginia child-support guideline schedule and above-cap percentages.',
