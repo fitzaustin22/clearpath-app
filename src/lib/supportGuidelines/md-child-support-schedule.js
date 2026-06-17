@@ -588,9 +588,14 @@ import { lookupAtDate, MD_CHILD_SUPPORT_CAP } from './effectiveDateConstants.js'
  * Look up MD child support per §6.5.3 return shape.
  *
  * Per Md. Fam. Law §12-204(c): income between table amounts uses the next higher row.
- * Per §12-204(d): income above $30,000/mo is committed to judicial discretion;
- * *Voishan v. Palma*, 327 Md. 318 (1992) treats the top-row amount as the
- * rebuttable presumptive floor — surfaced as `aboveScheduleMethod: 'md_voishan_presumptive_floor'`.
+ * Per §12-204(d): income above $30,000/mo is committed to the court's discretion.
+ * Above the schedule, *Voishan v. Palma*, 327 Md. 318 (1992) holds the award is
+ * discretionary; schedule extrapolation may serve as a guide but does not bind the
+ * court. (The "rebuttable presumptive floor" framing was NOT an express Maryland
+ * holding — it rests on the majority's fn. 5 citation to Colorado law.) The engine
+ * uses the top-of-schedule amount as a conservative computational baseline, not a
+ * legal presumption — surfaced as `aboveScheduleMethod: 'md_voishan_presumptive_floor'`
+ * (persisted ID retained; not renamed, to avoid minting a new drift case).
  *
  * @param {number} combinedMonthlyIncome
  * @param {number} numChildren
