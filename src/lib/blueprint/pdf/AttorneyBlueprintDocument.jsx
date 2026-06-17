@@ -66,16 +66,24 @@ function sectionPlan(section) {
       'Account-balance plan: present value equals the account balance and is not rate-sensitive (no ±100 bp discount-rate sensitivity).',
     );
   }
+  // ALWAYS disclose §5 provenance: the client/spouse/undecided face-value split
+  // is the parties' OWN Module 2 inventory designations (an input tally), NOT a
+  // ClearPath-computed equitable-distribution determination. Without this, a
+  // face-value-only §5 (no tax-adjusted column) reads as an uncited computed
+  // marital-share split (A5-M F2 Cat 2a). Parallels the §2 "client-provided
+  // inputs; ClearPath does not compute" disclosure.
+  if (section.id === 's5') {
+    notes.push(
+      'The client, spouse, and undecided face-value figures are the sums of individual asset values as the parties designated each item (kept by the client, by the spouse, or undecided) in the Module 2 Marital Estate Inventory. ClearPath does not classify property as marital or separate, apply a coverture or time rule, or determine an equitable-distribution share — the split reflects the parties’ own designations of who keeps each asset, not a legal or computed determination.',
+    );
+  }
   // Only when a tax-adjusted column actually renders (a cost-basis entry exists)
   // — otherwise the note dangles, referencing values that aren't on the page
-  // (A5-M Cat 3, F4b face-value-only §5).
+  // (A5-M Cat 3, F4b face-value-only §5). Provenance is covered by the base note
+  // above; this note contrasts the tax-adjusted basis and the non-reconciliation.
   if (section.id === 's5' && section.blocks.some((b) => b.id.includes('.taxAdjusted.'))) {
-    // Face value and tax-adjusted value are on DIFFERENT bases — face reflects
-    // the Module 2 division allocation; tax-adjusted reflects net equity (after
-    // any mortgage) less estimated tax, with jointly-titled assets split 50/50.
-    // They are not expected to foot column-to-column (A5-M Cat 3 clarification).
     notes.push(
-      'Face value reflects the Module 2 division allocation; tax-adjusted value reflects net equity (after any mortgage) less estimated tax. Each party’s tax-adjusted figure is one half of the combined tax-adjusted value of the jointly-titled assets itemized in the Tax-Adjusted Asset Values block (a 50/50 split of jointly-titled property). The two columns are on different bases and are not expected to reconcile line-to-line.',
+      'Tax-adjusted value reflects net equity (after any mortgage) less estimated tax. Each party’s tax-adjusted figure is one half of the combined tax-adjusted value of the jointly-titled assets itemized in the Tax-Adjusted Asset Values block (a 50/50 split of jointly-titled property). Face value and tax-adjusted value are on different bases and are not expected to reconcile line-to-line.',
     );
   }
   if (section.id === 's2') {

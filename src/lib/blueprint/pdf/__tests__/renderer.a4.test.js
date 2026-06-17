@@ -73,6 +73,33 @@ describe('A4 — methodology appendix verified treatment', () => {
   });
 });
 
+// A5-M round-9 surfaced a Cat-2a direct flag on F2: §5 renders the
+// client/spouse/undecided face-value split with NO note when no tax-adjusted
+// column exists, so the split reads as an uncited computed equitable-distribution
+// determination. The split is actually the parties' OWN Module 2 inventory
+// designations (an input tally), exactly parallel to §2's "client-provided
+// inputs; ClearPath does not compute" disclosure. §5 must ALWAYS disclose this.
+describe('§5 disclosure — division split is the parties’ Module 2 designation, not a ClearPath computation', () => {
+  const findS5 = (id) => PLANS[id].content.sections.find((s) => s.title === 'Property Division');
+  it.each(['F1', 'F2', 'F3', 'F4b'])('%s §5 (when included) carries the provenance + non-computation disclosure', (id) => {
+    const s5 = findS5(id);
+    if (!s5) return; // §5 omitted for this fixture → nothing on the page to disclose
+    const joined = (s5.notes || []).join(' ');
+    expect(joined, `${id} §5 missing Module-2 provenance disclosure`).toMatch(
+      /Marital Estate Inventory|Module 2/,
+    );
+    expect(joined, `${id} §5 missing non-computation disclaimer`).toMatch(
+      /does not classify|equitable-distribution|not a legal|coverture/i,
+    );
+  });
+  it('F2 §5 (face-value-only, no tax-adjusted column) still carries the disclosure', () => {
+    const s5 = findS5('F2');
+    expect(s5, 'F2 should include §5').toBeTruthy();
+    // F2 has no tax-adjusted blocks — the disclosure must not be gated on them
+    expect(s5.notes.some((n) => /not a legal/i.test(n) || /does not classify/i.test(n))).toBe(true);
+  });
+});
+
 describe('renderer — produces a valid PDF for every fixture', () => {
   it.each(['F1', 'F2', 'F3', 'F4b'])('%s renders to a non-trivial PDF buffer', async (id) => {
     const buf = await renderAttorneyBlueprint(MODELS[id], {
