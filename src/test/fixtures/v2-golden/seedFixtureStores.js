@@ -32,6 +32,8 @@ import { calculatePIT } from '@/src/lib/pitTaxDiscount';
 import { calculatePensionValue, getHeadlinePV, getMaritalPV } from '@/src/lib/pensionValuation';
 import { calculateHomeDecision } from '@/src/lib/homeDecision';
 import { calculateSection121Exclusion } from '@/src/lib/section121';
+import { calculateSupport } from '@/src/lib/supportEstimator';
+import { buildSupportAnalysisPayload } from '@/src/lib/blueprintSupportPayload';
 import { selectQDROBlueprintProjection } from '@/src/lib/qdro/blueprint/projection';
 import { selectQDRODivisionData } from '@/src/lib/qdro/blueprint/divisionData';
 
@@ -465,8 +467,14 @@ function seedM5(m5, blueprintBlock) {
   }
   if (m5.supportEstimator?.inputs) {
     useM5Store.getState().setSupportEstimatorInputs(m5.supportEstimator.inputs);
-    // No §8 writer exists in v1 (the defect pulled into V2 Phase 2 scope) —
-    // estimator inputs are seeded for completeness; nothing reaches s8.
+    // V2 Phase 2 §8 writer (mirrors SupportEstimator.jsx handleCalculate): run
+    // the real engine and write the analysis to blueprint §8. (v1 had no writer
+    // — the defect pulled into V2 scope.)
+    const supportResult = calculateSupport(m5.supportEstimator.inputs);
+    useM5Store.getState().setSupportEstimatorResults(supportResult);
+    useBlueprintStore
+      .getState()
+      .updateSupportAnalysis(buildSupportAnalysisPayload(supportResult, m5.supportEstimator.inputs));
   }
 }
 

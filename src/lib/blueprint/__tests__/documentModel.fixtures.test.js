@@ -67,11 +67,12 @@ describe('document model populated per fixture (Phase 1 gate)', () => {
     expect(model.appendices.provenance.methodologyAttribution.text).toMatch(/ClearPath/);
   });
 
-  it('F1 populates every section except the writerless s8, plus all three carriers', () => {
+  it('F1 populates ALL twelve sections (incl. s8, now that the §8 writer landed) plus all three carriers', () => {
     const model = MODELS.F1;
-    expect(model.scopeDisclosure.omittedSections).toEqual(['s8']);
+    // The §8 Support Analysis writer (V2 Phase 2) closes the v1 gap: F1 now
+    // omits NOTHING.
+    expect(model.scopeDisclosure.omittedSections).toEqual([]);
     for (const s of model.sections) {
-      if (s.id === 's8') continue;
       expect(s.included, s.id).toBe(true);
       expect(s.blocks.length, s.id).toBeGreaterThan(0);
     }
@@ -80,12 +81,27 @@ describe('document model populated per fixture (Phase 1 gate)', () => {
     expect(model.carriers.qdroBlueprint.length).toBeGreaterThan(0);
   });
 
+  it('F1 §8 renders the support blocks with verified DMV citations resolved to registry keys', () => {
+    const s8 = MODELS.F1.sections.find((s) => s.id === 's8');
+    expect(s8.included).toBe(true);
+    const total = s8.blocks.find((b) => b.id === 's8.totalMonthlySupport');
+    expect(total, 's8.totalMonthlySupport block').toBeTruthy();
+    // MD support persists §11-106 / §12-204 / Boemio / Voishan — all verified.
+    expect(total.citations).toEqual(
+      expect.arrayContaining(['md_fl_11_106', 'md_fl_12_201_202_204', 'boemio_2010', 'voishan_1992']),
+    );
+    // F1 has a spousal figure (AAML cap binds at 5922).
+    expect(s8.blocks.some((b) => b.id === 's8.spousalSupport.monthly')).toBe(true);
+  });
+
   it('F2 scope disclosure lists exactly the predicate-omitted sections', () => {
     expect(MODELS.F2.scopeDisclosure.omittedSections).toEqual(['s4', 's6', 's8', 's9', 's10', 's11', 's12']);
   });
 
   it('F3 scope disclosure lists exactly the predicate-omitted sections', () => {
-    expect(MODELS.F3.scopeDisclosure.omittedSections).toEqual(['s4', 's8', 's10', 's11', 's12']);
+    // §8 now present (F3 carries DC support estimator inputs → the §8 writer
+    // populates it); s8 drops out of the omitted set.
+    expect(MODELS.F3.scopeDisclosure.omittedSections).toEqual(['s4', 's10', 's11', 's12']);
   });
 
   it('F4b scope disclosure lists exactly the predicate-omitted sections', () => {

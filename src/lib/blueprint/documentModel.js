@@ -30,6 +30,7 @@ import {
   normalizeTavMetadata,
   normalizePayStubMetadata,
   normalizeUnmappedSection,
+  normalizeMetadataObject,
   KNOWN_ENGINE_TAX_YEAR,
 } from './metadataNormalizer';
 
@@ -228,14 +229,28 @@ function extractS7(data) {
 }
 
 function extractS8(data) {
-  // §8 Support Analysis has NO writer in v1 (the known defect pulled into V2
-  // scope — the writer itself is Phase 2 §8-writer work). When it lands, this
-  // extractor grows the support blocks; today it only handles data presence.
+  // §8 Support Analysis — populated by the V2 Phase 2 writer
+  // (updateSupportAnalysis ← buildSupportAnalysisPayload). The writer persists
+  // the support estimator's citation strings + formulaId in data.metadata;
+  // resolve them to registry keys via the A3 normalizer (drift case 3a:
+  // citations array). Honest gap (no citations) when metadata is absent.
   if (!data) return [];
-  const meta = normalizeUnmappedSection('supportEstimator', 'clearpath-blueprint:s8');
+  const meta = data.metadata
+    ? normalizeMetadataObject(data.metadata, {
+        tool: 'supportEstimator',
+        storeKey: 'clearpath-blueprint:s8',
+      })
+    : normalizeUnmappedSection('supportEstimator', 'clearpath-blueprint:s8');
   const blocks = [];
   const src = { inputs: ['clearpath-m5:supportEstimator.inputs'], meta };
   num(blocks, 's8.totalMonthlySupport', 'Total monthly support', data.totalMonthlySupport, 'currency_projection', src);
+  if (data.spousalSupport) {
+    num(blocks, 's8.spousalSupport.monthly', 'Spousal support — monthly', data.spousalSupport.monthly, 'currency_projection', src);
+  }
+  if (data.childSupport) {
+    num(blocks, 's8.childSupport.monthly', 'Child support — monthly', data.childSupport.monthly, 'currency_projection', src);
+    num(blocks, 's8.childSupport.children', 'Children', data.childSupport.children, 'count', src);
+  }
   return blocks;
 }
 

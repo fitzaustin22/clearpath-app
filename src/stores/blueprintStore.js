@@ -398,6 +398,31 @@ const useBlueprintStore = create(
         return { status };
       },
 
+      // §8 — Support Analysis (M5 Support Estimator). Dedicated single-source
+      // writer (V2 Phase 2 — the pre-existing v1 defect, no writer before now;
+      // mirrors updateHomeDecision/updateSettlementOverview: static
+      // sourceModule 'm5' preserved via the ...state.sections.s8 spread,
+      // last-write-wins full overwrite of `data`, derives a binary status,
+      // returns { status }). The estimator ASSEMBLES disclosed-methodology
+      // benchmark figures (it never recommends an amount); `data` carries the
+      // exact consumer S8SupportAnalysis shape PLUS attorney-doc lineage
+      // metadata (citations/formulaId/jurisdiction/as-of/imputation, D-V2-7).
+      // 'complete' when a finite total was computed (an analysis ran, even at
+      // $0); a null/total-less payload reads 'empty'.
+      updateSupportAnalysis: (payload) => {
+        const data = payload ?? null;
+        const status =
+          data != null && Number.isFinite(Number(data.totalMonthlySupport)) ? 'complete' : 'empty';
+        set(state => ({
+          sections: {
+            ...state.sections,
+            s8: { ...state.sections.s8, status, data: status === 'empty' ? null : data },
+          },
+          lastUpdated: new Date().toISOString(),
+        }));
+        return { status };
+      },
+
       // §10 — Negotiation Strategy (M6 multi-source, Phase 0b). Two feeder
       // tools write independent slots into s10.data: Priorities Worksheet →
       // data.priorities, Trade-Off Analyzer → data.tradeOffs. Merge-don't-
