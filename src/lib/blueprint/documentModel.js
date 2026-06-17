@@ -134,8 +134,10 @@ function extractS4(data, ctx) {
   const meta = normalizeFsoSection(data);
   const blocks = [];
   const src = { inputs: ['clearpath-m4:filingStatusOptimizer.inputs'], meta };
-  text(blocks, 's4.bestOption', 'Best filing status', data.bestOption, src);
-  num(blocks, 's4.maxSavings', 'Potential tax savings', data.maxSavings, 'currency_projection', src);
+  // "Lowest projected tax", not "best" — the document assembles a comparison;
+  // it does not recommend a filing status (assemble-don't-advise, A5 posture).
+  text(blocks, 's4.bestOption', 'Filing status with lowest projected tax', data.bestOption, src);
+  num(blocks, 's4.maxSavings', 'Projected tax difference (highest vs lowest eligible)', data.maxSavings, 'currency_projection', src);
   for (const [status, scenario] of Object.entries(data.scenarios || {})) {
     num(blocks, `s4.scenario.${status}.netTax`, `Net tax — ${status}`, scenario?.netTax, 'currency_projection', src);
   }
