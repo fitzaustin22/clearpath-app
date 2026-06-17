@@ -20,6 +20,7 @@
  */
 
 import { isSectionIncluded } from '../../components/blueprint/sectionInclusion';
+import { hasKey, getEntry, REGISTRY_KEYS } from './citationRegistry';
 import {
   normalizePvaSection,
   normalizeQdroAssetMetadata,
@@ -376,11 +377,24 @@ function extractCostBasisEntries(entries) {
   for (const e of entries || []) {
     const meta = normalizeTavMetadata();
     const src = { inputs: [`clearpath-blueprint:costBasisEntries.${e.assetId}`], meta };
+    const before = blocks.length;
     num(blocks, `carrier.cbe.${e.assetId}.fmv`, 'FMV', e.fmv, 'currency_actual', src);
     num(blocks, `carrier.cbe.${e.assetId}.costBasis`, 'Cost basis', e.costBasis, 'currency_actual', src);
     num(blocks, `carrier.cbe.${e.assetId}.builtInGain`, 'Built-in gain', e.builtInGain, 'currency_projection', src);
     num(blocks, `carrier.cbe.${e.assetId}.estimatedTax`, 'Estimated hidden tax', e.estimatedTax, 'currency_projection', src);
     num(blocks, `carrier.cbe.${e.assetId}.taxAdjustedValue`, 'Tax-adjusted value', e.taxAdjustedValue, 'currency_projection', src);
+    // §1041-vs-§121(d)(3) copy correction (D5 + synthesis-map amendment): the
+    // §121 principal-residence exclusion uses spousal ownership/use TACKING
+    // under § 121(d)(3) — distinct from the § 1041 basis carryover (which the
+    // TAV synthesis already covers). For a primary residence, add irc_121_d_3
+    // at the BLOCK level only; the normalized meta/synthesis contract stays
+    // [ltcg_15_simplification, irc_121, irc_1041]. block.citations is a spread
+    // copy, so the meta array is untouched.
+    if (e.isPrimaryResidence) {
+      for (let i = before; i < blocks.length; i += 1) {
+        if (!blocks[i].citations.includes('irc_121_d_3')) blocks[i].citations.push('irc_121_d_3');
+      }
+    }
   }
   return blocks;
 }
@@ -404,12 +418,91 @@ const PHASE2_ASSUMPTION_PLACEHOLDERS = Object.freeze(
 );
 
 /**
+ * Methodology-appendix descriptions (Appendix A), keyed by registry key. One
+ * factual sentence describing what the cited authority is applied to do — never
+ * a legal characterization or recommendation. The renderer pairs this with the
+ * registry shortCite (method name) + fullCite (authority); keys without an
+ * authored description fall back to the cite alone. Appendix A renders
+ * EXCLUSIVELY from keys actually cited in the model (closed set), so an entry
+ * here for a key not cited in a given document simply does not appear.
+ */
+const METHODOLOGY_DESCRIPTIONS = Object.freeze({
+  // §417(e) / pension PV apparatus
+  irc_417e3: 'Present value of an accrued defined-benefit pension, discounted under the § 417(e)(3) segment-rate structure.',
+  reg_1_417e_1: 'Implementing regulation for the § 417(e)(3) present-value determination.',
+  soa_commutation: 'Actuarial commutation basis for the present-value determination.',
+  irs_notice_2025_40: 'Applicable § 417(e) mortality table (2026 unisex) used in the present-value determination.',
+  irs_notice_96_8: 'Valuation basis for a cash-balance plan (account-balance present value).',
+  ppa_2006_1107: 'Lump-sum-equals-account-balance safe harbor applied to the cash-balance present value.',
+  cooper_v_ibm_2006: 'Cash-balance plan valuation authority.',
+  // Coverture / marital share
+  coverture_time_rule: 'Marital share as the ratio of marital service months to total service months (time rule).',
+  bender_dc_1972: 'Coverture (time-rule) marital-share authority.',
+  mosley_va_1994: 'Coverture (time-rule) marital-share authority.',
+  deering_md_1981: 'Coverture (time-rule) marital-share authority for a defined-benefit pension.',
+  hug_1984: 'Time-rule allocation of deferred compensation by service from hire to vesting (marital share).',
+  nelson_1986: 'Time-rule allocation of deferred compensation by service from grant to vesting (marital share).',
+  // Support — DMV
+  aaml_30_20_40: 'Benchmark spousal-support estimate: 30% of payor income minus 20% of payee income, capped at 40% of combined income.',
+  aaml_duration_schedule: 'Advisory spousal-support duration band keyed to marriage length.',
+  boemio_2010: 'Maryland authority recognizing consideration of the AAML benchmark formula.',
+  kaufman_guidelines: 'Educational reference only — not applied to compute any figure.',
+  md_fl_11_106: 'Maryland statutory alimony factors.',
+  md_fl_12_201_202_204: 'Maryland child-support guideline framework and schedule.',
+  voishan_1992: 'Maryland authority on above-schedule child support (court discretion).',
+  dc_16_913: 'District of Columbia alimony factors.',
+  dc_16_916_01_911: 'District of Columbia child-support guideline and pendente lite authority.',
+  builta_2024: 'District of Columbia above-cap child-support extrapolation method.',
+  va_16_1_278_17_1: 'Virginia pendente lite spousal-support formula.',
+  va_20_103: 'Virginia pendente lite support authority.',
+  va_20_108_2: 'Virginia child-support guideline schedule and above-cap percentages.',
+  va_20_107_1: 'Virginia post-divorce spousal-support factors.',
+  hhs_ocse_income_shares: 'Generic income-shares child-support approximation (planning fallback; not state authority).',
+  // Federal tax
+  irc_7703: 'Year-end (Dec. 31) marital-status determination for filing status.',
+  rev_proc_2025_32: 'Federal income-tax brackets and standard deductions for the stated tax year.',
+  irc_24_ctc_2026: 'Child Tax Credit applied in the filing-status comparison.',
+  sutherland_pit: 'Point-in-time present-value discount applied to a tax-deferred retirement balance.',
+  irc_121: 'Capital-gain exclusion on the sale of a principal residence.',
+  irc_121_d_3: 'Spousal ownership/use tacking for the principal-residence gain exclusion.',
+  treas_reg_1_121_3: 'Reduced (partial) principal-residence exclusion under the unforeseen-circumstances qualification.',
+  irc_1041: 'Carryover basis for property transferred incident to divorce.',
+  ltcg_15_simplification: 'Disclosed v1 simplification: a flat 15% long-term capital-gains rate (not the full statutory rate schedule).',
+  ssa_wage_base: 'Social Security contribution and benefit base for the stated year (Social Security tax cap).',
+  irs_401k_limits: '401(k) elective-deferral and catch-up limits for the stated year.',
+  // Housing
+  hpa_pmi_cancellation: 'Private-mortgage-insurance cancellation thresholds (78% scheduled / 80% requested loan-to-value).',
+});
+
+// Deterministic short content hash → the NNNN suffix of the document ID. Hashes
+// stable block id=value pairs + jurisdiction; excludes wall-clock metadata
+// (calculationTimestamp lives in block.meta, never in block.value).
+function shortContentHash(sections, carriers, jurisdiction) {
+  const parts = [];
+  for (const s of sections) for (const b of s.blocks) parts.push(`${b.id}=${b.value}`);
+  for (const carrier of Object.values(carriers)) for (const b of carrier) parts.push(`${b.id}=${b.value}`);
+  parts.push(`j=${jurisdiction}`);
+  const str = parts.join('|');
+  let h = 0;
+  for (let i = 0; i < str.length; i += 1) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+  return String(h % 10000).padStart(4, '0');
+}
+
+/** Deterministic CP-BP-YYYY-NNNN (D-V2 cover/footer doc ID; no new persistence). */
+function computeDocumentId(sections, carriers, jurisdiction, preparedDate) {
+  const year = /^\d{4}/.test(String(preparedDate)) ? String(preparedDate).slice(0, 4) : '2026';
+  return `CP-BP-${year}-${shortContentHash(sections, carriers, jurisdiction)}`;
+}
+
+/**
  * Build the intermediate document model from a blueprintStore snapshot.
  *
  * @param {object} state  blueprintStore state snapshot ({ sections, deferredCompStubs, qdroBlueprint, costBasisEntries, ... })
- * @param {object} opts   { jurisdiction } — REQUIRED, explicit (D-V2-8 deferral)
+ * @param {object} opts   { jurisdiction, preparedDate } — jurisdiction REQUIRED
+ *                        (explicit, D-V2-8 deferral); preparedDate (ISO) drives
+ *                        the document-ID year (defaults to the v1 launch year).
  */
-export function buildDocumentModel(state, { jurisdiction } = {}) {
+export function buildDocumentModel(state, { jurisdiction, preparedDate } = {}) {
   if (!jurisdiction) {
     throw new Error(
       'buildDocumentModel requires an explicit jurisdiction (production wiring is the D-V2-8 Phase 4 design item)'
@@ -432,8 +525,54 @@ export function buildDocumentModel(state, { jurisdiction } = {}) {
     costBasisEntries: extractCostBasisEntries(state?.costBasisEntries),
   };
 
+  // Appendix A (methodologies & authorities) renders EXCLUSIVELY from registry
+  // keys actually cited in the model (spec §4-A2 directive). Collect the cited
+  // keys in document order, enforce the closed set at build time, then emit
+  // entries in registry order (stable, grouped). The verified flag travels with
+  // each entry so the renderer applies the "methodology under review" treatment
+  // to unverified authorities rather than rendering them as settled.
+  const citedKeys = new Set();
+  for (const s of modelSections) {
+    for (const b of s.blocks) {
+      for (const k of b.citations || []) {
+        if (!hasKey(k)) {
+          throw new Error(
+            `document model emitted a non-registry citation key: "${k}" (closed-set violation, spec §4-A2)`,
+          );
+        }
+        citedKeys.add(k);
+      }
+    }
+  }
+  for (const carrier of Object.values(carriers)) {
+    for (const b of carrier) {
+      for (const k of b.citations || []) {
+        if (!hasKey(k)) {
+          throw new Error(
+            `document model emitted a non-registry citation key: "${k}" (closed-set violation, spec §4-A2)`,
+          );
+        }
+        citedKeys.add(k);
+      }
+    }
+  }
+  const methodologyEntries = REGISTRY_KEYS.filter((k) => citedKeys.has(k)).map((k) => {
+    const e = getEntry(k);
+    return {
+      key: k,
+      shortCite: e.shortCite,
+      fullCite: e.fullCite,
+      verified: e.verified,
+      verifiedDate: e.verifiedDate,
+      description: METHODOLOGY_DESCRIPTIONS[k] ?? null,
+    };
+  });
+
+  const documentId = computeDocumentId(modelSections, carriers, jurisdiction, preparedDate);
+
   return {
     jurisdiction,
+    documentId,
     sections: modelSections,
     carriers,
     scopeDisclosure: {
@@ -445,18 +584,22 @@ export function buildDocumentModel(state, { jurisdiction } = {}) {
         phase2Placeholders: [...PHASE2_ASSUMPTION_PLACEHOLDERS],
       },
       methodology: {
+        // D-V2-5 rounding-contract disclosure (finalized; rendered on the
+        // methodology page). README copy of record.
         roundingContractDisclosure: {
           slot: 'd_v2_5_rounding_contract',
-          status: 'placeholder_phase2',
+          status: 'final',
           summary:
-            'Per value class, applied at render time only: actuals/affidavit figures to the cent; projections, PVs, scenario outputs to the whole dollar; rates/percentages to two decimals; coverture fractions to four decimals with months/months alongside.',
+            'Actual amounts are stated to the cent; projected values to the nearest dollar; rates to two decimals; coverture fractions to four decimals.',
         },
-        entries: [],
+        entries: methodologyEntries,
       },
       provenance: {
+        // D-V2-4: attribution of METHODS, never of this document; NO per-
+        // document practitioner attestation. Finalized.
         methodologyAttribution: {
           slot: 'd_v2_4_provenance_page',
-          status: 'placeholder_phase2',
+          status: 'final',
           text: 'Methodologies developed by ClearPath, founded by Austin Fitzpatrick, CDFA®',
         },
       },

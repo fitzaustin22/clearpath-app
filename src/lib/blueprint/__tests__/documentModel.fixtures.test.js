@@ -13,7 +13,7 @@ import { seedFixtureStores } from '../../../test/fixtures/v2-golden/seedFixtureS
 import { runA1, PIN_LITERAL, CATEGORICAL_RECOMPUTERS } from '../../../test/fixtures/v2-golden/a1Runner.js';
 import { buildDocumentModel, SECTION_ORDER, VALUE_CLASSES } from '../documentModel.js';
 import { KNOWN_ENGINE_TAX_YEAR } from '../metadataNormalizer.js';
-import { hasKey, SYNTHESIS_MAP } from '../citationRegistry.js';
+import { hasKey, getEntry, SYNTHESIS_MAP } from '../citationRegistry.js';
 
 const FIXTURES = { F1, F2, F3, F4, F4b };
 const MODELS = {};
@@ -257,5 +257,81 @@ describe('A1 runner — data-driven pin gating (both directions)', () => {
     } finally {
       delete CATEGORICAL_RECOMPUTERS.__synthetic_categorical__;
     }
+  });
+});
+
+describe('document model — finalized appendices + document ID (Phase 2)', () => {
+  const citedKeysOf = (model) => {
+    const set = new Set();
+    for (const s of model.sections) for (const b of s.blocks) for (const k of b.citations) set.add(k);
+    for (const carrier of Object.values(model.carriers)) for (const b of carrier) for (const k of b.citations) set.add(k);
+    return set;
+  };
+
+  it('Appendix A renders EXCLUSIVELY from registry keys cited in the model (closed set, complete coverage)', () => {
+    const model = MODELS.F1;
+    const entries = model.appendices.methodology.entries;
+    expect(entries.length).toBeGreaterThan(0);
+    const cited = citedKeysOf(model);
+    for (const e of entries) {
+      expect(hasKey(e.key), e.key).toBe(true); // closed set
+      expect(cited.has(e.key), `${e.key} listed in Appendix A but not cited in the model`).toBe(true);
+      const reg = getEntry(e.key);
+      expect(e.fullCite).toBe(reg.fullCite);
+      expect(e.shortCite).toBe(reg.shortCite);
+      expect(e.verified).toBe(reg.verified); // verified flag drives renderer treatment
+    }
+    const entryKeys = new Set(entries.map((e) => e.key));
+    for (const k of cited) expect(entryKeys.has(k), `${k} cited but missing from Appendix A`).toBe(true);
+  });
+
+  it('F1 Appendix A exercises BOTH verified and unverified ("under review") entries', () => {
+    const entries = MODELS.F1.appendices.methodology.entries;
+    const verified = entries.filter((e) => e.verified).map((e) => e.key);
+    const unverified = entries.filter((e) => !e.verified).map((e) => e.key);
+    expect(verified).toEqual(expect.arrayContaining(['md_fl_11_106', 'boemio_2010', 'rev_proc_2025_32']));
+    expect(unverified).toEqual(expect.arrayContaining(['deering_md_1981', 'sutherland_pit', 'hug_1984']));
+  });
+
+  it('rounding-contract + provenance disclosures are finalized (slot/attribution preserved, status off placeholder)', () => {
+    const a = MODELS.F1.appendices;
+    expect(a.methodology.roundingContractDisclosure.slot).toBe('d_v2_5_rounding_contract');
+    expect(a.methodology.roundingContractDisclosure.status).not.toBe('placeholder_phase2');
+    expect(a.methodology.roundingContractDisclosure.summary).toMatch(/cent/);
+    expect(a.provenance.methodologyAttribution.text).toBe(
+      'Methodologies developed by ClearPath, founded by Austin Fitzpatrick, CDFA®',
+    );
+    expect(a.provenance.methodologyAttribution.status).not.toBe('placeholder_phase2');
+  });
+
+  it('stamps a deterministic CP-BP-YYYY-NNNN document ID (year from preparedDate, hash from content)', () => {
+    for (const id of ['F1', 'F2', 'F3', 'F4b']) {
+      expect(MODELS[id].documentId, id).toMatch(/^CP-BP-\d{4}-\d{4}$/);
+    }
+    const a = buildDocumentModel(SEEDED_STATES.F1, { jurisdiction: 'MD', preparedDate: '2026-06-01' });
+    const b = buildDocumentModel(SEEDED_STATES.F1, { jurisdiction: 'MD', preparedDate: '2026-06-01' });
+    expect(a.documentId).toBe(b.documentId); // deterministic
+    expect(a.documentId).toMatch(/^CP-BP-2026-\d{4}$/);
+    // Different fixtures hash to different IDs (content-sensitive).
+    expect(MODELS.F1.documentId).not.toBe(MODELS.F3.documentId);
+  });
+
+  it('F1 cost-basis primary residence adds §121(d)(3) spousal-tacking at the block level (meta unchanged)', () => {
+    const primaryBlocks = MODELS.F1.carriers.costBasisEntries.filter((b) =>
+      b.id.includes('realEstate-f1home'),
+    );
+    expect(primaryBlocks.length).toBeGreaterThan(0);
+    for (const b of primaryBlocks) {
+      expect(b.citations).toEqual(
+        expect.arrayContaining(['ltcg_15_simplification', 'irc_121', 'irc_1041', 'irc_121_d_3']),
+      );
+      // The normalized meta / SYNTHESIS_MAP.taxAdjustedAssetView contract stays put.
+      expect(b.meta.citations).toEqual(['ltcg_15_simplification', 'irc_121', 'irc_1041']);
+    }
+    // A non-primary-residence cost-basis entry does NOT get the tacking cite.
+    const brokerageBlocks = MODELS.F1.carriers.costBasisEntries.filter((b) =>
+      b.id.includes('workingCapital-f1brok'),
+    );
+    for (const b of brokerageBlocks) expect(b.citations).not.toContain('irc_121_d_3');
   });
 });
