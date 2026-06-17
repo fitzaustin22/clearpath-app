@@ -29,7 +29,7 @@ import useBlueprintStore from '@/src/stores/blueprintStore';
 import { buildAssetInventoryPayload } from '@/src/lib/blueprintM2Payload';
 import { ALL_SECTIONS, LIABILITY_KEYS, computeCategoryTotals } from '@/src/lib/m2Sections';
 import { calculatePIT } from '@/src/lib/pitTaxDiscount';
-import { calculatePensionValue, getHeadlinePV, getMaritalPV } from '@/src/lib/pensionValuation';
+import { calculatePensionValue, getHeadlinePV, getMaritalPV, resolveSegment2Rate } from '@/src/lib/pensionValuation';
 import { calculateHomeDecision } from '@/src/lib/homeDecision';
 import { calculateSection121Exclusion } from '@/src/lib/section121';
 import { calculateSupport } from '@/src/lib/supportEstimator';
@@ -632,4 +632,34 @@ export function seedFixtureStores(fixture) {
   if (stores['clearpath-m7']) seedM7(stores['clearpath-m7']);
 
   return useBlueprintStore.getState();
+}
+
+/**
+ * Gather the per-tool INPUT data the attorney document needs to disclose for
+ * D-V2-7 reproducibility (pension valuation inputs + the resolved §417(e)
+ * segment rate; deferred-comp grant/tranche dates + FMV/strike). These inputs
+ * live in the m5/m6 stores, NOT the blueprint snapshot — buildDocumentModel
+ * reads them via opts.toolInputs to populate the Inputs & Assumptions appendix.
+ * In production the export route assembles the same shape from live stores.
+ */
+export function buildToolInputs(fixture) {
+  const stores = fixture.stores || {};
+  const pensionAssets = Object.entries(stores['clearpath-m5']?.pensionValuation?.assets || {}).map(
+    ([assetId, slot]) => {
+      const inputs = slot.inputs || {};
+      const seg = inputs.caseEffectiveDate ? resolveSegment2Rate(inputs.caseEffectiveDate) : null;
+      return { assetId, inputs, segment: seg };
+    },
+  );
+  const stubs = stores['clearpath-blueprint']?.deferredCompStubs || [];
+  const dcaAnalyses = (fixture.replays?.dcaAnalyses || []).map((r) => {
+    const stub = stubs.find((s) => s.id === r.stubId) || {};
+    return {
+      stubId: r.stubId,
+      company: stub.company ?? null,
+      strikePrice: stub.strikePrice ?? null,
+      analysis: r.analysis || {},
+    };
+  });
+  return { pensionAssets, dcaAnalyses };
 }

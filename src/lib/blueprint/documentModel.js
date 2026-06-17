@@ -101,13 +101,23 @@ function extractS2(data, ctx) {
   num(blocks, 's2.grossMonthlyIncome', 'Gross monthly income', data.grossMonthlyIncome, 'currency_actual', src);
   num(blocks, 's2.grossPerPaycheck', 'Gross per paycheck', data.grossPerPaycheck, 'currency_actual', src);
   num(blocks, 's2.otherIncome', 'Other monthly income', data.otherIncome, 'currency_actual', src);
-  // Disclose the per-deduction monthly breakdown so net income is reproducible
-  // from the document alone (net = gross − Σ deductions; D-V2-7 / A5-M Cat 3).
+  // Disclose the per-deduction monthly breakdown (as reported on the client's
+  // pay stub — client-provided inputs, not ClearPath computations). Pre-tax
+  // deferrals are marked and a mandatory-deductions subtotal is given so
+  // take-home foots: take-home = gross − mandatory deductions (the pre-tax
+  // deferral reduces taxable pay but is the client's own savings, retained in
+  // take-home). (D-V2-7 / A5-M Cat 2a/3.)
+  let mandatoryTotal = 0;
   for (const d of data.deductions || []) {
     const monthly = d.monthly ?? d.monthlyAmount ?? null;
-    num(blocks, `s2.deduction.${d.id}`, `Monthly deduction — ${d.label ?? d.id}`, monthly, 'currency_actual', src);
+    if (!d.isVoluntary) mandatoryTotal += Number(monthly) || 0;
+    const tag = d.isVoluntary ? ' (pre-tax deferral — retained as savings)' : ' (as reported on pay stub)';
+    num(blocks, `s2.deduction.${d.id}`, `Monthly deduction — ${d.label ?? d.id}${tag}`, monthly, 'currency_actual', src);
   }
-  num(blocks, 's2.netMonthlyIncome', 'Net monthly income (gross − deductions)', data.netMonthlyIncome, 'currency_actual', src);
+  if ((data.deductions || []).length > 0) {
+    num(blocks, 's2.mandatoryDeductions', 'Total mandatory deductions (excludes pre-tax deferrals)', Math.round(mandatoryTotal * 100) / 100, 'currency_actual', src);
+  }
+  num(blocks, 's2.netMonthlyIncome', 'Net monthly take-home pay (gross − mandatory deductions)', data.netMonthlyIncome, 'currency_actual', src);
   num(blocks, 's2.annualGrossIncome', 'Annual gross income', data.annualGrossIncome, 'currency_actual', src);
   ctx.appendix.push({
     sectionId: 's2',
@@ -416,7 +426,7 @@ function extractCostBasisEntries(entries) {
     num(blocks, `carrier.cbe.${e.assetId}.baseline`, 'Net-equity valuation basis', e.baseline, 'currency_projection', src);
     num(blocks, `carrier.cbe.${e.assetId}.builtInGain`, 'Built-in gain (FMV − cost basis)', e.builtInGain, 'currency_projection', src);
     num(blocks, `carrier.cbe.${e.assetId}.estimatedTax`, 'Estimated hidden tax', e.estimatedTax, 'currency_projection', src);
-    num(blocks, `carrier.cbe.${e.assetId}.taxAdjustedValue`, 'Tax-adjusted value (basis − estimated tax)', e.taxAdjustedValue, 'currency_projection', src);
+    num(blocks, `carrier.cbe.${e.assetId}.taxAdjustedValue`, 'Tax-adjusted value (net-equity basis − estimated tax)', e.taxAdjustedValue, 'currency_projection', src);
     // §1041-vs-§121(d)(3) copy correction (D5 + synthesis-map amendment): the
     // §121 principal-residence exclusion uses spousal ownership/use TACKING
     // under § 121(d)(3) — distinct from the § 1041 basis carryover (which the
@@ -431,6 +441,64 @@ function extractCostBasisEntries(entries) {
     }
   }
   return blocks;
+}
+
+// ── D-V2-7 input disclosures (read explicitly from tool inputs) ─────────────
+// The pension valuation inputs and deferred-comp grant/tranche dates live in
+// the m5/m6 stores, NOT the blueprint snapshot. The attorney document discloses
+// them in the Inputs & Assumptions appendix so the coverture fractions, the
+// §417(e) present value, and the time-rule deferred-comp allocations are
+// reproducible from the document alone (D-V2-7 / A5-M Cat 3). Reading inputs for
+// disclosure is not a store change — nothing is persisted or mutated.
+
+const MORTALITY_LABELS = Object.freeze({
+  irs_417e: 'IRS §417(e) applicable mortality table (Notice 2025-40, 2026 unisex)',
+  pub_2010: 'SOA Pub-2010 public-plan mortality table',
+  rp_2014: 'SOA RP-2014 mortality table',
+});
+
+function extractInputDisclosures(toolInputs, appendix) {
+  if (!toolInputs) return;
+  for (const asset of toolInputs.pensionAssets || []) {
+    const i = asset.inputs || {};
+    const plan = i.planName || 'Defined-benefit pension';
+    const push = (label, value) => {
+      if (value !== null && value !== undefined && value !== '') {
+        appendix.push({ sectionId: 's6', label: `Pension input (${plan}) — ${label}`, value, source: `clearpath-m5:pensionValuation.assets.${asset.assetId}.inputs` });
+      }
+    };
+    push('accrued monthly benefit at valuation', i.currentAccruedMonthlyBenefit);
+    push('current account balance', i.currentAccountBalance);
+    push('date of hire', i.dateOfHire);
+    push('date of marriage', i.dateOfMarriage);
+    push('marital cutoff date', i.maritalCutoffDate);
+    push('participant date of birth', i.participantDOB);
+    push('assumed retirement age', i.expectedRetirementAge);
+    push('annual COLA assumption (percent)', i.cola);
+    push('valuation date', i.caseEffectiveDate);
+    push('mortality table', MORTALITY_LABELS[i.mortalityTable] ?? i.mortalityTable);
+    if (asset.segment && i.planType !== 'private_db_cash_balance') {
+      push('§417(e) segment-2 discount rate', `${asset.segment.segment2Pct}% (${asset.segment.noticeId}, month ${asset.segment.rateMonth})`);
+    }
+  }
+  for (const dca of toolInputs.dcaAnalyses || []) {
+    const a = dca.analysis || {};
+    const co = dca.company || 'grant';
+    const push = (label, value) => {
+      if (value !== null && value !== undefined && value !== '') {
+        appendix.push({ sectionId: 'carrier.deferredCompStubs', label: `Deferred comp input (${co}) — ${label}`, value, source: `clearpath-blueprint:deferredCompStubs.${dca.stubId}` });
+      }
+    };
+    push('date of hire', a.hireDate);
+    push('grant date', a.grantDate);
+    push('separation date', a.separationDate);
+    push('fair market value per share at valuation', a.fmv);
+    push('option strike price', dca.strikePrice);
+    (a.tranches || []).forEach((t, idx) => {
+      push(`tranche ${idx + 1} vesting date`, t.vestDate);
+      push(`tranche ${idx + 1} shares`, t.shares);
+    });
+  }
 }
 
 // ── D-V2-7 appendix placeholders (engine-constant sweep = Phase 2) ──────────
@@ -477,7 +545,8 @@ const METHODOLOGY_DESCRIPTIONS = Object.freeze({
   hug_1984: 'Time-rule allocation of deferred compensation by service from hire to vesting (marital share).',
   nelson_1986: 'Time-rule allocation of deferred compensation by service from grant to vesting (marital share).',
   // Support — DMV
-  aaml_30_20_40: 'Benchmark spousal-support estimate: 30% of payor income minus 20% of payee income, capped at 40% of combined income.',
+  aaml_30_20_40:
+    'Benchmark spousal-support estimate: the LESSER of (a) 30% of payor gross income minus 20% of payee gross income and (b) 40% of combined gross income minus payee gross income, floored at zero.',
   aaml_duration_schedule: 'Advisory spousal-support duration band keyed to marriage length.',
   boemio_2010: 'Maryland authority recognizing consideration of the AAML benchmark formula.',
   kaufman_guidelines: 'Educational reference only — not applied to compute any figure.',
@@ -537,7 +606,7 @@ function computeDocumentId(sections, carriers, jurisdiction, preparedDate) {
  *                        (explicit, D-V2-8 deferral); preparedDate (ISO) drives
  *                        the document-ID year (defaults to the v1 launch year).
  */
-export function buildDocumentModel(state, { jurisdiction, preparedDate } = {}) {
+export function buildDocumentModel(state, { jurisdiction, preparedDate, toolInputs } = {}) {
   if (!jurisdiction) {
     throw new Error(
       'buildDocumentModel requires an explicit jurisdiction (production wiring is the D-V2-8 Phase 4 design item)'
@@ -559,6 +628,10 @@ export function buildDocumentModel(state, { jurisdiction, preparedDate } = {}) {
     qdroBlueprint: extractQdroBlueprintCarrier(state?.qdroBlueprint),
     costBasisEntries: extractCostBasisEntries(state?.costBasisEntries),
   };
+
+  // D-V2-7: disclose the pension + deferred-comp INPUTS (from the m5/m6 tool
+  // inputs, not the blueprint snapshot) so those figures are reproducible.
+  extractInputDisclosures(toolInputs, appendix);
 
   // Appendix A (methodologies & authorities) renders EXCLUSIVELY from registry
   // keys actually cited in the model (spec §4-A2 directive). Collect the cited

@@ -3,7 +3,7 @@ import F1 from '../../../../test/fixtures/v2-golden/F1.json';
 import F2 from '../../../../test/fixtures/v2-golden/F2.json';
 import F3 from '../../../../test/fixtures/v2-golden/F3.json';
 import F4b from '../../../../test/fixtures/v2-golden/F4b.json';
-import { seedFixtureStores } from '../../../../test/fixtures/v2-golden/seedFixtureStores.js';
+import { seedFixtureStores, buildToolInputs } from '../../../../test/fixtures/v2-golden/seedFixtureStores.js';
 import { buildDocumentModel } from '../../documentModel.js';
 import { buildRenderPlan, collectRenderableStrings, renderAttorneyBlueprint } from '../renderAttorneyBlueprint.js';
 
@@ -16,7 +16,7 @@ beforeAll(() => {
     const state = seedFixtureStores(fixture);
     MODELS[id] = buildDocumentModel(
       { sections: JSON.parse(JSON.stringify(state.sections)), deferredCompStubs: JSON.parse(JSON.stringify(state.deferredCompStubs)), qdroBlueprint: JSON.parse(JSON.stringify(state.qdroBlueprint)), costBasisEntries: JSON.parse(JSON.stringify(state.costBasisEntries)) },
-      { jurisdiction: fixture.clientState, preparedDate: '2026-06-01' },
+      { jurisdiction: fixture.clientState, preparedDate: '2026-06-01', toolInputs: buildToolInputs(fixture) },
     );
     PLANS[id] = buildRenderPlan(MODELS[id], { clientName: fixture.persona?.name, preparedDate: '2026-06-01' });
   }

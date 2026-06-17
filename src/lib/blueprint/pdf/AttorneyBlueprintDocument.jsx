@@ -24,10 +24,13 @@ import {
 } from './format';
 import { getEntry } from '../citationRegistry';
 
+// Disclaimer copy extends the README's verbatim base with "or tax" because the
+// document carries withholding/tax figures (A5-M Cat 5 requires a not-tax-advice
+// disclaimer); flagged as a deviation from the verbatim README copy for review.
 const COVER_DISCLAIMER =
-  'Prepared with ClearPath software. This document assembles client-provided information and disclosed methodologies. It is not legal advice and does not substitute for review by retained counsel.';
+  'Prepared with ClearPath software. This document assembles client-provided information and disclosed methodologies. It is not legal, tax, or investment advice and does not substitute for review by retained counsel.';
 const FOOTER_DISCLAIMER =
-  'Prepared with ClearPath software · Not legal advice; not a substitute for review by retained counsel.';
+  'Prepared with ClearPath software · Not legal, tax, or investment advice; not a substitute for review by retained counsel.';
 const REVIEW_SUFFIX = ' (methodology under review)';
 const SCOPE_REASON = 'Not completed in ClearPath as of the preparation date.';
 const h = React.createElement;
@@ -70,6 +73,16 @@ function sectionPlan(section) {
     // They are not expected to foot column-to-column (A5-M Cat 3 clarification).
     notes.push(
       'Face value reflects the Module 2 division allocation; tax-adjusted value reflects net equity (after any mortgage) less estimated tax, with jointly-titled assets split equally. The two are on different bases and are not expected to reconcile line-to-line.',
+    );
+  }
+  if (section.id === 's2') {
+    notes.push(
+      'Deductions are as reported on the client’s pay stub (client-provided inputs); ClearPath does not compute withholding. Net take-home pay equals gross income less mandatory deductions; pre-tax retirement deferrals reduce taxable pay but are retained as the client’s savings and are included in take-home.',
+    );
+  }
+  if (section.id === 's4') {
+    notes.push(
+      'Filing-status eligibility is determined as of December 31 per the disclosed divorce timeline. Married-filing statuses are shown for comparison only and may be unavailable to a client treated as unmarried at year-end; the projected difference is computed over the eligible statuses (single and head of household).',
     );
   }
   return {

@@ -9,7 +9,7 @@ import F2 from '../../../test/fixtures/v2-golden/F2.json';
 import F3 from '../../../test/fixtures/v2-golden/F3.json';
 import F4 from '../../../test/fixtures/v2-golden/F4.json';
 import F4b from '../../../test/fixtures/v2-golden/F4b.json';
-import { seedFixtureStores } from '../../../test/fixtures/v2-golden/seedFixtureStores.js';
+import { seedFixtureStores, buildToolInputs } from '../../../test/fixtures/v2-golden/seedFixtureStores.js';
 import { runA1, PIN_LITERAL, CATEGORICAL_RECOMPUTERS } from '../../../test/fixtures/v2-golden/a1Runner.js';
 import { buildDocumentModel, SECTION_ORDER, VALUE_CLASSES } from '../documentModel.js';
 import { KNOWN_ENGINE_TAX_YEAR } from '../metadataNormalizer.js';
@@ -53,7 +53,10 @@ beforeAll(() => {
       qdroBlueprint: JSON.parse(JSON.stringify(state.qdroBlueprint)),
       costBasisEntries: JSON.parse(JSON.stringify(state.costBasisEntries)),
     };
-    MODELS[id] = buildDocumentModel(SEEDED_STATES[id], { jurisdiction: fixture.clientState });
+    MODELS[id] = buildDocumentModel(SEEDED_STATES[id], {
+      jurisdiction: fixture.clientState,
+      toolInputs: buildToolInputs(fixture),
+    });
   }
 });
 
