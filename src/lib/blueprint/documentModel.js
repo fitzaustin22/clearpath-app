@@ -81,12 +81,16 @@ function extractS1(data) {
   ]);
   const blocks = [];
   const src = (p) => ({ inputs: [`m1-store:${p}`], meta });
-  num(blocks, 's1.totalScore', 'Readiness total score', data.totalScore, 'count', src('readinessAssessment.answers'));
+  num(blocks, 's1.totalScore', 'Readiness self-assessment score', data.totalScore, 'count', src('readinessAssessment.answers'));
+  // Disclose the (non-methodology, ClearPath) scoring scale + tier cuts so the
+  // score and tier are reproducible from the document (A5-M Cat 3 / D-V2-7).
+  text(blocks, 's1.scoreScale', 'Self-assessment scale', '10 items scored 0–3 (maximum 30)', src('readinessAssessment.answers'));
   text(blocks, 's1.tier', 'Readiness tier', data.tier, src('readinessAssessment.answers'));
-  num(blocks, 's1.adjustedMonthlyIncome', 'Adjusted monthly income', data.adjustedMonthlyIncome, 'currency_actual', src('budgetGap.inputs'));
-  num(blocks, 's1.totalMonthlyExpenses', 'Total monthly expenses', data.totalMonthlyExpenses, 'currency_actual', src('budgetGap.inputs'));
-  num(blocks, 's1.monthlyGap', 'Monthly gap', data.monthlyGap, 'currency_actual', src('budgetGap.inputs'));
-  num(blocks, 's1.gapPercent', 'Gap percent', data.gapPercent, 'rate', src('budgetGap.inputs'));
+  text(blocks, 's1.tierCuts', 'Tier thresholds', 'score ≤ 10 exploring · ≤ 20 preparing · > 20 ready', src('readinessAssessment.answers'));
+  num(blocks, 's1.adjustedMonthlyIncome', 'Budget-gap adjusted monthly income (Module 1 estimate)', data.adjustedMonthlyIncome, 'currency_actual', src('budgetGap.inputs'));
+  num(blocks, 's1.totalMonthlyExpenses', 'Budget-gap monthly expenses (Module 1 estimate)', data.totalMonthlyExpenses, 'currency_actual', src('budgetGap.inputs'));
+  num(blocks, 's1.monthlyGap', 'Budget-gap monthly shortfall/surplus (Module 1 estimate)', data.monthlyGap, 'currency_actual', src('budgetGap.inputs'));
+  num(blocks, 's1.gapPercent', 'Budget-gap as percent of adjusted income', data.gapPercent, 'rate', src('budgetGap.inputs'));
   return blocks;
 }
 
@@ -95,9 +99,15 @@ function extractS2(data, ctx) {
   const blocks = [];
   const src = { inputs: ['clearpath-m3-store:payStubDecoder.inputs'], meta };
   num(blocks, 's2.grossMonthlyIncome', 'Gross monthly income', data.grossMonthlyIncome, 'currency_actual', src);
-  num(blocks, 's2.netMonthlyIncome', 'Net monthly income', data.netMonthlyIncome, 'currency_actual', src);
   num(blocks, 's2.grossPerPaycheck', 'Gross per paycheck', data.grossPerPaycheck, 'currency_actual', src);
   num(blocks, 's2.otherIncome', 'Other monthly income', data.otherIncome, 'currency_actual', src);
+  // Disclose the per-deduction monthly breakdown so net income is reproducible
+  // from the document alone (net = gross − Σ deductions; D-V2-7 / A5-M Cat 3).
+  for (const d of data.deductions || []) {
+    const monthly = d.monthly ?? d.monthlyAmount ?? null;
+    num(blocks, `s2.deduction.${d.id}`, `Monthly deduction — ${d.label ?? d.id}`, monthly, 'currency_actual', src);
+  }
+  num(blocks, 's2.netMonthlyIncome', 'Net monthly income (gross − deductions)', data.netMonthlyIncome, 'currency_actual', src);
   num(blocks, 's2.annualGrossIncome', 'Annual gross income', data.annualGrossIncome, 'currency_actual', src);
   ctx.appendix.push({
     sectionId: 's2',
@@ -178,12 +188,12 @@ function extractS6(data, ctx) {
     const meta = normalizePitSection(data.pit);
     const src = { inputs: ['clearpath-m4:pitTaxDiscount.inputs'], meta };
     const p = data.pit;
-    num(blocks, 's6.pit.planBalance', 'Plan balance at division', p.planBalance, 'currency_actual', src);
-    num(blocks, 's6.pit.taxDiscountPercent', 'PIT tax discount %', p.taxDiscountPercent, 'rate', src);
-    num(blocks, 's6.pit.taxDiscountDollars', 'PIT tax discount $', p.taxDiscountDollars, 'currency_projection', src);
-    num(blocks, 's6.pit.taxAdjustedValue', 'Tax-adjusted value', p.taxAdjustedValue, 'currency_projection', src);
-    num(blocks, 's6.pit.traditionalDiscountDollars', 'Traditional-method discount $', p.traditionalDiscountDollars, 'currency_projection', src);
-    num(blocks, 's6.pit.overage', 'Traditional-method overstatement', p.overage, 'currency_projection', src);
+    num(blocks, 's6.pit.planBalance', 'Defined-contribution account — balance at division', p.planBalance, 'currency_actual', src);
+    num(blocks, 's6.pit.taxDiscountPercent', 'DC account — point-in-time tax discount % (discount ÷ balance)', p.taxDiscountPercent, 'rate', src);
+    num(blocks, 's6.pit.taxDiscountDollars', 'DC account — point-in-time tax discount', p.taxDiscountDollars, 'currency_projection', src);
+    num(blocks, 's6.pit.taxAdjustedValue', 'DC account — tax-adjusted value', p.taxAdjustedValue, 'currency_projection', src);
+    num(blocks, 's6.pit.traditionalDiscountDollars', 'DC account — traditional-method discount', p.traditionalDiscountDollars, 'currency_projection', src);
+    num(blocks, 's6.pit.overage', 'DC account — traditional-method overstatement', p.overage, 'currency_projection', src);
     for (const [label, key, cls] of [
       ['Years to withdrawal midpoint (n)', 'n', 'count'],
       ['Effective tax rate', 'effectiveTaxRate', 'rate'],
@@ -197,20 +207,20 @@ function extractS6(data, ctx) {
     const meta = normalizePvaSection(data.pva);
     const src = { inputs: ['clearpath-m5:pensionValuation.assets'], meta };
     const v = data.pva;
-    num(blocks, 's6.pva.headlinePV', 'Pension present value', v.headlinePV, 'currency_projection', src);
-    num(blocks, 's6.pva.maritalPV', 'Marital portion present value', v.maritalPV, 'currency_projection', src);
-    num(blocks, 's6.pva.coverturePercent', 'Coverture fraction', v.coverturePercent, 'fraction', src);
-    text(blocks, 's6.pva.path', 'Valuation path', v.path, src);
+    num(blocks, 's6.pva.headlinePV', 'Defined-benefit pension — present value', v.headlinePV, 'currency_projection', src);
+    num(blocks, 's6.pva.maritalPV', 'Defined-benefit pension — marital portion present value', v.maritalPV, 'currency_projection', src);
+    num(blocks, 's6.pva.coverturePercent', 'Defined-benefit pension — coverture fraction', v.coverturePercent, 'fraction', src);
+    text(blocks, 's6.pva.path', 'Defined-benefit pension — valuation method', v.path, src);
     ctx.appendix.push({ sectionId: 's6', label: 'PVA assumption — expected retirement age', value: v.expectedRetirementAge ?? null, source: 'clearpath-blueprint:s6.pva.expectedRetirementAge' });
   }
   if (data?.qdro && data.qdro.assets && Object.keys(data.qdro.assets).length > 0) {
     for (const [assetId, asset] of Object.entries(data.qdro.assets)) {
       const meta = normalizeQdroAssetMetadata(asset?.metadata ?? null);
       const src = { inputs: [`clearpath-m5:qdroDecision.assets.${assetId}`], meta };
-      text(blocks, `s6.qdro.${assetId}.planType`, 'QDRO plan type', asset?.planType, src);
-      text(blocks, `s6.qdro.${assetId}.userRole`, 'QDRO user role', asset?.userRole, src);
-      text(blocks, `s6.qdro.${assetId}.completionState`, 'QDRO completion state', asset?.completionState, src);
-      text(blocks, `s6.qdro.${assetId}.pvSource`, 'PV source (engine formula id)', asset?.pvSource, src);
+      text(blocks, `s6.qdro.${assetId}.planType`, 'QDRO order — plan type', asset?.planType, src);
+      text(blocks, `s6.qdro.${assetId}.userRole`, 'QDRO order — party role', asset?.userRole, src);
+      text(blocks, `s6.qdro.${assetId}.completionState`, 'QDRO order — completion state', asset?.completionState, src);
+      text(blocks, `s6.qdro.${assetId}.pvSource`, 'QDRO order — present-value source', asset?.pvSource, src);
     }
   }
   return blocks;
@@ -220,10 +230,13 @@ function extractS7(data) {
   const meta = normalizeUnmappedSection('budgetModeler', 'clearpath-blueprint:s7');
   const blocks = [];
   const src = { inputs: ['clearpath-m3-store:budgetModeler.current', 'clearpath-m3-store:budgetModeler.projected'], meta };
-  num(blocks, 's7.currentTotal', 'Current monthly expenses', data.currentTotal, 'currency_actual', src);
-  num(blocks, 's7.projectedTotal', 'Projected monthly expenses', data.projectedTotal, 'currency_projection', src);
-  num(blocks, 's7.monthlyIncome', 'Monthly income', data.monthlyIncome, 'currency_actual', src);
-  num(blocks, 's7.monthlyGap', 'Projected surplus/shortfall', data.monthlyGap, 'currency_projection', src);
+  // Module-3 detailed budget model — a different instrument and scope than the
+  // §1 Module-1 budget-gap estimate (labels distinguish them so the two
+  // expense totals are not read as one inconsistent figure; A5-M Cat 3).
+  num(blocks, 's7.currentTotal', 'Modeled current monthly expenses (Module 3)', data.currentTotal, 'currency_actual', src);
+  num(blocks, 's7.projectedTotal', 'Modeled projected monthly expenses (Module 3)', data.projectedTotal, 'currency_projection', src);
+  num(blocks, 's7.monthlyIncome', 'Net monthly income (from Module 3 pay stub)', data.monthlyIncome, 'currency_actual', src);
+  num(blocks, 's7.monthlyGap', 'Projected monthly surplus/shortfall (income − projected expenses)', data.monthlyGap, 'currency_projection', src);
   for (const cat of data.categories || []) {
     num(blocks, `s7.category.${cat.name}.current`, `${cat.name} — current`, cat.current, 'currency_actual', src);
     num(blocks, `s7.category.${cat.name}.projected`, `${cat.name} — projected`, cat.projected, 'currency_projection', src);
@@ -246,12 +259,26 @@ function extractS8(data) {
     : normalizeUnmappedSection('supportEstimator', 'clearpath-blueprint:s8');
   const blocks = [];
   const src = { inputs: ['clearpath-m5:supportEstimator.inputs'], meta };
+  const m = data.metadata || {};
+  // Disclose the support INPUTS (both parties' gross income, child count) so the
+  // benchmark figures are reproducible from the document (D-V2-7 / A5-M Cat 3).
+  num(blocks, 's8.payorMonthlyIncome', 'Payor gross monthly income (input)', m.payorMonthly, 'currency_actual', src);
+  num(blocks, 's8.payeeMonthlyIncome', 'Payee gross monthly income (input)', m.payeeMonthly, 'currency_actual', src);
   num(blocks, 's8.totalMonthlySupport', 'Total monthly support', data.totalMonthlySupport, 'currency_projection', src);
   if (data.spousalSupport) {
-    num(blocks, 's8.spousalSupport.monthly', 'Spousal support — monthly', data.spousalSupport.monthly, 'currency_projection', src);
+    num(blocks, 's8.spousalSupport.monthly', 'Spousal support — monthly (benchmark estimate)', data.spousalSupport.monthly, 'currency_projection', src);
+    // The spousal figure's method IS the AAML benchmark (the persisted citations
+    // are the governing statutes); attach the AAML formula + duration band keys
+    // (both verified) at the block level so the method itself is cited.
+    if (typeof m.formulaId === 'string' && m.formulaId.includes('aaml')) {
+      const sp = blocks[blocks.length - 1];
+      for (const k of ['aaml_30_20_40', 'aaml_duration_schedule']) {
+        if (!sp.citations.includes(k)) sp.citations.push(k);
+      }
+    }
   }
   if (data.childSupport) {
-    num(blocks, 's8.childSupport.monthly', 'Child support — monthly', data.childSupport.monthly, 'currency_projection', src);
+    num(blocks, 's8.childSupport.monthly', 'Child support — monthly (guideline estimate)', data.childSupport.monthly, 'currency_projection', src);
     num(blocks, 's8.childSupport.children', 'Children', data.childSupport.children, 'count', src);
   }
   return blocks;
@@ -345,14 +372,14 @@ function extractDeferredCompStubs(stubs, ctx) {
     num(blocks, `carrier.dcs.${stub.id}.sharesGranted`, 'Shares granted', stub.sharesGranted, 'count', src);
     num(blocks, `carrier.dcs.${stub.id}.strikePrice`, 'Strike price', stub.strikePrice, 'currency_actual', src);
     if (stub.resolved && stub.metadata) {
-      num(blocks, `carrier.dcs.${stub.id}.maritalShares.hug`, 'Marital shares — Hug', stub.metadata.maritalShares?.hug, 'count', src);
-      num(blocks, `carrier.dcs.${stub.id}.maritalShares.nelson`, 'Marital shares — Nelson', stub.metadata.maritalShares?.nelson, 'count', src);
-      num(blocks, `carrier.dcs.${stub.id}.intrinsicValue.hug`, 'Intrinsic value — Hug', stub.metadata.intrinsicValue?.hug, 'currency_projection', src);
-      num(blocks, `carrier.dcs.${stub.id}.intrinsicValue.nelson`, 'Intrinsic value — Nelson', stub.metadata.intrinsicValue?.nelson, 'currency_projection', src);
-      for (const t of stub.metadata.perTrancheFractions || []) {
-        num(blocks, `carrier.dcs.${stub.id}.tranche.${t.id}.hug`, 'Tranche coverture — Hug', t.hug, 'fraction', src);
-        num(blocks, `carrier.dcs.${stub.id}.tranche.${t.id}.nelson`, 'Tranche coverture — Nelson', t.nelson, 'fraction', src);
-      }
+      num(blocks, `carrier.dcs.${stub.id}.maritalShares.hug`, 'Marital shares, grant total — Hug time rule', stub.metadata.maritalShares?.hug, 'count', src);
+      num(blocks, `carrier.dcs.${stub.id}.maritalShares.nelson`, 'Marital shares, grant total — Nelson time rule', stub.metadata.maritalShares?.nelson, 'count', src);
+      num(blocks, `carrier.dcs.${stub.id}.intrinsicValue.hug`, 'Intrinsic value, grant total — Hug time rule', stub.metadata.intrinsicValue?.hug, 'currency_projection', src);
+      num(blocks, `carrier.dcs.${stub.id}.intrinsicValue.nelson`, 'Intrinsic value, grant total — Nelson time rule', stub.metadata.intrinsicValue?.nelson, 'currency_projection', src);
+      (stub.metadata.perTrancheFractions || []).forEach((t, i) => {
+        num(blocks, `carrier.dcs.${stub.id}.tranche.${t.id}.hug`, `Tranche ${i + 1} coverture — Hug time rule`, t.hug, 'fraction', src);
+        num(blocks, `carrier.dcs.${stub.id}.tranche.${t.id}.nelson`, `Tranche ${i + 1} coverture — Nelson time rule`, t.nelson, 'fraction', src);
+      });
       for (const dateKey of ['hireDate', 'grantDate', 'separationDate']) {
         ctx.appendix.push({ sectionId: 'carrier.deferredCompStubs', label: `DCA ${dateKey} (${stub.id})`, value: stub.metadata[dateKey] ?? null, source: `clearpath-blueprint:deferredCompStubs.${stub.id}.metadata.${dateKey}` });
       }
@@ -380,11 +407,16 @@ function extractCostBasisEntries(entries) {
     const meta = normalizeTavMetadata();
     const src = { inputs: [`clearpath-blueprint:costBasisEntries.${e.assetId}`], meta };
     const before = blocks.length;
-    num(blocks, `carrier.cbe.${e.assetId}.fmv`, 'FMV', e.fmv, 'currency_actual', src);
+    num(blocks, `carrier.cbe.${e.assetId}.fmv`, 'Fair market value', e.fmv, 'currency_actual', src);
     num(blocks, `carrier.cbe.${e.assetId}.costBasis`, 'Cost basis', e.costBasis, 'currency_actual', src);
-    num(blocks, `carrier.cbe.${e.assetId}.builtInGain`, 'Built-in gain', e.builtInGain, 'currency_projection', src);
+    // Net-equity valuation basis (real estate = FMV − outstanding mortgage; all
+    // other classes = FMV). Disclosed so tax-adjusted value foots on the
+    // document's own terms: tax-adjusted = net-equity basis − estimated tax
+    // (D-V2-7 / A5-M Cat 3 — the $0-tax-but-below-FMV footing flag).
+    num(blocks, `carrier.cbe.${e.assetId}.baseline`, 'Net-equity valuation basis', e.baseline, 'currency_projection', src);
+    num(blocks, `carrier.cbe.${e.assetId}.builtInGain`, 'Built-in gain (FMV − cost basis)', e.builtInGain, 'currency_projection', src);
     num(blocks, `carrier.cbe.${e.assetId}.estimatedTax`, 'Estimated hidden tax', e.estimatedTax, 'currency_projection', src);
-    num(blocks, `carrier.cbe.${e.assetId}.taxAdjustedValue`, 'Tax-adjusted value', e.taxAdjustedValue, 'currency_projection', src);
+    num(blocks, `carrier.cbe.${e.assetId}.taxAdjustedValue`, 'Tax-adjusted value (basis − estimated tax)', e.taxAdjustedValue, 'currency_projection', src);
     // §1041-vs-§121(d)(3) copy correction (D5 + synthesis-map amendment): the
     // §121 principal-residence exclusion uses spousal ownership/use TACKING
     // under § 121(d)(3) — distinct from the § 1041 basis carryover (which the

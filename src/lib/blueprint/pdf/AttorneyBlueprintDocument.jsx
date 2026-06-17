@@ -63,6 +63,15 @@ function sectionPlan(section) {
       'Account-balance plan: present value equals the account balance and is not rate-sensitive (no ±100 bp discount-rate sensitivity).',
     );
   }
+  if (section.id === 's5') {
+    // Face value and tax-adjusted value are on DIFFERENT bases — face reflects
+    // the Module 2 division allocation; tax-adjusted reflects net equity (after
+    // any mortgage) less estimated tax, with jointly-titled assets split 50/50.
+    // They are not expected to foot column-to-column (A5-M Cat 3 clarification).
+    notes.push(
+      'Face value reflects the Module 2 division allocation; tax-adjusted value reflects net equity (after any mortgage) less estimated tax, with jointly-titled assets split equally. The two are on different bases and are not expected to reconcile line-to-line.',
+    );
+  }
   return {
     number: sectionNumberLabel(section.id),
     title: SECTION_TITLES[section.id] ?? section.id,
@@ -139,11 +148,14 @@ export function buildRenderPlan(model, opts = {}) {
       .filter(Boolean),
   };
 
+  const methodologyEntryCount = (model.appendices?.methodology?.entries ?? []).length;
   const methodology = {
     eyebrow: 'Appendix A',
     title: 'Methodologies and Authorities',
     intro:
-      'Each computed value in this document is produced by one of the methods below. Methods are applied as described; no value reflects judgment outside the stated method.',
+      methodologyEntryCount > 0
+        ? 'Each computed value in this document is produced by one of the methods below. Methods are applied as described; no value reflects judgment outside the stated method.'
+        : 'This document cites no external methodology authorities. Its figures are arithmetic sums of client-entered values and ClearPath’s structured readiness self-assessment (scale disclosed in Section 1). The rounding contract and provenance below apply.',
     entries: (model.appendices?.methodology?.entries ?? []).map((e) => ({
       name: e.shortCite,
       description: e.description || null,

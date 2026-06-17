@@ -36,6 +36,16 @@ export function buildSupportAnalysisPayload(results, inputs) {
   const state = inputs?.state ?? results.metadata?.state ?? null;
   const temporal = inputs?.temporal ?? results.metadata?.temporal ?? null;
 
+  // Effective gross for each party (imputed capacity overrides actual gross when
+  // imputeIncome is set) → payor/payee. Disclosed so the AAML/guideline figures
+  // are reproducible from the document alone (D-V2-7 / A5-M Cat 3).
+  const effGross = (p) =>
+    p?.imputeIncome ? round2(p?.imputedEarningCapacity) : round2(p?.grossMonthly);
+  const a = effGross(inputs?.partyA);
+  const b = effGross(inputs?.partyB);
+  const payorMonthly = Math.max(a, b);
+  const payeeMonthly = Math.min(a, b);
+
   // The AAML duration multiplier band is a POST-DIVORCE alimony-duration
   // benchmark; a pendente lite order is temporary (runs to the decree), so it
   // carries no duration band — omit rather than mislabel.
@@ -62,6 +72,10 @@ export function buildSupportAnalysisPayload(results, inputs) {
       formulaId,
       state,
       temporal,
+      payorMonthly,
+      payeeMonthly,
+      numChildren: inputs?.numChildren ?? null,
+      marriageLengthYears: inputs?.marriageLengthYears ?? null,
       citations: Array.isArray(results.metadata?.citations) ? [...results.metadata.citations] : [],
       asOfDateForStatutoryConstants: results.metadata?.asOfDateForStatutoryConstants ?? null,
       imputationApplied: results.metadata?.imputationApplied ?? null,
