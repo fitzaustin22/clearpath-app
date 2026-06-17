@@ -864,10 +864,17 @@ export const vaAboveCapPercentages = {
 };
 
 /**
- * Floor-lookup helper: largest schedule row whose combinedMonthly ≤ target.
- * Returns the top-row monthly value when target ≥ schedule max.
+ * Schedule lookup with linear extrapolation between rows.
+ *
+ * Va. Code § 20-108.2(B): "For combined monthly gross income amounts falling
+ * between amounts shown in the schedule, basic child support obligation amounts
+ * shall be extrapolated." Exact rows return their tabulated value; incomes
+ * between two rows are linearly interpolated on that child-count column.
+ * At or below the first row, returns the first-row value; at or above the top
+ * row, returns the top-row value (above-cap incomes are handled by the caller
+ * via the statutory marginal-percentage method, not this helper).
  */
-function scheduleFloorLookup(combinedMonthlyIncome, scheduleColumn) {
+function scheduleExtrapolatedLookup(combinedMonthlyIncome, scheduleColumn) {
   if (combinedMonthlyIncome <= VA_SCHEDULE[0][0]) {
     return VA_SCHEDULE[0][scheduleColumn];
   }
@@ -875,15 +882,18 @@ function scheduleFloorLookup(combinedMonthlyIncome, scheduleColumn) {
   if (combinedMonthlyIncome >= last[0]) {
     return last[scheduleColumn];
   }
-  let result = VA_SCHEDULE[0][scheduleColumn];
-  for (const row of VA_SCHEDULE) {
-    if (row[0] <= combinedMonthlyIncome) {
-      result = row[scheduleColumn];
-    } else {
-      break;
+  for (let i = 0; i < VA_SCHEDULE.length - 1; i++) {
+    const lo = VA_SCHEDULE[i];
+    const hi = VA_SCHEDULE[i + 1];
+    if (combinedMonthlyIncome >= lo[0] && combinedMonthlyIncome <= hi[0]) {
+      if (combinedMonthlyIncome === lo[0]) return lo[scheduleColumn];
+      if (combinedMonthlyIncome === hi[0]) return hi[scheduleColumn];
+      const fraction = (combinedMonthlyIncome - lo[0]) / (hi[0] - lo[0]);
+      return lo[scheduleColumn] + fraction * (hi[scheduleColumn] - lo[scheduleColumn]);
     }
   }
-  return result;
+  // Unreachable given the bounds above; defensive fallback to the top row.
+  return last[scheduleColumn];
 }
 
 /**
@@ -928,7 +938,7 @@ export function lookupChildSupport(combinedMonthlyIncome, numChildren, asOfDate)
   const topRowAmount = topRow[effectiveChildIndex];
 
   if (within) {
-    const basicSupport = scheduleFloorLookup(combinedMonthlyIncome, effectiveChildIndex);
+    const basicSupport = scheduleExtrapolatedLookup(combinedMonthlyIncome, effectiveChildIndex);
     return {
       basicSupport,
       source: 'va',
