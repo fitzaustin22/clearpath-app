@@ -17,13 +17,32 @@ describe('citation registry — manifest parity (anti-edit tripwire)', () => {
     expect(REGISTRY_KEYS).toHaveLength(manifest.count);
   });
 
-  it('carries exactly 41 seed entries', () => {
-    expect(REGISTRY_KEYS).toHaveLength(41);
+  it('carries exactly 42 entries (full closed set, vault-mirrored)', () => {
+    expect(REGISTRY_KEYS).toHaveLength(42);
+  });
+
+  it('includes the 42nd key treas_reg_1_121_3 (vault parity)', () => {
+    expect(hasKey('treas_reg_1_121_3')).toBe(true);
   });
 });
 
+// Vault verification state of record (V2-Citation-Registry.md): 19 entries are
+// verified:true (18 @ 2026-06-12 + irc_417e3 @ 2026-06-10); the remaining 23
+// stay unverified seeds. The Phase 2 renderer's verified-vs-"methodology under
+// review" treatment (Acceptance Spec §4-A2, the A2 directive) reads
+// entry.verified, so the code mirror MUST carry the flags. Flips remain Fitz's
+// by primary-source verification; this set records the verifications of record.
+const VERIFIED_KEYS = new Set([
+  'aaml_30_20_40', 'aaml_duration_schedule', 'boemio_2010',
+  'va_16_1_278_17_1', 'va_20_108_2', 'va_20_103', 'va_20_107_1',
+  'md_fl_12_201_202_204', 'md_fl_11_106', 'voishan_1992',
+  'dc_16_916_01_911', 'dc_16_913', 'builta_2024', 'hhs_ocse_income_shares',
+  'irc_417e3', 'irs_notice_2025_40', 'rev_proc_2025_32',
+  'ssa_wage_base', 'irs_401k_limits',
+]);
+
 describe('citation registry — entry contract', () => {
-  it('every entry is a complete, UNVERIFIED seed', () => {
+  it('every entry is structurally complete', () => {
     for (const [key, e] of Object.entries(REGISTRY)) {
       expect(e.key).toBe(key);
       expect(typeof e.shortCite).toBe('string');
@@ -32,11 +51,25 @@ describe('citation registry — entry contract', () => {
       expect(e.fullCite.length).toBeGreaterThan(0);
       expect(typeof e.scopeNote).toBe('string');
       expect(e.scopeNote.length).toBeGreaterThan(0);
-      // Spec §6 authoring rule: no entry ships verified. Flips are Fitz's,
-      // by hand, with a date.
-      expect(e.verified).toBe(false);
-      expect(e.verifiedDate).toBeNull();
     }
+  });
+
+  it('verified state mirrors the vault: 19 verified (with dates), 23 unverified', () => {
+    let verifiedCount = 0;
+    for (const [key, e] of Object.entries(REGISTRY)) {
+      if (VERIFIED_KEYS.has(key)) {
+        expect(e.verified, key).toBe(true);
+        expect(typeof e.verifiedDate, key).toBe('string');
+        expect(e.verifiedDate.length, key).toBeGreaterThan(0);
+        verifiedCount += 1;
+      } else {
+        // Spec §6 authoring rule: unverified seeds never ship verified.
+        expect(e.verified, key).toBe(false);
+        expect(e.verifiedDate, key).toBeNull();
+      }
+    }
+    expect(verifiedCount).toBe(19);
+    expect(VERIFIED_KEYS.size).toBe(19);
   });
 
   it('hasKey/getEntry agree and reject unknown keys', () => {
