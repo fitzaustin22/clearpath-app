@@ -85,6 +85,11 @@ function sectionPlan(section) {
       'Filing-status eligibility is determined as of December 31 per the disclosed divorce timeline. Married-filing statuses are shown for comparison only and may be unavailable to a client treated as unmarried at year-end; the projected difference is computed over the eligible statuses (single and head of household).',
     );
   }
+  if (section.id === 's8') {
+    notes.push(
+      'Spousal support is the AAML benchmark (Appendix A). Child support is the basic obligation — read from the published guideline schedule at combined income, or, above the schedule cap, the statutory top-of-schedule amount — apportioned to the obligor by the obligor’s share of alimony-first-adjusted combined income (child support = basic obligation × obligor income share). These are disclosed-methodology estimates, not a court order.',
+    );
+  }
   return {
     number: sectionNumberLabel(section.id),
     title: SECTION_TITLES[section.id] ?? section.id,

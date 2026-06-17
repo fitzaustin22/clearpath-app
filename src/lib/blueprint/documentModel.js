@@ -319,7 +319,13 @@ function extractS8(data) {
     }
   }
   if (data.childSupport) {
-    num(blocks, 's8.childSupport.monthly', 'Child support — monthly (guideline estimate)', data.childSupport.monthly, 'currency_projection', src);
+    // Disclose the income-shares worksheet so the obligation reproduces:
+    // child support = basic obligation × the obligor's share of (alimony-first-
+    // adjusted) combined income. (D-V2-7 / A5-M Cat 3.)
+    num(blocks, 's8.childSupport.basicObligation', 'Child support — basic monthly obligation (guideline schedule / above-cap floor)', m.childBasicObligationMonthly, 'currency_projection', src);
+    num(blocks, 's8.childSupport.payorAdjustedIncome', 'Child support — obligor monthly income, alimony-first adjusted', m.payorAdjustedMonthly, 'currency_actual', src);
+    num(blocks, 's8.childSupport.payeeAdjustedIncome', 'Child support — obligee monthly income, alimony-first adjusted', m.payeeAdjustedMonthly, 'currency_actual', src);
+    num(blocks, 's8.childSupport.monthly', 'Child support — monthly (obligor share of basic obligation)', data.childSupport.monthly, 'currency_projection', src);
     num(blocks, 's8.childSupport.children', 'Children', data.childSupport.children, 'count', src);
   }
   return blocks;

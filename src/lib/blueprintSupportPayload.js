@@ -76,6 +76,13 @@ export function buildSupportAnalysisPayload(results, inputs) {
       payeeMonthly,
       numChildren: inputs?.numChildren ?? null,
       marriageLengthYears: inputs?.marriageLengthYears ?? null,
+      // Child-support worksheet intermediates so the figure is reproducible:
+      // childMonthly = basic obligation × the obligor's (alimony-first-adjusted)
+      // income share. (D-V2-7 / A5-M Cat 3.)
+      childBasicObligationMonthly: round2(results.childCalc?.basicSupport),
+      childAboveSchedule: results.childCalc?.scheduleStatus === 'above',
+      payorAdjustedMonthly: round2(results.adjustedIncomes?.payorAdjustedMonthly),
+      payeeAdjustedMonthly: round2(results.adjustedIncomes?.payeeAdjustedMonthly),
       citations: Array.isArray(results.metadata?.citations) ? [...results.metadata.citations] : [],
       asOfDateForStatutoryConstants: results.metadata?.asOfDateForStatutoryConstants ?? null,
       imputationApplied: results.metadata?.imputationApplied ?? null,
