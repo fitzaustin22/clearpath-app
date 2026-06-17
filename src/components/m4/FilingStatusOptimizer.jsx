@@ -29,7 +29,7 @@ import { ENGINE_TAX_YEAR } from '@/src/lib/tax/taxYear';
 
 const TAX_YEAR = ENGINE_TAX_YEAR;
 
-const TAX_BRACKETS = {
+export const TAX_BRACKETS = {
   single: [
     { min: 0,      max: 12400,    rate: 0.10 },
     { min: 12400,  max: 50400,    rate: 0.12 },
@@ -61,8 +61,10 @@ const TAX_BRACKETS = {
     { min: 0,      max: 17700,    rate: 0.10 },
     { min: 17700,  max: 67450,    rate: 0.12 },
     { min: 67450,  max: 105700,   rate: 0.22 },
-    { min: 105700, max: 201775,   rate: 0.24 },
-    { min: 201775, max: 256200,   rate: 0.32 },
+    // 24%→32% edge is $201,750 for HoH (Rev. Proc. 2025-32 TABLE 2) — NOT the
+    // Single value of $201,775 (TABLE 3). These differ; do not re-copy from single.
+    { min: 105700, max: 201750,   rate: 0.24 },
+    { min: 201750, max: 256200,   rate: 0.32 },
     { min: 256200, max: 640600,   rate: 0.35 },
     { min: 640600, max: Infinity, rate: 0.37 },
   ],

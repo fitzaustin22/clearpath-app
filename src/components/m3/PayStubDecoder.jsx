@@ -17,7 +17,6 @@ import {
   SS_WAGE_CAP,
   SS_TAX_RATE,
   ANNUAL_401K_LIMIT,
-  CATCH_UP_401K_LIMIT,
 } from '@/src/stores/m3Store';
 import { useM1Store } from '@/src/stores/m1Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';

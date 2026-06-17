@@ -408,7 +408,9 @@ export const SCHEDULE = [
 
 // Self-support reserve (133% of federal poverty guideline for a single person)
 export const SELF_SUPPORT_RESERVE = 15654; // annual
-export const MINIMUM_ORDER = 50; // monthly
+// monthly — D.C. Code § 16-916.01(g) ("$75 per month"), both the below-SSR
+// presumption and the no-income-information minimum order. (Codified text as of 2026.)
+export const MINIMUM_ORDER = 75;
 export const INCOME_CAP = 240000; // annual — guideline is not presumptive above this
 
 /**

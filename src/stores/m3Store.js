@@ -95,9 +95,17 @@ export const PAY_FREQUENCY_DEFAULTS = {
   monthly: 12
 };
 
-export const ANNUAL_401K_LIMIT = 23500;
-export const CATCH_UP_401K_LIMIT = 31000;
-export const SS_WAGE_CAP = 168600;
+// ─── Year-pinned income constants (2026) ──────────────────────────────────────
+// Update annually with the governing federal source.
+// 401(k) elective-deferral limit, 2026 — IRS Notice 2025-67 (§ 402(g)(1)).
+export const ANNUAL_401K_LIMIT = 24500;
+// 401(k) age-50 catch-up ADD-ON amount, 2026 — IRS Notice 2025-67 (§ 414(v)(2)(B)(i)).
+// This is the catch-up add-on alone, NOT the 50+ total. The 50+ total
+// (ANNUAL_401K_LIMIT + CATCH_UP_401K_AMOUNT = 32,500) is computed at the warning site.
+export const CATCH_UP_401K_AMOUNT = 8000;
+// Social Security wage base / taxable maximum, 2026 — $184,500.
+// Source: SSA Contribution and Benefit Base, https://www.ssa.gov/oact/cola/cbb.html
+export const SS_WAGE_CAP = 184500;
 export const SS_TAX_RATE = 0.062;
 
 export const DEFAULT_DEDUCTIONS = [
@@ -506,13 +514,15 @@ export const useM3Store = create(
           }
           const k401 = deductionBreakdown.find((d) => d.id === '401k');
           if (k401 && k401.annual > ANNUAL_401K_LIMIT) {
+            // 50+ total = elective-deferral limit + age-50 catch-up add-on.
+            const limit50Plus = ANNUAL_401K_LIMIT + CATCH_UP_401K_AMOUNT;
             warnings.push(
               'Your 401(k) contributions ($' +
               k401.annual.toLocaleString() +
               '/yr) appear to exceed the annual limit ($' +
               ANNUAL_401K_LIMIT.toLocaleString() +
               ' under 50, $' +
-              CATCH_UP_401K_LIMIT.toLocaleString() +
+              limit50Plus.toLocaleString() +
               ' if 50+).'
             );
           }

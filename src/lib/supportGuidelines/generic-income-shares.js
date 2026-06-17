@@ -1,10 +1,16 @@
 /**
  * Generic (non-launch state) child + spousal fallback per F-5 / B5b-1.
  *
- * Child portion: Federal HHS/OCSE income-shares national approximation.
- *   Uses the same percentage tiers as NY CSSA (a reasonable national proxy);
- *   the spec §6.6.2 `generic_fallback_disclaimer` callout makes clear this is
- *   ballpark planning only and not a stand-in for the consumer's state law.
+ * Child portion: percentage tiers (17/25/29/31/35% by child count) are New
+ *   York's CSSA percentages — N.Y. Family Court Act § 413 / Domestic Relations
+ *   Law § 240 — used here as a consumer-facing national planning proxy. They are
+ *   NOT a federal HHS/OCSE standard: no federal percentage schedule exists
+ *   (45 C.F.R. § 302.56 prescribes guideline *process* only, no numbers).
+ *   Consumer fallback only; excluded from attorney surfaces by the D-V2-8
+ *   client-state gate (attorney export requires state ∈ {MD, DC, VA}, each with
+ *   its own reviewed engine). The spec §6.6.2 `generic_fallback_disclaimer`
+ *   callout makes clear this is ballpark planning only and not a stand-in for
+ *   the consumer's state law.
  *
  * Spousal portion: returns 0 with `factorTestApplies: true` — there is no
  *   national spousal formula; spousal support is per-state factor analysis.
