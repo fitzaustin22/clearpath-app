@@ -95,24 +95,34 @@ function extractS1(data) {
 }
 
 function extractS2(data, ctx) {
-  const meta = normalizePayStubMetadata();
+  // The payStubDecoder synthesis ([ssa_wage_base, irs_401k_limits]) is the
+  // year-pinned authority for the SS wage cap and the 401(k) deferral limit —
+  // it governs the Social-Security and 401(k) DEDUCTION lines, NOT the gross
+  // salary or the sums. Place each cite on the line it actually bears on; the
+  // income/total lines carry no marker (they are client-reported inputs and
+  // self-evident sums). (A5-M Cat 2b.)
+  const baseMeta = normalizePayStubMetadata();
+  const metaNo = { ...baseMeta, citations: [] };
+  const metaWith = (key) => ({ ...baseMeta, citations: baseMeta.citations.includes(key) ? [key] : [] });
+  const metaSSA = metaWith('ssa_wage_base');
+  const meta401k = metaWith('irs_401k_limits');
   const blocks = [];
-  const src = { inputs: ['clearpath-m3-store:payStubDecoder.inputs'], meta };
+  const srcOf = (meta) => ({ inputs: ['clearpath-m3-store:payStubDecoder.inputs'], meta });
+  const src = srcOf(metaNo);
   num(blocks, 's2.grossMonthlyIncome', 'Gross monthly income', data.grossMonthlyIncome, 'currency_actual', src);
   num(blocks, 's2.grossPerPaycheck', 'Gross per paycheck', data.grossPerPaycheck, 'currency_actual', src);
   num(blocks, 's2.otherIncome', 'Other monthly income', data.otherIncome, 'currency_actual', src);
   // Disclose the per-deduction monthly breakdown (as reported on the client's
   // pay stub — client-provided inputs, not ClearPath computations). Pre-tax
   // deferrals are marked and a mandatory-deductions subtotal is given so
-  // take-home foots: take-home = gross − mandatory deductions (the pre-tax
-  // deferral reduces taxable pay but is the client's own savings, retained in
-  // take-home). (D-V2-7 / A5-M Cat 2a/3.)
+  // take-home foots: take-home = gross − mandatory deductions. (A5-M Cat 2a/3.)
   let mandatoryTotal = 0;
   for (const d of data.deductions || []) {
     const monthly = d.monthly ?? d.monthlyAmount ?? null;
     if (!d.isVoluntary) mandatoryTotal += Number(monthly) || 0;
     const tag = d.isVoluntary ? ' (pre-tax deferral — retained as savings)' : ' (as reported on pay stub)';
-    num(blocks, `s2.deduction.${d.id}`, `Monthly deduction — ${d.label ?? d.id}${tag}`, monthly, 'currency_actual', src);
+    const dMeta = d.id === 'socialSecurity' ? metaSSA : d.id === '401k' ? meta401k : metaNo;
+    num(blocks, `s2.deduction.${d.id}`, `Monthly deduction — ${d.label ?? d.id}${tag}`, monthly, 'currency_actual', srcOf(dMeta));
   }
   if ((data.deductions || []).length > 0) {
     num(blocks, 's2.mandatoryDeductions', 'Total mandatory deductions (excludes pre-tax deferrals)', Math.round(mandatoryTotal * 100) / 100, 'currency_actual', src);
@@ -220,6 +230,15 @@ function extractS6(data, ctx) {
     num(blocks, 's6.pva.headlinePV', 'Defined-benefit pension — present value', v.headlinePV, 'currency_projection', src);
     num(blocks, 's6.pva.maritalPV', 'Defined-benefit pension — marital portion present value', v.maritalPV, 'currency_projection', src);
     num(blocks, 's6.pva.coverturePercent', 'Defined-benefit pension — coverture fraction', v.coverturePercent, 'fraction', src);
+    // The coverture fraction is produced by the time-rule method regardless of
+    // valuation path (tier-3 cites the coverture cases; the cash-balance path
+    // cites the cash-balance authorities and would otherwise leave the coverture
+    // method undescribed). Cite the method on the fraction block so its rule is
+    // in Appendix A and the fraction is reproducible (A5-M Cat 3).
+    if (v.coverturePercent !== null && v.coverturePercent !== undefined) {
+      const frac = blocks[blocks.length - 1];
+      if (!frac.citations.includes('coverture_time_rule')) frac.citations.push('coverture_time_rule');
+    }
     text(blocks, 's6.pva.path', 'Defined-benefit pension — valuation method', v.path, src);
     ctx.appendix.push({ sectionId: 's6', label: 'PVA assumption — expected retirement age', value: v.expectedRetirementAge ?? null, source: 'clearpath-blueprint:s6.pva.expectedRetirementAge' });
   }
@@ -274,6 +293,9 @@ function extractS8(data) {
   // benchmark figures are reproducible from the document (D-V2-7 / A5-M Cat 3).
   num(blocks, 's8.payorMonthlyIncome', 'Payor gross monthly income (input)', m.payorMonthly, 'currency_actual', src);
   num(blocks, 's8.payeeMonthlyIncome', 'Payee gross monthly income (input)', m.payeeMonthly, 'currency_actual', src);
+  if (Number.isFinite(Number(m.payorMonthly)) && Number.isFinite(Number(m.payeeMonthly))) {
+    num(blocks, 's8.combinedMonthlyIncome', 'Combined gross monthly income (child-support basis)', Math.round((Number(m.payorMonthly) + Number(m.payeeMonthly)) * 100) / 100, 'currency_actual', src);
+  }
   num(blocks, 's8.totalMonthlySupport', 'Total monthly support', data.totalMonthlySupport, 'currency_projection', src);
   if (data.spousalSupport) {
     num(blocks, 's8.spousalSupport.monthly', 'Spousal support — monthly (benchmark estimate)', data.spousalSupport.monthly, 'currency_projection', src);
@@ -474,6 +496,13 @@ function extractInputDisclosures(toolInputs, appendix) {
     push('marital cutoff date', i.maritalCutoffDate);
     push('participant date of birth', i.participantDOB);
     push('assumed retirement age', i.expectedRetirementAge);
+    // Computed retirement date (DOB + assumed retirement age, month/day
+    // preserved) — the coverture denominator endpoint; disclosed so the
+    // coverture fraction is reproducible from the document (A5-M Cat 3).
+    if (typeof i.participantDOB === 'string' && Number.isFinite(Number(i.expectedRetirementAge))) {
+      const [yy, mm, dd] = i.participantDOB.split('-');
+      if (yy && mm && dd) push('computed retirement date (DOB + retirement age)', `${Number(yy) + Number(i.expectedRetirementAge)}-${mm}-${dd}`);
+    }
     push('annual COLA assumption (percent)', i.cola);
     push('valuation date', i.caseEffectiveDate);
     push('mortality table', MORTALITY_LABELS[i.mortalityTable] ?? i.mortalityTable);
@@ -538,12 +567,13 @@ const METHODOLOGY_DESCRIPTIONS = Object.freeze({
   ppa_2006_1107: 'Lump-sum-equals-account-balance safe harbor applied to the cash-balance present value.',
   cooper_v_ibm_2006: 'Cash-balance plan valuation authority.',
   // Coverture / marital share
-  coverture_time_rule: 'Marital share as the ratio of marital service months to total service months (time rule).',
+  coverture_time_rule:
+    'Marital share = total present value × the coverture fraction. The fraction is marital-service months (from the later of date-of-hire and date-of-marriage to the earlier of the marital cutoff date and the retirement date) ÷ total-service months (date-of-hire to retirement date), counting each whole or partial calendar month as one (a trailing partial month counts as a full month unless the period ends on the first of the month).',
   bender_dc_1972: 'Coverture (time-rule) marital-share authority.',
   mosley_va_1994: 'Coverture (time-rule) marital-share authority.',
   deering_md_1981: 'Coverture (time-rule) marital-share authority for a defined-benefit pension.',
-  hug_1984: 'Time-rule allocation of deferred compensation by service from hire to vesting (marital share).',
-  nelson_1986: 'Time-rule allocation of deferred compensation by service from grant to vesting (marital share).',
+  hug_1984: 'Time-rule allocation of deferred compensation by service from hire to vesting (marital share). California authority applied as a valuation METHOD; not a statement that California law governs this matter.',
+  nelson_1986: 'Time-rule allocation of deferred compensation by service from grant to vesting (marital share). California authority applied as a valuation METHOD; not a statement that California law governs this matter.',
   // Support — DMV
   aaml_30_20_40:
     'Benchmark spousal-support estimate: the LESSER of (a) 30% of payor gross income minus 20% of payee gross income and (b) 40% of combined gross income minus payee gross income, floored at zero.',
@@ -554,8 +584,10 @@ const METHODOLOGY_DESCRIPTIONS = Object.freeze({
   md_fl_12_201_202_204: 'Maryland child-support guideline framework and schedule.',
   voishan_1992: 'Maryland authority on above-schedule child support (court discretion).',
   dc_16_913: 'District of Columbia alimony factors.',
-  dc_16_916_01_911: 'District of Columbia child-support guideline and pendente lite authority.',
-  builta_2024: 'District of Columbia above-cap child-support extrapolation method.',
+  dc_16_916_01_911:
+    'District of Columbia child-support guideline and pendente lite authority: the basic obligation is read from the published income-shares schedule (D.C. Code § 16-916.01a) at the combined gross income and number of children, then apportioned between the parents by income share.',
+  builta_2024:
+    'District of Columbia above-cap child support: where combined income exceeds the $240,000 schedule cap, the basic obligation is extrapolated linearly using the slope between the last two published schedule rows, applied to combined income above the cap.',
   va_16_1_278_17_1: 'Virginia pendente lite spousal-support formula.',
   va_20_103: 'Virginia pendente lite support authority.',
   va_20_108_2: 'Virginia child-support guideline schedule and above-cap percentages.',

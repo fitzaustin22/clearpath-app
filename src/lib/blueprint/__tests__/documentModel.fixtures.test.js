@@ -129,8 +129,18 @@ describe('document model populated per fixture (Phase 1 gate)', () => {
     const pit = findMeta('s6', 's6.pit.');
     expect(pit.citations).toEqual(SYNTHESIS_MAP.pit);
     expect(pit.flags).toContain('citation_synthesized_from_registry');
-    const s2 = findMeta('s2', 's2.');
-    expect(s2.citations).toEqual(SYNTHESIS_MAP.payStubDecoder);
+    // §2 synthesis is now placed per-line (A5-M Cat 2b fix): ssa_wage_base on
+    // the Social-Security deduction, irs_401k_limits on the 401(k) deduction;
+    // the income/sum lines carry no marker. Union = SYNTHESIS_MAP.payStubDecoder.
+    const s2blocks = model.sections.find((s) => s.id === 's2').blocks;
+    const ssMeta = s2blocks.find((b) => b.id === 's2.deduction.socialSecurity')?.meta;
+    const k401Meta = s2blocks.find((b) => b.id === 's2.deduction.401k')?.meta;
+    expect(ssMeta.citations).toEqual(['ssa_wage_base']);
+    expect(ssMeta.flags).toContain('citation_synthesized_from_registry');
+    expect(k401Meta.citations).toEqual(['irs_401k_limits']);
+    const s2union = [...new Set(s2blocks.flatMap((b) => b.citations))];
+    expect(s2union.sort()).toEqual([...SYNTHESIS_MAP.payStubDecoder].sort());
+    expect(s2blocks.find((b) => b.id === 's2.grossMonthlyIncome').citations).toEqual([]);
     const tav = MODELS.F1.carriers.costBasisEntries[0].meta;
     expect(tav.citations).toEqual(SYNTHESIS_MAP.taxAdjustedAssetView);
     const qdroBlock = model.sections
