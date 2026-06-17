@@ -496,7 +496,8 @@ const METHODOLOGY_DESCRIPTIONS = Object.freeze({
   irc_7703: 'Year-end (Dec. 31) marital-status determination for filing status.',
   rev_proc_2025_32: 'Federal income-tax brackets and standard deductions for the stated tax year.',
   irc_24_ctc_2026: 'Child Tax Credit applied in the filing-status comparison.',
-  sutherland_pit: 'Point-in-time present-value discount applied to a tax-deferred retirement balance.',
+  sutherland_pit:
+    'Point-in-time tax discount on a tax-deferred balance: discount rate = TR ÷ [((1 + i)^n − 1)(1 − TR) + 1], where TR is the effective tax rate, i the annual discount rate, and n the years to the withdrawal midpoint; the dollar discount is the account balance times this rate.',
   irc_121: 'Capital-gain exclusion on the sale of a principal residence.',
   irc_121_d_3: 'Spousal ownership/use tacking for the principal-residence gain exclusion.',
   treas_reg_1_121_3: 'Reduced (partial) principal-residence exclusion under the unforeseen-circumstances qualification.',
