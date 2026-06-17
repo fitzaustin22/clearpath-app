@@ -174,24 +174,19 @@ describe('A1 runner — data-driven pin gating (both directions)', () => {
     }
   });
 
-  it('a fully-pinned fixture executes the recompute path and matches the real footing', () => {
+  it('a fully-pinned fixture executes the recompute path; footing and categorical both match (Phase 2)', () => {
     const pinned = JSON.parse(JSON.stringify(F4b));
     // Hand-footing of F4b's fixture inputs: 12,000 (checking, asset) + 900 (TV,
     // personal property); the 6,800 credit card is a liability and excluded.
-    // The categorical slot gets a synthetic placeholder (NOT the real tier —
-    // that stays Fitz's pass); with no categorical recomputer registered it
-    // reports as named Phase 2 work.
+    // Phase 2 registers both lanes: readiness classify on F4b's ten answers
+    // (× 2 = 20 → ≤ 20 → 'preparing') recomputes the categorical too.
     pinned.auditPins = { s3InventoryTotalsFooting: 12900 };
-    pinned.auditAssertions = { readinessTierBoundaryValue: 'phase2_categorical_example' };
+    pinned.auditAssertions = { readinessTierBoundaryValue: 'preparing' };
     const outcome = runA1(pinned);
     expect(outcome.status).toBe('executed');
     expect(outcome.results).toEqual([
       { slot: 's3InventoryTotalsFooting', status: 'match', recomputed: 12900, pinnedValue: 12900 },
-      {
-        slot: 'readinessTierBoundaryValue',
-        status: 'recompute_not_implemented_phase2',
-        pinnedValue: 'phase2_categorical_example',
-      },
+      { slot: 'readinessTierBoundaryValue', status: 'match', recomputed: 'preparing', pinnedValue: 'preparing' },
     ]);
   });
 
@@ -204,9 +199,11 @@ describe('A1 runner — data-driven pin gating (both directions)', () => {
     expect(outcome.results[0].status).toBe('mismatch');
   });
 
-  it('pinned numeric slots without a registered recomputer report as named Phase 2 work', () => {
+  it('a pinned slot with no registered recomputer still reports as named work, never silent', () => {
+    // All real fixture slots now have recomputers; this exercises the runner's
+    // defensive path for a slot name outside both registries.
     const pinned = JSON.parse(JSON.stringify(F4b));
-    pinned.auditPins = { mdAamlSupportFigure: 12345 };
+    pinned.auditPins = { __no_such_recomputer__: 12345 };
     pinned.auditAssertions = {};
     const outcome = runA1(pinned);
     expect(outcome.status).toBe('executed');
@@ -226,23 +223,23 @@ describe('A1 runner — data-driven pin gating (both directions)', () => {
   it('a pinned categorical slot compares strict === against its registered recomputer', () => {
     const pinned = JSON.parse(JSON.stringify(F4b));
     pinned.auditPins = { s3InventoryTotalsFooting: 12900 };
-    pinned.auditAssertions = { readinessTierBoundaryValue: 'synthetic_tier' };
-    // Temporary registry entry — removed in finally; the real categorical
-    // recomputers are Phase 2 scope.
-    CATEGORICAL_RECOMPUTERS.readinessTierBoundaryValue = () => 'synthetic_tier';
+    pinned.auditAssertions = { __synthetic_categorical__: 'synthetic_tier' };
+    // Use a synthetic slot so we never overwrite/delete the now-PERMANENT
+    // readinessTierBoundaryValue registration (Phase 2). Removed in finally.
+    CATEGORICAL_RECOMPUTERS.__synthetic_categorical__ = () => 'synthetic_tier';
     try {
-      const match = runA1(pinned).results.find((r) => r.slot === 'readinessTierBoundaryValue');
+      const match = runA1(pinned).results.find((r) => r.slot === '__synthetic_categorical__');
       expect(match).toEqual({
-        slot: 'readinessTierBoundaryValue',
+        slot: '__synthetic_categorical__',
         status: 'match',
         recomputed: 'synthetic_tier',
         pinnedValue: 'synthetic_tier',
       });
-      CATEGORICAL_RECOMPUTERS.readinessTierBoundaryValue = () => 'a_different_tier';
-      const mismatch = runA1(pinned).results.find((r) => r.slot === 'readinessTierBoundaryValue');
+      CATEGORICAL_RECOMPUTERS.__synthetic_categorical__ = () => 'a_different_tier';
+      const mismatch = runA1(pinned).results.find((r) => r.slot === '__synthetic_categorical__');
       expect(mismatch.status).toBe('mismatch');
     } finally {
-      delete CATEGORICAL_RECOMPUTERS.readinessTierBoundaryValue;
+      delete CATEGORICAL_RECOMPUTERS.__synthetic_categorical__;
     }
   });
 });
