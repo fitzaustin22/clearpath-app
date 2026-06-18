@@ -63,23 +63,29 @@ function streamData(latin, objs, num) {
 }
 
 // Parse a /ToUnicode CMap stream into a CID(int)→string map.
+// A LIGATURE glyph maps to MULTIPLE code points, which @react-pdf/pdfkit writes
+// SPACE-SEPARATED inside the destination angle brackets, e.g. `<0016><0066 0069>`
+// (fi → "fi"). The dst pattern must therefore admit whitespace, and the UTF-16
+// decode must strip it before chunking — otherwise ligature entries are silently
+// dropped and their text extracts as empty ("Profle"/"Ofer").
 function parseToUnicode(text) {
   const map = {};
   const hexU16 = (h) => {
+    const clean = h.replace(/\s+/g, '');
     let out = '';
-    for (let i = 0; i + 4 <= h.length; i += 4) out += String.fromCharCode(parseInt(h.slice(i, i + 4), 16));
+    for (let i = 0; i + 4 <= clean.length; i += 4) out += String.fromCharCode(parseInt(clean.slice(i, i + 4), 16));
     return out;
   };
   for (const block of text.matchAll(/beginbfchar([\s\S]*?)endbfchar/g)) {
-    for (const m of block[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g)) {
+    for (const m of block[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f\s]*)>/g)) {
       map[parseInt(m[1], 16)] = hexU16(m[2]);
     }
   }
   for (const block of text.matchAll(/beginbfrange([\s\S]*?)endbfrange/g)) {
-    for (const m of block[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>/g)) {
+    for (const m of block[1].matchAll(/<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f\s]+)>/g)) {
       const lo = parseInt(m[1], 16);
       const hi = parseInt(m[2], 16);
-      const dst = parseInt(m[3], 16);
+      const dst = parseInt(m[3].replace(/\s+/g, '').slice(0, 4), 16); // base code point of the range
       for (let c = lo; c <= hi; c++) map[c] = String.fromCharCode(dst + (c - lo));
     }
   }
@@ -127,17 +133,19 @@ function decodeHex(hex, cmap) {
   return out;
 }
 
-// Text drawn at the title size on one page's content stream.
-function titleTextOnPage(prog, fontMaps) {
+// Text drawn on one page's content stream. `sizeFilter` (a Tf size string)
+// restricts decoding to runs at that font size; null decodes every run.
+function decodeTextOnPage(prog, fontMaps, sizeFilter) {
   const text = prog.toString('latin1');
-  let current = null; // current font's cmap when title-sized
+  let current = null; // current font's cmap when the run is in scope
   let out = '';
   // Tokenise on the operators we care about: `/Fx SIZE Tf`, `<hex> Tj`, `[..] TJ`.
   const op = /\/(F\d+)\s+([\d.]+)\s+Tf|<([0-9A-Fa-f]+)>\s*Tj|\[([^\]]*)\]\s*TJ/g;
   let m;
   while ((m = op.exec(text))) {
     if (m[1] !== undefined) {
-      current = m[2] === TITLE_FONT_SIZE ? fontMaps[m[1]] || null : null;
+      const inScope = sizeFilter == null || m[2] === sizeFilter;
+      current = inScope ? fontMaps[m[1]] || null : null;
     } else if (current) {
       if (m[3] !== undefined) out += decodeHex(m[3], current);
       else if (m[4] !== undefined) {
@@ -149,16 +157,12 @@ function titleTextOnPage(prog, fontMaps) {
   return out;
 }
 
-/**
- * @param {Buffer} buffer  a generated PDF
- * @returns {{page:number, title:string}[]}  every title-styled run, with the
- *   1-based page it renders on (cover = page 1).
- */
-export function extractTitleRuns(buffer) {
+// Decode a buffer's per-page text, optionally restricted to one Tf size.
+function decodePages(buffer, sizeFilter) {
   const latin = buffer.toString('latin1');
   const objs = objectIndex(latin);
   const order = pageOrder(latin, objs);
-  const runs = [];
+  const pages = [];
   order.forEach((pageNum, idx) => {
     const o = objs[pageNum];
     if (!o) return;
@@ -168,15 +172,36 @@ export function extractTitleRuns(buffer) {
     if (single) contentRefs.push(+single[1]);
     else if (arr) for (const c of arr[1].matchAll(/(\d+)\s+0\s+R/g)) contentRefs.push(+c[1]);
     const fontMaps = pageFontMaps(latin, objs, pageNum);
-    let title = '';
+    let txt = '';
     for (const cref of contentRefs) {
       const sd = streamData(latin, objs, cref);
-      if (sd) title += titleTextOnPage(sd.prog, fontMaps);
+      if (sd) txt += decodeTextOnPage(sd.prog, fontMaps, sizeFilter);
     }
-    title = title.replace(/\s+/g, ' ').trim();
-    if (title) runs.push({ page: idx + 1, title });
+    txt = txt.replace(/\s+/g, ' ').trim();
+    if (txt) pages.push({ page: idx + 1, text: txt });
   });
-  return runs;
+  return pages;
+}
+
+/**
+ * @param {Buffer} buffer  a generated PDF
+ * @returns {{page:number, title:string}[]}  every title-styled run, with the
+ *   1-based page it renders on (cover = page 1).
+ */
+export function extractTitleRuns(buffer) {
+  return decodePages(buffer, TITLE_FONT_SIZE).map(({ page, text }) => ({ page, title: text }));
+}
+
+/**
+ * Full decoded text of the PDF (every glyph run, all sizes), via /ToUnicode —
+ * i.e. what copy/paste and search return. Used to assert the text layer is
+ * correct (ligatures round-trip to their component letters), not just that the
+ * glyphs paint.
+ * @param {Buffer} buffer  a generated PDF
+ * @returns {string}  the document's extractable text (pages space-joined)
+ */
+export function extractAllText(buffer) {
+  return decodePages(buffer, null).map((p) => p.text).join(' ');
 }
 
 /**

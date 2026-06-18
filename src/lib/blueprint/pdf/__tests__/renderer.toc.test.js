@@ -25,11 +25,11 @@ import payload from '../../../../test/fixtures/v2-golden/F1.documentModel.json';
 import { renderAttorneyBlueprint, auditTocPageNumbers } from '../renderAttorneyBlueprint.js';
 import { headingPages } from './pdfTextProbe.js';
 
-// TOC capture key → a LIGATURE-FREE substring of the title as it renders. (The
-// fi/ff ligatures decode to empty in /ToUnicode — a text-layer quirk, not a
-// visual drop — so "Profile"/"Offer" are matched by ligature-free anchors.)
+// TOC capture key → a substring of the title as it renders (decoded via
+// /ToUnicode — fi/ff ligatures round-trip to their component letters, so the full
+// titles match; see renderer.textlayer.test.js for the searchability guard).
 const ENTRIES = [
-  ['Section 1', 'Personal Pro'],
+  ['Section 1', 'Personal Profile'],
   ['Section 2', 'Income Analysis'],
   ['Section 3', 'Asset Inventory'],
   ['Section 4', 'Tax Analysis'],
@@ -39,7 +39,7 @@ const ENTRIES = [
   ['Section 8', 'Support Analysis'],
   ['Section 9', 'Marital Home Decision'],
   ['Section 10', 'Negotiation Strategy'],
-  ['Section 11', 'Overview'],
+  ['Section 11', 'Settlement Offer Overview'],
   ['Section 12', 'Action Plan'],
   ['Deferred Compensation', 'Deferred Compensation'],
   ['Tax-Adjusted Asset Values', 'Tax-Adjusted Asset Values'],
