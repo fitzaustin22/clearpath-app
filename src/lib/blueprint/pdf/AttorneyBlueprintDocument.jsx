@@ -253,7 +253,7 @@ export function collectRenderableStrings(plan) {
     for (const b of layout.bars || []) {
       push(b.label);
       push(b.value);
-      push(`${b.pct}%`);
+      push(`${Number(b.pct).toFixed(2)}%`);
     }
     for (const g of layout.groups || []) {
       push(g.header);

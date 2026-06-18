@@ -53,10 +53,14 @@ export function formatBoolean(value) {
   return String(value);
 }
 
-/** A 0–1 fraction as a 2-decimal percent, dropping a trailing .00 (100%, 68.24%). */
+/**
+ * A 0–1 fraction as a percent to two decimals (68.24%, 100.00%). Always two
+ * decimals so every percentage in the document shares one convention — the
+ * disclosed rounding contract ("rates and coverture fractions … to two
+ * decimals").
+ */
 export function formatPercentFromFraction(fraction) {
-  const pct = Number(fraction) * 100;
-  return Number.isInteger(pct) ? `${pct}%` : `${pct.toFixed(2)}%`;
+  return `${(Number(fraction) * 100).toFixed(2)}%`;
 }
 
 /** True when a numeric value is negative (drives the negative color + parens). */
@@ -95,6 +99,9 @@ const HUMANIZE = Object.freeze({
   ready: 'Ready',
   preparing: 'Preparing',
   exploring: 'Exploring',
+  // QDRO completion state
+  complete: 'Complete',
+  incomplete: 'Incomplete',
 });
 
 // Split a single camelCase/snake_case token to a Title-case phrase.

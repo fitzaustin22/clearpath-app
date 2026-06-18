@@ -85,7 +85,7 @@ export function ProportionBars({ styles, bars }) {
             View,
             { style: styles.barRight },
             h(Text, { style: styles.barValue }, b.value),
-            h(Text, { style: styles.barPct }, `${b.pct}%`),
+            h(Text, { style: styles.barPct }, `${Number(b.pct).toFixed(2)}%`),
           ),
         ),
         h(View, { style: styles.barTrack }, h(View, { style: [styles.barFill, { width: `${Math.max(1, Math.min(100, b.pct))}%` }] })),

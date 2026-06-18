@@ -41,14 +41,14 @@ describe('booleans, dates, percent', () => {
     expect(formatIsoDate('2026-08-15')).toBe('August 15, 2026');
     expect(formatIsoDate('2026-06-18T00:34:40.562Z')).toBe('June 18, 2026');
   });
-  it('formatPercentFromFraction → 2-decimal percent, whole when exact', () => {
+  it('formatPercentFromFraction → always 2-decimal percent (uniform convention)', () => {
     expect(formatPercentFromFraction(0.6824)).toBe('68.24%');
-    expect(formatPercentFromFraction(1)).toBe('100%');
+    expect(formatPercentFromFraction(1)).toBe('100.00%');
     expect(formatPercentFromFraction(0.8938)).toBe('89.38%');
   });
   it('fraction valueClass now renders as percent (R-A coverture)', () => {
     expect(formatValue({ value: 0.6204, valueClass: 'fraction' })).toBe('62.04%');
-    expect(formatValue({ value: 1, valueClass: 'fraction' })).toBe('100%');
+    expect(formatValue({ value: 1, valueClass: 'fraction' })).toBe('100.00%');
     expect(formatValue({ value: 0.8938, valueClass: 'fraction' })).toBe('89.38%');
   });
   it('rate valueClass unchanged (2-decimal %)', () => {

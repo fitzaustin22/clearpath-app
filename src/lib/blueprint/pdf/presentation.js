@@ -33,6 +33,13 @@ const methodRowLabel = (label) => {
 };
 const cardOf = (r) => ({ id: r.id, label: r.label, value: r.value, negative: r.negative, markers: r.markers });
 const num = (r) => (Number.isFinite(Number(r.rawValue)) ? Number(r.rawValue) : 0);
+// Render a reduction (liability/subtrahend) in accounting style: ($X) + the
+// negative flag (which drives the negative color), even though it's stored +.
+const asReduction = (r) => ({
+  ...cardOf(r),
+  value: typeof r.value === 'string' && r.value.startsWith('(') ? r.value : `(${r.value})`,
+  negative: true,
+});
 
 // ── hero / cards / bars ───────────────────────────────────────────────────────
 function resolveHero(config, rows, consumed) {
@@ -60,12 +67,13 @@ function resolveHero(config, rows, consumed) {
 }
 
 function buildCards(config, rows, consumed) {
+  const negSet = new Set(config.negativeCards || []);
   return (config.cards || [])
     .map((id) => pick(rows, id))
     .filter(Boolean)
     .map((r) => {
       consumed.add(r.id);
-      return cardOf(r);
+      return negSet.has(r.id) ? asReduction(r) : cardOf(r);
     });
 }
 
@@ -96,7 +104,9 @@ function buildGroups(config, rows, consumed) {
       if (!matched.length) return null;
       const ordered = spec.sort === 'desc' ? [...matched].sort((a, b) => Math.abs(num(b)) - Math.abs(num(a))) : matched;
       ordered.forEach((r) => consumed.add(r.id));
-      return { header: spec.header, tone: spec.tone || null, rows: ordered.map(cardOf), methodTable: null };
+      // A negative-tone group (liabilities) renders each row as a reduction.
+      const groupRows = spec.tone === 'negative' ? ordered.map(asReduction) : ordered.map(cardOf);
+      return { header: spec.header, tone: spec.tone || null, rows: groupRows, methodTable: null, display: spec.display || null };
     })
     .filter(Boolean);
 }
@@ -206,6 +216,7 @@ const SECTION_CONFIG = {
   s3: {
     hero: 's3.netWorth',
     cards: ['s3.totalAssets', 's3.totalLiabilities'],
+    negativeCards: ['s3.totalLiabilities'], // liabilities reduce net worth → ($X)
     bars: { match: /^s3\.assets\./ },
     groups: [{ header: 'Liabilities', match: /^s3\.liabilities\./, sort: 'desc', tone: 'negative' }],
   },
@@ -228,7 +239,9 @@ const SECTION_CONFIG = {
     // valuation, not a combined "retirement total" (which the model never computes).
     hero: ['s6.pva.headlinePV', 's6.pit.taxAdjustedValue'],
     groups: [
-      { header: 'Defined-contribution account (point-in-time)', match: /^s6\.pit\./ },
+      // PIT outputs first, then its inputs de-emphasized (R5 inputs-vs-outputs).
+      { header: 'Defined-contribution account (point-in-time)', match: /^s6\.pit\.(?!n$|effectiveTaxRate$|discountRate$)/ },
+      { header: 'Point-in-time tax-discount inputs', match: /^s6\.pit\.(n|effectiveTaxRate|discountRate)$/, tone: 'input' },
       { header: 'Defined-benefit pension', match: /^s6\.pva\./ },
       { header: 'QDRO order', match: /^s6\.qdro\./ },
     ],

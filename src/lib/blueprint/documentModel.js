@@ -21,6 +21,7 @@
 
 import { isSectionIncluded } from '../../components/blueprint/sectionInclusion';
 import { hasKey, getEntry, REGISTRY_KEYS } from './citationRegistry';
+import { preparedLabel } from './pdf/format';
 import {
   normalizePvaSection,
   normalizeQdroAssetMetadata,
@@ -359,8 +360,12 @@ function extractS9(data, ctx) {
   // contract (documented in the PR body).
   const scenarios = Array.isArray(data?.scenarios) ? data.scenarios : [];
   const SCENARIO_IDS = ['keepAndRefi', 'sellNow', 'deferredSale'];
+  const SCENARIO_LABELS = { keepAndRefi: 'Keep and refinance', sellNow: 'Sell now', deferredSale: 'Deferred sale' };
+  // Each scenario is its own named row (the scenario IS the label) → no repeated
+  // "HDA scenario present" label and no internal acronym on the page (R1/R5).
   scenarios.forEach((s, i) => {
-    if (s) text(blocks, `s9.scenario.${SCENARIO_IDS[i] ?? `slot${i}`}`, 'HDA scenario present', SCENARIO_IDS[i] ?? `slot${i}`, src);
+    const id = SCENARIO_IDS[i] ?? `slot${i}`;
+    if (s) text(blocks, `s9.scenario.${id}`, SCENARIO_LABELS[id] ?? `Scenario ${i + 1}`, 'Analyzed', src);
   });
   text(blocks, 's9.userSelection', 'Selected scenario', data?.userSelection, src);
   for (const [key, value] of Object.entries(data?.metadata || {})) {
@@ -388,6 +393,7 @@ const HDA_APPENDIX_FORMAT = Object.freeze({
   interimCostSharePct: 'percent',
   propertyAppreciationRateReal: 'percent',
   startingLiquidCash: 'currency_actual',
+  mfjSingleDifferentialAtSaleYear: 'currency_actual',
 });
 const HDA_APPENDIX_LABELS = Object.freeze({
   ltvAtRefi: 'loan-to-value at refinance',
@@ -420,7 +426,12 @@ function extractS10(data) {
   const tradeOffs = data?.tradeOffs || [];
   num(blocks, 's10.priorityCount', 'Priorities recorded', priorities.length, 'count', src);
   num(blocks, 's10.tradeOffCount', 'Trade-offs recorded', tradeOffs.length, 'count', src);
-  priorities.forEach((p, i) => text(blocks, `s10.priority.${i}`, `Priority ${p.rank ?? i + 1} (${p.importance})`, p.item, src));
+  // Lead with the importance tier (humanized) so two priorities never collide on
+  // an identical "Priority 1" ordinal, and no raw "must-have" slug renders (R1/R5).
+  const IMPORTANCE_LABELS = { 'must-have': 'Must-have', 'would-like': 'Would-like', 'nice-to-have': 'Nice-to-have' };
+  priorities.forEach((p, i) =>
+    text(blocks, `s10.priority.${i}`, `${IMPORTANCE_LABELS[p.importance] ?? p.importance} priority`, p.item, src),
+  );
   // ↔ (U+2194, covered by Inter) — NOT ⇄ (U+21C4), which is NOTDEF in Inter and
   // rendered as the stray box glyph (D4 encoding bug).
   tradeOffs.forEach((t, i) => text(blocks, `s10.tradeOff.${i}`, 'Trade-off', `${t.get} ↔ ${t.give}`, src));
@@ -433,8 +444,12 @@ function extractS11(data) {
   const src = { inputs: ['clearpath-m6:offerOrganizer.offer'], meta };
   num(blocks, 's11.mapCount', 'Priorities mapped against offer', (data?.map || []).length, 'count', src);
   num(blocks, 's11.gapCount', 'Offer silences (gaps)', (data?.gaps || []).length, 'count', src);
+  // The priority is the (distinct) label; the offer's posture toward it is the
+  // humanized value — no repeated "Offer vs priority — silent" label, no raw
+  // status enum (R1/R5).
+  const OFFER_STATUS_LABELS = { silent: 'Offer is silent', addressed: 'Addressed by offer', conflict: 'Conflicts with offer', partial: 'Partially addressed' };
   (data?.map || []).forEach((row, i) =>
-    text(blocks, `s11.map.${i}`, `Offer vs priority — ${row.status}`, row.priority, src)
+    text(blocks, `s11.map.${i}`, row.priority, OFFER_STATUS_LABELS[row.status] ?? row.status, src),
   );
   return blocks;
 }
@@ -447,7 +462,9 @@ function extractS12(data) {
   num(blocks, 's12.professionalCount', 'Professionals', (data?.professionals || []).length, 'count', src);
   num(blocks, 's12.keyDateCount', 'Key dates', (data?.keyDates || []).length, 'count', src);
   (data?.nextSteps || []).forEach((s, i) => text(blocks, `s12.nextStep.${i}`, 'Next step', s.step, src));
-  (data?.keyDates || []).forEach((d, i) => text(blocks, `s12.keyDate.${i}`, d.date, d.event, src));
+  // Event is the label; the date is a date-typed VALUE so it renders long-form
+  // (August 15, 2026), never as a raw ISO key (R1).
+  (data?.keyDates || []).forEach((d, i) => dateBlock(blocks, `s12.keyDate.${i}`, d.event, d.date, src));
   return blocks;
 }
 
@@ -488,10 +505,8 @@ function extractDeferredCompStubs(stubs, ctx) {
         num(blocks, `carrier.dcs.${stub.id}.tranche.${t.id}.hug`, `Tranche ${i + 1} coverture — Hug time rule`, t.hug, 'fraction', src);
         num(blocks, `carrier.dcs.${stub.id}.tranche.${t.id}.nelson`, `Tranche ${i + 1} coverture — Nelson time rule`, t.nelson, 'fraction', src);
       });
-      const dcaDateLabel = { hireDate: 'hire date', grantDate: 'grant date', separationDate: 'separation date' };
-      for (const dateKey of ['hireDate', 'grantDate', 'separationDate']) {
-        ctx.appendix.push({ sectionId: 'carrier.deferredCompStubs', label: `Deferred-comp ${dcaDateLabel[dateKey]} — ${stub.company ?? stub.id}`, value: stub.metadata[dateKey] ?? null, format: 'date', source: `clearpath-blueprint:deferredCompStubs.${stub.id}.metadata.${dateKey}` });
-      }
+      // Grant hire/grant/separation dates are disclosed (per grant, disambiguated)
+      // by extractInputDisclosures' DCA pass; no duplicate stub-level push here.
     }
   }
   return blocks;
@@ -592,7 +607,7 @@ function extractInputDisclosures(toolInputs, appendix) {
     push('valuation date', i.caseEffectiveDate, 'date');
     push('mortality table', MORTALITY_LABELS[i.mortalityTable] ?? i.mortalityTable);
     if (asset.segment && i.planType !== 'private_db_cash_balance') {
-      push('§417(e) segment-2 discount rate', `${asset.segment.segment2Pct}% (${asset.segment.noticeId}, month ${asset.segment.rateMonth})`);
+      push('§417(e) segment-2 discount rate', `${asset.segment.segment2Pct}% (${asset.segment.noticeId}, ${preparedLabel(asset.segment.rateMonth) || asset.segment.rateMonth})`);
     }
   }
   if (toolInputs.fso) {
@@ -614,12 +629,14 @@ function extractInputDisclosures(toolInputs, appendix) {
     appendix.push({ sectionId: 's4', label: 'Filing-status method — Child Tax Credit per qualifying child', value: '$2,200', source: 'engine:CHILD_TAX_CREDIT' });
     appendix.push({ sectionId: 's4', label: 'Filing-status method — bracket year', value: '2026 (Rev. Proc. 2025-32)', source: 'engine:taxYear' });
   }
-  for (const dca of toolInputs.dcaAnalyses || []) {
+  (toolInputs.dcaAnalyses || []).forEach((dca, gi) => {
     const a = dca.analysis || {};
     const co = dca.company || 'grant';
+    // Number each grant so two grants from the same company don't collapse to
+    // identical appendix labels (R5 — the reviewer can tell the grants apart).
     const push = (label, value, format) => {
       if (value !== null && value !== undefined && value !== '') {
-        appendix.push({ sectionId: 'carrier.deferredCompStubs', label: `Deferred comp input (${co}) — ${label}`, value, format, source: `clearpath-blueprint:deferredCompStubs.${dca.stubId}` });
+        appendix.push({ sectionId: 'carrier.deferredCompStubs', label: `Deferred comp grant ${gi + 1} input (${co}) — ${label}`, value, format, source: `clearpath-blueprint:deferredCompStubs.${dca.stubId}` });
       }
     };
     push('date of hire', a.hireDate, 'date');
@@ -631,7 +648,7 @@ function extractInputDisclosures(toolInputs, appendix) {
       push(`tranche ${idx + 1} vesting date`, t.vestDate, 'date');
       push(`tranche ${idx + 1} shares`, t.shares);
     });
-  }
+  });
 }
 
 // ── D-V2-7 appendix placeholders (engine-constant sweep = Phase 2) ──────────

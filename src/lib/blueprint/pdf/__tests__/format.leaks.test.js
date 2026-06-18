@@ -25,10 +25,10 @@ describe('appendix leak closure — strings', () => {
 });
 
 describe('appendix format hints (wired at the model push site)', () => {
-  it('percent hint', () => {
+  it('percent hint (uniform 2 decimals)', () => {
     expect(formatAppendixValue(0.6824, 'percent')).toBe('68.24%');
-    expect(formatAppendixValue(0.05, 'percent')).toBe('5%');
-    expect(formatAppendixValue(0, 'percent')).toBe('0%');
+    expect(formatAppendixValue(0.05, 'percent')).toBe('5.00%');
+    expect(formatAppendixValue(0, 'percent')).toBe('0.00%');
   });
   it('currency hint', () => {
     expect(formatAppendixValue(260000, 'currency_actual')).toBe('$260,000');

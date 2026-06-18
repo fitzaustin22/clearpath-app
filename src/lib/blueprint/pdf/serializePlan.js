@@ -33,7 +33,7 @@ function layoutLines(L, layout) {
   }
   if (layout.bars && layout.bars.length) {
     L.push('  ASSET MIX:');
-    for (const b of layout.bars) L.push(`    ${b.label}: ${b.value} (${b.pct}%)`);
+    for (const b of layout.bars) L.push(`    ${b.label}: ${b.value} (${Number(b.pct).toFixed(2)}%)`);
   }
   for (const mt of layout.methodTables || []) {
     L.push('  METHOD TABLE:');
