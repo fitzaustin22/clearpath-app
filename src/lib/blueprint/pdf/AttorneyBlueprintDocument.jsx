@@ -428,21 +428,29 @@ function SourcesBlock({ styles, sources }) {
   );
 }
 
-// Invisible page-number capture for the TOC two-pass (pass 1 only).
+// Invisible page-number capture for the TOC two-pass. This node renders in BOTH
+// passes (identical, zero-height) whether or not it captures — so the document's
+// layout is structurally identical across passes and a captured page number IS
+// the final page number. (Returning null when not capturing would remove these
+// nodes from one pass and reflow the content, breaking the page mapping.)
 function PageCapture({ tocKey, onCapture }) {
-  if (!onCapture) return null;
   return h(View, {
     render: ({ pageNumber }) => {
-      onCapture(tocKey, pageNumber);
+      if (onCapture) onCapture(tocKey, pageNumber);
       return null;
     },
   });
 }
 
-function SectionHeading({ styles, eyebrow, title }) {
+function SectionHeading({ styles, eyebrow, title, tocKey, onCapture }) {
   return h(
     View,
     { wrap: false, minPresenceAhead: 110 },
+    // The page capture lives INSIDE the no-break heading group so it records the
+    // page the heading actually lands on. minPresenceAhead can push this whole
+    // group to the next page; a capture placed OUTSIDE would stay behind and
+    // report the heading one page early (the §4/§10/§12 TOC drift).
+    h(PageCapture, { tocKey, onCapture }),
     eyebrow ? h(Text, { style: styles.sectionEyebrow }, String(eyebrow).toUpperCase()) : null,
     h(Text, { style: styles.sectionTitle }, title),
   );
@@ -453,8 +461,7 @@ function SectionBlock({ styles, block, onCapture }) {
   return h(
     View,
     { style: styles.sectionWrap },
-    h(PageCapture, { tocKey: block.number, onCapture }),
-    h(SectionHeading, { styles, eyebrow: block.number, title: block.title }),
+    h(SectionHeading, { styles, eyebrow: block.number, title: block.title, tocKey: block.number, onCapture }),
     h(HeroBand, { styles, hero: L.hero }),
     h(MetricCards, { styles, cards: L.cards }),
     h(ProportionBars, { styles, bars: L.bars }),
@@ -471,8 +478,7 @@ function CarrierBlock({ styles, block, onCapture }) {
   return h(
     View,
     { style: styles.sectionWrap },
-    h(PageCapture, { tocKey: block.title, onCapture }),
-    h(SectionHeading, { styles, eyebrow: L.number, title: L.title }),
+    h(SectionHeading, { styles, eyebrow: L.number, title: L.title, tocKey: block.title, onCapture }),
     ...L.entities.map((e, i) => h(EntityBox, { key: `e${i}`, styles, entity: e })),
     L.rows && L.rows.length ? h(LineItems, { styles, items: L.rows }) : null,
     h(SourcesBlock, { styles, sources: block.sources }),
@@ -544,10 +550,13 @@ export function AttorneyBlueprintDocument({ model, opts = {} }) {
   const pages = [];
   pages.push(h(CoverPage, { key: 'cover', styles, cover: plan.cover }));
 
-  // Contents page renders on the real (pass-2) render — it needs page numbers.
-  if (tocPages) {
-    pages.push(h(TocPage, { key: 'toc', styles, headerLeft, documentId, toc: plan.toc, tocPages }));
-  }
+  // The Contents page is a permanent part of the document, so it renders on BOTH
+  // passes — pass 1 with blank page numbers (tocPages null → TocList prints ''),
+  // pass 2 with the captured numbers. Rendering it in both keeps the two passes
+  // structurally identical, so a page captured in pass 1 is exactly where the
+  // heading prints in pass 2 (no offset, and correct even if the Contents itself
+  // spans more than one page).
+  pages.push(h(TocPage, { key: 'toc', styles, headerLeft, documentId, toc: plan.toc, tocPages }));
 
   if (plan.scope) {
     pages.push(

@@ -8,6 +8,18 @@
 // cosmetic, not a content/compliance issue). Production (Vercel) export wiring
 // is the D-V2-1 Phase 4 item; this registration targets the headless render
 // path used by the harness and A5-M.
+//
+// FONT-FILE MODIFICATION — Inter.ttf / Inter-Italic.ttf have their GPOS `kern`
+// feature neutered (lookup lists emptied via fontTools). The bundled variable
+// Inter shipped a `kern` table whose digit↔punctuation pairs over-tighten under
+// fontkit (a "7" before "." pulled in ~0.25em), which rendered numeric VALUES
+// compressed ("17.10%", "$227,048.00"). react-pdf 4.x calls
+// `font.layout(string, undefined, …)` and exposes no per-style OpenType toggle,
+// so the font file is the only lever. Neutering `kern` restores nominal digit
+// advances everywhere; the imperceptible loss of letter kerning at body sizes is
+// the accepted trade. Guarded by renderer.numerals.test.js. (Playfair's ligature
+// GSUB is intentionally LEFT INTACT — its fi/ff headings paint every letter
+// through the Node build; see renderer.paint.test.js.)
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Font } from '@react-pdf/renderer';
