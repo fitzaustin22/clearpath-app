@@ -15,8 +15,10 @@ function methodTableLines(L, mt, indent) {
 
 function rowLines(L, rows, indent) {
   for (const r of rows || []) {
+    // Citation markers ride the LABEL (as the @react-pdf kit renders them), not
+    // the value — so this faithful serialization matches the page.
     const mk = r.markers && r.markers.length ? ` [${r.markers.join(',')}]` : '';
-    L.push(`${indent}${r.label}: ${r.value}${mk}`);
+    L.push(`${indent}${r.label}${mk}: ${r.value}`);
   }
 }
 
@@ -24,7 +26,7 @@ function layoutLines(L, layout) {
   if (!layout) return;
   if (layout.hero) {
     const mk = layout.hero.markers && layout.hero.markers.length ? ` [${layout.hero.markers.join(',')}]` : '';
-    L.push(`  HERO ▸ ${layout.hero.label}: ${layout.hero.value}${mk}`);
+    L.push(`  HERO ▸ ${layout.hero.label}${mk}: ${layout.hero.value}`);
     if (layout.hero.subtitle) L.push(`         ${layout.hero.subtitle}`);
   }
   if (layout.cards && layout.cards.length) {

@@ -96,17 +96,32 @@ function buildBars(config, rows, consumed) {
     });
 }
 
+// An explicit-id method table: each row pairs named block ids under fixed
+// columns (PIT vs traditional discount) — for dual-method values that aren't
+// .hug/.nelson siblings.
+function buildOnePairTable(spec, rows, consumed) {
+  const tableRows = [];
+  for (const r of spec.rows) {
+    const found = r.ids.map((id) => pick(rows, id));
+    if (!found.some(Boolean)) continue;
+    found.forEach((row) => row && consumed.add(row.id));
+    tableRows.push({ label: r.label, cells: found.map((row) => (row ? row.value : '—')) });
+  }
+  return tableRows.length ? { columns: [...spec.columns], rows: tableRows } : null;
+}
+
 // Named groups (a labeled box of rows): liabilities, support inputs, s6 sub-plans.
 function buildGroups(config, rows, consumed) {
   return (config.groups || [])
     .map((spec) => {
+      const pairTable = spec.pairTable ? buildOnePairTable(spec.pairTable, rows, consumed) : null;
       const matched = matchRows(rows, spec.match).filter((r) => !consumed.has(r.id));
-      if (!matched.length) return null;
+      if (!matched.length && !pairTable) return null;
       const ordered = spec.sort === 'desc' ? [...matched].sort((a, b) => Math.abs(num(b)) - Math.abs(num(a))) : matched;
       ordered.forEach((r) => consumed.add(r.id));
       // A negative-tone group (liabilities) renders each row as a reduction.
       const groupRows = spec.tone === 'negative' ? ordered.map(asReduction) : ordered.map(cardOf);
-      return { header: spec.header, tone: spec.tone || null, rows: groupRows, methodTable: null, display: spec.display || null };
+      return { header: spec.header, tone: spec.tone || null, rows: groupRows, methodTable: pairTable, display: spec.display || null };
     })
     .filter(Boolean);
 }
@@ -239,11 +254,21 @@ const SECTION_CONFIG = {
     // valuation, not a combined "retirement total" (which the model never computes).
     hero: ['s6.pva.headlinePV', 's6.pit.taxAdjustedValue'],
     groups: [
-      // PIT outputs first, then its inputs de-emphasized (R5 inputs-vs-outputs).
-      { header: 'Defined-contribution account (point-in-time)', match: /^s6\.pit\.(?!n$|effectiveTaxRate$|discountRate$)/ },
-      { header: 'Point-in-time tax-discount inputs', match: /^s6\.pit\.(n|effectiveTaxRate|discountRate)$/, tone: 'input' },
+      {
+        header: 'Defined-contribution account (point-in-time)',
+        match: /^s6\.pit\.(taxDiscountPercent|taxAdjustedValue|overage)$/,
+        // The point-in-time vs traditional tax discount is a dual-method value →
+        // labeled columns, not stacked inline rows (R6).
+        pairTable: {
+          columns: ['Point-in-time', 'Traditional'],
+          rows: [{ label: 'Tax discount on the account', ids: ['s6.pit.taxDiscountDollars', 's6.pit.traditionalDiscountDollars'] }],
+        },
+      },
       { header: 'Defined-benefit pension', match: /^s6\.pva\./ },
       { header: 'QDRO order', match: /^s6\.qdro\./ },
+      // The account balance + PIT assumptions are inputs that feed the discount —
+      // de-emphasized vs the outputs above so neither out-sizes the hero (R4/R5).
+      { header: 'Point-in-time inputs (account balance and assumptions)', match: /^s6\.pit\.(planBalance|n|effectiveTaxRate|discountRate)$/, tone: 'input' },
     ],
   },
   s7: {

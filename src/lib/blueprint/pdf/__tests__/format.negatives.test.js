@@ -9,10 +9,10 @@ import {
 
 describe('negatives — accounting style', () => {
   it('currency_projection negative → parentheses, negative color, no minus', () => {
-    expect(formatValue({ value: -2212, valueClass: 'currency_projection' })).toBe('($2,212)');
+    expect(formatValue({ value: -2212, valueClass: 'currency_projection' })).toBe('($2,212.00)');
   });
-  it('currency_actual negative whole → parentheses, no .00', () => {
-    expect(formatValue({ value: -8940, valueClass: 'currency_actual' })).toBe('($8,940)');
+  it('currency_actual negative → parentheses', () => {
+    expect(formatValue({ value: -8940, valueClass: 'currency_actual' })).toBe('($8,940.00)');
   });
   it('isNegativeValue flags negatives (for color), not positives', () => {
     expect(isNegativeValue({ value: -2212, valueClass: 'currency_projection' })).toBe(true);
@@ -20,15 +20,15 @@ describe('negatives — accounting style', () => {
   });
 });
 
-describe('currency drops redundant .00 (R-B), keeps real cents', () => {
-  it('whole-dollar actual → no cents', () => {
-    expect(formatValue({ value: 8940, valueClass: 'currency_actual' })).toBe('$8,940');
+describe('currency is uniform 2-decimal (R2 — one convention, no mismatch)', () => {
+  it('whole-dollar actual → .00 (uniform with cents siblings)', () => {
+    expect(formatValue({ value: 8940, valueClass: 'currency_actual' })).toBe('$8,940.00');
   });
-  it('fractional actual → cents kept', () => {
+  it('fractional actual → cents', () => {
     expect(formatValue({ value: 5747.66, valueClass: 'currency_actual' })).toBe('$5,747.66');
   });
-  it('projection stays whole-dollar', () => {
-    expect(formatValue({ value: 365975, valueClass: 'currency_projection' })).toBe('$365,975');
+  it('projection → .00 (matches actuals on the same page)', () => {
+    expect(formatValue({ value: 365975, valueClass: 'currency_projection' })).toBe('$365,975.00');
   });
 });
 

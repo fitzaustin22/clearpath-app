@@ -30,9 +30,9 @@ describe('appendix format hints (wired at the model push site)', () => {
     expect(formatAppendixValue(0.05, 'percent')).toBe('5.00%');
     expect(formatAppendixValue(0, 'percent')).toBe('0.00%');
   });
-  it('currency hint', () => {
-    expect(formatAppendixValue(260000, 'currency_actual')).toBe('$260,000');
-    expect(formatAppendixValue(61, 'currency_actual')).toBe('$61');
+  it('currency hint (uniform 2 decimals)', () => {
+    expect(formatAppendixValue(260000, 'currency_actual')).toBe('$260,000.00');
+    expect(formatAppendixValue(61, 'currency_actual')).toBe('$61.00');
     expect(formatAppendixValue(22.5, 'currency_actual')).toBe('$22.50');
   });
   it('boolean hint', () => {

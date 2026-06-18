@@ -372,11 +372,13 @@ function extractS9(data, ctx) {
     if (key === '_prePopSources') continue;
     if (typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean') {
       // Format hint so a bare 0.6824 / 260000 / true never reaches the page
-      // (booleans are auto-formatted to Yes/No without a hint).
+      // (booleans are auto-formatted to Yes/No without a hint). The affordability
+      // verdict tier is mapped to a semantic phrase (Caution/On track/At risk).
+      const disclosed = key === 'verdictTier' ? (HDA_VERDICT_LABELS[value] ?? value) : value;
       ctx.appendix.push({
         sectionId: 's9',
         label: `HDA assumption — ${HDA_APPENDIX_LABELS[key] ?? key}`,
-        value,
+        value: disclosed,
         format: HDA_APPENDIX_FORMAT[key],
         source: `clearpath-blueprint:s9.metadata.${key}`,
       });
@@ -384,6 +386,9 @@ function extractS9(data, ctx) {
   }
   return blocks;
 }
+
+// Affordability verdict tier → semantic phrase (not the bare color token).
+const HDA_VERDICT_LABELS = Object.freeze({ green: 'On track', yellow: 'Caution', red: 'At risk' });
 
 // HDA metadata appendix: per-key unit hints (numeric leaks) + readable labels.
 const HDA_APPENDIX_FORMAT = Object.freeze({
@@ -485,7 +490,7 @@ const SECTION_EXTRACTORS = {
 
 // ── Carriers (D5: read explicitly, never dropped) ───────────────────────────
 
-function extractDeferredCompStubs(stubs, ctx) {
+function extractDeferredCompStubs(stubs) {
   const blocks = [];
   for (const stub of stubs || []) {
     const meta = stub.resolved
@@ -782,7 +787,7 @@ export function buildDocumentModel(state, { jurisdiction, preparedDate, toolInpu
   });
 
   const carriers = {
-    deferredCompStubs: extractDeferredCompStubs(state?.deferredCompStubs, ctx),
+    deferredCompStubs: extractDeferredCompStubs(state?.deferredCompStubs),
     qdroBlueprint: extractQdroBlueprintCarrier(state?.qdroBlueprint),
     costBasisEntries: extractCostBasisEntries(state?.costBasisEntries),
   };
@@ -856,7 +861,7 @@ export function buildDocumentModel(state, { jurisdiction, preparedDate, toolInpu
           slot: 'd_v2_5_rounding_contract',
           status: 'final',
           summary:
-            'Actual amounts are stated to the cent (a whole-dollar actual omits a redundant trailing .00); projected values are stated to the nearest dollar; rates and coverture fractions are shown as a percentage to two decimals.',
+            'All dollar amounts are displayed to the cent; actual amounts are precise to the cent, and projected values are rounded to the nearest dollar before display. Rates and coverture fractions are shown as a percentage to two decimals.',
         },
         entries: methodologyEntries,
       },

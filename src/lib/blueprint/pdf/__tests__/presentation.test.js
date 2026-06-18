@@ -32,7 +32,7 @@ describe('layoutSection — s3 Asset Inventory (hero, cards, ranked bars, liabil
 
   it('hero is net worth', () => {
     expect(layout.hero.id).toBe('s3.netWorth');
-    expect(layout.hero.value).toBe('$1,206,900');
+    expect(layout.hero.value).toBe('$1,206,900.00');
   });
   it('cards are total assets then total liabilities', () => {
     expect(layout.cards.map((c) => c.id)).toEqual(['s3.totalAssets', 's3.totalLiabilities']);
@@ -74,14 +74,14 @@ describe('layoutSection — s7 Expense (negative hero, current/projected method 
   it('hero is the monthly gap and is flagged negative', () => {
     expect(layout.hero.id).toBe('s7.monthlyGap');
     expect(layout.hero.negative).toBe(true);
-    expect(layout.hero.value).toBe('($2,212)');
+    expect(layout.hero.value).toBe('($2,212.00)');
   });
   it('categories render as a Current vs Projected method table, sorted by current desc', () => {
     expect(layout.methodTables).toHaveLength(1);
     const mt = layout.methodTables[0];
     expect(mt.columns).toEqual(['Current', 'Projected']);
     expect(mt.rows[0].label).toBe('Home');
-    expect(mt.rows[0].cells).toEqual(['$5,270', '$4,450']);
+    expect(mt.rows[0].cells).toEqual(['$5,270.00', '$4,450.00']);
     expect(mt.rows[1].label).toBe('Food');
   });
 });

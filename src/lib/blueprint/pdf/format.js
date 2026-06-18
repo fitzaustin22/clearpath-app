@@ -23,12 +23,13 @@ export function formatValue(block) {
   const { value, valueClass } = block;
   switch (valueClass) {
     case 'currency_actual':
-      // Actuals are stated to the cent — but a whole-dollar actual drops the
-      // redundant .00 so it doesn't sit jarringly next to whole-dollar
-      // projections on the same page (R-B). Real cents are always kept.
-      return usd(value, Number.isInteger(Number(value)) ? 0 : 2);
+      // Actuals to the cent. All currency is displayed to the cent so a page
+      // never mixes "$X.00" with a bare "$Y" (R2, one convention).
+      return usd(value, 2);
     case 'currency_projection':
-      return usd(value, 0); // projections/PVs/scenario outputs to the whole dollar
+      // Projections are rounded to the nearest dollar (per the disclosed
+      // rounding contract), then displayed with .00 to match the actuals.
+      return usd(Math.round(Number(value)), 2);
     case 'rate':
       return `${Number(value).toFixed(2)}%`; // rates/percentages to two decimals
     case 'fraction':
@@ -234,9 +235,9 @@ export function formatAppendixValue(value, format) {
       case 'percent':
         return formatPercentFromFraction(value);
       case 'currency_actual':
-        return usd(Number(value), Number.isInteger(Number(value)) ? 0 : 2);
+        return usd(Number(value), 2);
       case 'currency_projection':
-        return usd(Number(value), 0);
+        return usd(Math.round(Number(value)), 2);
       case 'date':
         return formatIsoDate(value);
       case 'rate':
