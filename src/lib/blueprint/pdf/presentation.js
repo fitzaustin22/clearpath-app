@@ -223,8 +223,10 @@ const SECTION_CONFIG = {
     entities: { capture: /^s5\.(?:faceValue|taxAdjusted|hiddenTax)\.([^.]+)$/, headerFromKey: (k) => titleCase(k) },
   },
   s6: {
+    // Hero is the DB pension present value (or the DC tax-adjusted value when
+    // there is no DB pension). Keep the block's own precise label — this is one
+    // valuation, not a combined "retirement total" (which the model never computes).
     hero: ['s6.pva.headlinePV', 's6.pit.taxAdjustedValue'],
-    heroLabel: 'Retirement value at division',
     groups: [
       { header: 'Defined-contribution account (point-in-time)', match: /^s6\.pit\./ },
       { header: 'Defined-benefit pension', match: /^s6\.pva\./ },
@@ -333,7 +335,9 @@ const CARRIER_CONFIG = {
   costBasisEntries: {
     number: 'Supplement to Section 5',
     capture: /^carrier\.cbe\.([^.]+)\./,
-    headerFromKey: (k) => titleCase(spaceCamel(k)),
+    // Asset ids carry a trailing instance suffix (realEstate-f1home); strip it so
+    // the header reads as the asset category, not a raw internal id.
+    headerFromKey: (k) => titleCase(spaceCamel(String(k).replace(/-[^-]*$/, ''))),
   },
   qdroBlueprint: { number: 'Supplement to Section 6', flat: true },
 };

@@ -39,6 +39,61 @@ describe('A4 — raw-token denylist (the pvSource class)', () => {
   });
 });
 
+// Value-level leak guard (the redesign R1 fix). These patterns are ANCHORED to a
+// whole VALUE string (not prose), so legitimately-hyphenated words in
+// labels/notes/citations (point-in-time, tax-deferred, loan-to-value) never
+// trip it. A rendered VALUE must never BE a raw ISO date, a bare boolean, a
+// naked engine float, or a lowercase enum slug.
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}/; // 2026-06-18T...Z or 1998-04-01
+const BARE_BOOL = /^(?:true|false)$/i;
+const NAKED_FLOAT = /^-?\d*\.\d{3,}$/; // 0.6824, .05 with 3+ decimals
+const LOWER_SLUG = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)+$/; // refi-at-current, margin-of-safety
+
+function collectValueStrings(plan) {
+  const vals = [];
+  const v = (s) => {
+    if (s != null && String(s).length) vals.push(String(s));
+  };
+  const mt = (t) => {
+    if (t) for (const r of t.rows) for (const c of r.cells) v(c);
+  };
+  const rows = (rs) => {
+    for (const r of rs || []) v(r.value);
+  };
+  const lay = (L) => {
+    if (!L) return;
+    if (L.hero) v(L.hero.value);
+    rows(L.cards);
+    for (const b of L.bars || []) v(b.value);
+    for (const g of L.groups || []) {
+      rows(g.rows);
+      mt(g.methodTable);
+    }
+    for (const t of L.methodTables || []) mt(t);
+    rows(L.lineItems);
+    for (const e of L.entities || []) {
+      rows(e.rows);
+      mt(e.methodTable);
+    }
+    rows(L.rows);
+  };
+  for (const s of plan.content.sections) lay(s.layout);
+  for (const c of plan.content.carriers) lay(c.layout);
+  for (const e of plan.inputs.entries) v(e.value);
+  return vals;
+}
+
+describe('A4 — value-level leak guard (ISO / boolean / naked float / enum slug)', () => {
+  it.each(['F1', 'F2', 'F3', 'F4b'])('%s renders no raw VALUES', (id) => {
+    const vals = collectValueStrings(PLANS[id]);
+    expect(vals.length).toBeGreaterThan(0);
+    const bad = vals.filter(
+      (s) => ISO_DATE.test(s) || BARE_BOOL.test(s) || NAKED_FLOAT.test(s) || LOWER_SLUG.test(s),
+    );
+    expect(bad, `${id} raw value leaks`).toEqual([]);
+  });
+});
+
 describe('A4 — scope disclosure (D-V2-3)', () => {
   it('F1 (all sections complete) omits nothing → no scope-notice page', () => {
     expect(MODELS.F1.scopeDisclosure.omittedSections).toEqual([]);

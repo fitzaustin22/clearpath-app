@@ -19,10 +19,15 @@ const FIXTURES = { F1, F2, F3, F4, F4b };
 const MODELS = {};
 const SEEDED_STATES = {};
 
+// 'text' and 'date' are string-valued classes; every other class is numeric.
+const STRING_CLASSES = new Set(['text', 'date']);
+
 function assertBlockContract(b) {
   expect(typeof b.id).toBe('string');
   expect(VALUE_CLASSES).toContain(b.valueClass);
-  if (b.valueClass !== 'text') {
+  if (STRING_CLASSES.has(b.valueClass)) {
+    expect(typeof b.value, b.id).toBe('string');
+  } else {
     expect(typeof b.value, b.id).toBe('number');
     expect(Number.isFinite(b.value), b.id).toBe(true);
   }

@@ -38,6 +38,8 @@ export function formatValue(block) {
       return formatPercentFromFraction(value);
     case 'count':
       return Number(value).toLocaleString('en-US', { maximumFractionDigits: 0 });
+    case 'date':
+      return formatIsoDate(value); // ISO → "June 18, 2026" (no raw timestamp)
     case 'text':
     default:
       return humanizeText(value);
@@ -89,6 +91,10 @@ const HUMANIZE = Object.freeze({
   // deferred-comp category
   stockOptions: 'Stock options',
   corporateIncentives: 'Restricted stock units',
+  // readiness tier (s1 hero)
+  ready: 'Ready',
+  preparing: 'Preparing',
+  exploring: 'Exploring',
 });
 
 // Split a single camelCase/snake_case token to a Title-case phrase.
@@ -249,7 +255,9 @@ export function formatAppendixValue(value, format) {
     const phrase = s.replace(/-/g, ' ').toLowerCase();
     return phrase.charAt(0).toUpperCase() + phrase.slice(1);
   }
-  return humanizeLabel(s);
+  // Value humanizer (not the label one): maps known enum VALUES (single → Single,
+  // hoh → Head of household) and splits camelCase; free text passes through.
+  return humanizeText(s);
 }
 
 /** Header short form — surname when a multi-word name is given. */

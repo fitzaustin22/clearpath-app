@@ -1,32 +1,32 @@
 // src/lib/blueprint/pdf/AttorneyBlueprintDocument.jsx
 //
 // The ClearPath Attorney Blueprint @react-pdf document. Consumes ONLY the
-// intermediate document model (R1) plus thin presentation opts (client name,
-// prepared date, variant config). Four page masters per the design README:
-// Cover · Content · Methodology & Provenance · Scope Notice (+ a D-V2-7 Inputs
-// & Assumptions appendix). A `buildRenderPlan` step produces the exact string
-// set that will render — the single source of truth the A4 raw-token harvester
-// reads, so the page and the test never drift.
+// intermediate document model (R1) plus thin presentation opts. The redesign
+// routes every section through the presentation layer (one hero answer, metric
+// cards, proportion bars, grouped entities, method tables) and the component
+// kit. A `buildRenderPlan` step produces the exact string set that will render
+// — the single source of truth the A4 raw-token harvester reads, so the page
+// and the test never drift. Page masters: Cover · Contents · Content ·
+// Methodology · Inputs (+ optional Scope notice).
 import React from 'react';
 import { Document, Page, View, Text } from '@react-pdf/renderer';
 import { makeStyles } from './tokens';
 import { registerBlueprintFonts } from './registerFonts';
 import {
   formatValue,
+  isNegativeValue,
   humanizeLabel,
   formatAppendixValue,
   SECTION_TITLES,
   sectionNumberLabel,
-  CARRIER_TITLES,
   jurisdictionLabel,
   preparedLabel,
   headerName,
 } from './format';
+import { layoutSection, layoutCarrier } from './presentation';
+import { HeroBand, MetricCards, ProportionBars, MethodTable, Group, EntityBox, LineItems, TocList } from './components';
 import { getEntry } from '../citationRegistry';
 
-// Disclaimer copy extends the README's verbatim base with "or tax" because the
-// document carries withholding/tax figures (A5-M Cat 5 requires a not-tax-advice
-// disclaimer); flagged as a deviation from the verbatim README copy for review.
 const COVER_DISCLAIMER =
   'Prepared with ClearPath software. This document assembles client-provided information and disclosed methodologies. It is not legal, tax, or investment advice and does not substitute for review by retained counsel.';
 const FOOTER_DISCLAIMER =
@@ -37,50 +37,50 @@ const h = React.createElement;
 
 // ── Render plan (single source of truth for rendered strings) ───────────────
 
-function sectionPlan(section) {
-  // Per-section citation numbering: each authority is numbered once, marked at
-  // first use, and listed in the section's sources block.
+// Enrich a block list into presentation rows (formatted value + raw + flags +
+// citation markers) and the per-block-list source list (numbered at first use).
+function enrichRows(blocks) {
   const orderedKeys = [];
   const seen = new Set();
-  const rows = section.blocks.map((b) => {
+  const rows = blocks.map((b) => {
     const markers = [];
     for (const k of b.citations || []) {
       if (!seen.has(k)) {
         seen.add(k);
         orderedKeys.push(k);
-        markers.push(orderedKeys.length); // 1-based; marked at first use only
+        markers.push(orderedKeys.length);
       }
     }
-    return { id: b.id, label: humanizeLabel(b.label), value: formatValue(b), markers };
+    return {
+      id: b.id,
+      label: humanizeLabel(b.label),
+      value: formatValue(b),
+      rawValue: b.value,
+      valueClass: b.valueClass,
+      negative: isNegativeValue(b),
+      markers,
+    };
   });
   const sources = orderedKeys.map((key, i) => {
     const e = getEntry(key);
     return { n: i + 1, key, shortCite: e.shortCite, fullCite: e.fullCite, verified: e.verified };
   });
-  // Passthrough directive: a cash-balance pension is account-balance only —
-  // never present a degenerate ±100bp pair as analysis.
-  const pvaPath = section.blocks.find((b) => b.id === 's6.pva.path');
+  return { rows, sources };
+}
+
+function sectionNotes(section) {
   const notes = [];
+  const pvaPath = section.blocks.find((b) => b.id === 's6.pva.path');
   if (pvaPath && pvaPath.value === 'cash_balance') {
     notes.push(
       'Account-balance plan: present value equals the account balance and is not rate-sensitive (no ±100 bp discount-rate sensitivity).',
     );
   }
-  // ALWAYS disclose §5 provenance: the client/spouse/undecided face-value split
-  // is the parties' OWN Module 2 inventory designations (an input tally), NOT a
-  // ClearPath-computed equitable-distribution determination. Without this, a
-  // face-value-only §5 (no tax-adjusted column) reads as an uncited computed
-  // marital-share split (A5-M F2 Cat 2a). Parallels the §2 "client-provided
-  // inputs; ClearPath does not compute" disclosure.
   if (section.id === 's5') {
     notes.push(
       'The client, spouse, and undecided face-value figures are the sums of individual asset values as the parties designated each item (kept by the client, by the spouse, or undecided) in the Module 2 Marital Estate Inventory. ClearPath does not classify property as marital or separate, apply a coverture or time rule, or determine an equitable-distribution share — the split reflects the parties’ own designations of who keeps each asset, not a legal or computed determination.',
     );
   }
-  // Only when a tax-adjusted column actually renders (a cost-basis entry exists)
-  // — otherwise the note dangles, referencing values that aren't on the page
-  // (A5-M Cat 3, F4b face-value-only §5). Provenance is covered by the base note
-  // above; this note contrasts the tax-adjusted basis and the non-reconciliation.
   if (section.id === 's5' && section.blocks.some((b) => b.id.includes('.taxAdjusted.'))) {
     notes.push(
       'Tax-adjusted value reflects net equity (after any mortgage) less estimated tax. Each party’s tax-adjusted figure is one half of the combined tax-adjusted value of the jointly-titled assets itemized in the Tax-Adjusted Asset Values block (a 50/50 split of jointly-titled property). Face value and tax-adjusted value are on different bases and are not expected to reconcile line-to-line.',
@@ -101,35 +101,26 @@ function sectionPlan(section) {
       'Spousal support is the AAML benchmark (Appendix A). Child support is the basic obligation — read from the published guideline schedule at combined income, or, above the schedule cap, the statutory top-of-schedule amount — apportioned to the obligor by the obligor’s share of alimony-first-adjusted combined income (child support = basic obligation × obligor income share). These are disclosed-methodology estimates, not a court order.',
     );
   }
+  return notes;
+}
+
+function sectionPlan(section) {
+  const { rows, sources } = enrichRows(section.blocks);
   return {
+    id: section.id,
     number: sectionNumberLabel(section.id),
     title: SECTION_TITLES[section.id] ?? section.id,
-    rows,
+    layout: layoutSection(section.id, rows),
+    notes: sectionNotes(section),
     sources,
-    notes,
   };
 }
 
 function carrierPlan(name, blocks) {
   if (!blocks || blocks.length === 0) return null;
-  const orderedKeys = [];
-  const seen = new Set();
-  const rows = blocks.map((b) => {
-    const markers = [];
-    for (const k of b.citations || []) {
-      if (!seen.has(k)) {
-        seen.add(k);
-        orderedKeys.push(k);
-        markers.push(orderedKeys.length);
-      }
-    }
-    return { id: b.id, label: humanizeLabel(b.label), value: formatValue(b), markers };
-  });
-  const sources = orderedKeys.map((key, i) => {
-    const e = getEntry(key);
-    return { n: i + 1, key, shortCite: e.shortCite, fullCite: e.fullCite, verified: e.verified };
-  });
-  return { title: CARRIER_TITLES[name] ?? name, rows, sources };
+  const { rows, sources } = enrichRows(blocks);
+  const layout = layoutCarrier(name, rows);
+  return { name, number: layout.number, title: layout.title, layout, sources };
 }
 
 export function buildRenderPlan(model, opts = {}) {
@@ -203,9 +194,20 @@ export function buildRenderPlan(model, opts = {}) {
       'The inputs and assumptions below are disclosed so a competent reviewer can reproduce each figure from this document alone.',
     entries: (model.appendices?.inputsAndAssumptions?.entries ?? [])
       .filter((e) => e && e.value != null && typeof e.value !== 'object')
-      .map((e) => ({ label: humanizeLabel(e.label), value: formatAppendixValue(e.value) })),
+      .map((e) => ({ label: humanizeLabel(e.label), value: formatAppendixValue(e.value, e.format) })),
     assumptions: (model.appendices?.inputsAndAssumptions?.phase2Placeholders ?? []).map((p) => p.label),
   };
+  const hasInputs = inputs.entries.length > 0 || inputs.assumptions.length > 0;
+
+  // Table of contents — sections, numbered supplements, and appendices, in
+  // document order. `key` matches the per-heading page-capture key so the
+  // two-pass render can stamp accurate page numbers.
+  const toc = [];
+  if (scope) toc.push({ key: 'scope', label: 'Sections Not Included' });
+  for (const s of content.sections) toc.push({ key: s.number, label: `${s.number} · ${s.title}` });
+  for (const cb of content.carriers) toc.push({ key: cb.title, label: `${cb.number} · ${cb.title}`, supplement: true });
+  toc.push({ key: 'Appendix A', label: 'Appendix A · Methodologies and Authorities' });
+  if (hasInputs) toc.push({ key: 'Appendix B', label: 'Appendix B · Inputs and Assumptions' });
 
   return {
     documentId,
@@ -214,6 +216,8 @@ export function buildRenderPlan(model, opts = {}) {
     content,
     methodology,
     inputs,
+    hasInputs,
+    toc,
     footer: { disclaimer: FOOTER_DISCLAIMER, documentId },
   };
 }
@@ -224,30 +228,110 @@ export function collectRenderableStrings(plan) {
   const push = (s) => {
     if (s != null && String(s).length > 0) out.push(String(s));
   };
+  const harvestMethodTable = (mt) => {
+    if (!mt) return;
+    for (const c of mt.columns) push(c);
+    for (const r of mt.rows) {
+      push(r.label);
+      for (const cell of r.cells) push(cell);
+    }
+  };
+  const harvestRows = (rows) => {
+    for (const r of rows || []) {
+      push(r.label);
+      push(r.value);
+    }
+  };
+  const harvestLayout = (layout) => {
+    if (!layout) return;
+    if (layout.hero) {
+      push(layout.hero.label);
+      push(layout.hero.value);
+      push(layout.hero.subtitle);
+    }
+    harvestRows(layout.cards);
+    for (const b of layout.bars || []) {
+      push(b.label);
+      push(b.value);
+      push(`${b.pct}%`);
+    }
+    for (const g of layout.groups || []) {
+      push(g.header);
+      harvestRows(g.rows);
+      harvestMethodTable(g.methodTable);
+    }
+    for (const mt of layout.methodTables || []) harvestMethodTable(mt);
+    harvestRows(layout.lineItems);
+    for (const e of layout.entities || []) {
+      push(e.header);
+      harvestRows(e.rows);
+      harvestMethodTable(e.methodTable);
+    }
+    harvestRows(layout.rows);
+  };
+
   const c = plan.cover;
-  push(c.wordmark); push(c.title); push(c.edition); push(c.disclaimerLabel); push(c.disclaimer);
-  for (const m of c.matter) { push(m.label); push(m.value); }
+  push(c.wordmark);
+  push(c.title);
+  push(c.edition);
+  push(c.disclaimerLabel);
+  push(c.disclaimer);
+  for (const m of c.matter) {
+    push(m.label);
+    push(m.value);
+  }
+  for (const it of plan.toc) push(it.label);
   if (plan.scope) {
-    push(plan.scope.eyebrow); push(plan.scope.title); push(plan.scope.intro); push(plan.scope.close);
-    for (const it of plan.scope.items) { push(it.name); push(it.reason); }
+    push(plan.scope.eyebrow);
+    push(plan.scope.title);
+    push(plan.scope.intro);
+    push(plan.scope.close);
+    for (const it of plan.scope.items) {
+      push(it.name);
+      push(it.reason);
+    }
   }
   push(plan.content.headerLeft);
-  const harvestRowsAndSources = (block) => {
-    push(block.title);
-    if (block.number) push(block.number);
-    for (const r of block.rows) { push(r.label); push(r.value); }
-    for (const n of block.notes || []) push(n);
-    for (const s of block.sources) { push(s.shortCite); push(s.fullCite); }
-  };
-  for (const s of plan.content.sections) harvestRowsAndSources(s);
-  for (const carrier of plan.content.carriers) harvestRowsAndSources(carrier);
-  push(plan.methodology.eyebrow); push(plan.methodology.title); push(plan.methodology.intro);
-  push(plan.methodology.roundingLabel); push(plan.methodology.rounding); push(plan.methodology.provenance);
-  for (const e of plan.methodology.entries) { push(e.name); push(e.description); push(e.cite); }
-  push(plan.inputs.eyebrow); push(plan.inputs.title); push(plan.inputs.intro);
-  for (const e of plan.inputs.entries) { push(e.label); push(e.value); }
+  for (const s of plan.content.sections) {
+    push(s.number);
+    push(s.title);
+    harvestLayout(s.layout);
+    for (const n of s.notes || []) push(n);
+    for (const src of s.sources) {
+      push(src.shortCite);
+      push(src.fullCite);
+    }
+  }
+  for (const cb of plan.content.carriers) {
+    push(cb.number);
+    push(cb.title);
+    harvestLayout(cb.layout);
+    for (const src of cb.sources) {
+      push(src.shortCite);
+      push(src.fullCite);
+    }
+  }
+  push(plan.methodology.eyebrow);
+  push(plan.methodology.title);
+  push(plan.methodology.intro);
+  push(plan.methodology.roundingLabel);
+  push(plan.methodology.rounding);
+  push(plan.methodology.provenance);
+  for (const e of plan.methodology.entries) {
+    push(e.name);
+    push(e.description);
+    push(e.cite);
+  }
+  push(plan.inputs.eyebrow);
+  push(plan.inputs.title);
+  push(plan.inputs.intro);
+  for (const e of plan.inputs.entries) {
+    push(e.label);
+    push(e.value);
+  }
   for (const a of plan.inputs.assumptions) push(a);
-  push(plan.footer.disclaimer); push(plan.footer.documentId);
+  push(plan.footer.disclaimer);
+  push(plan.footer.documentId);
   return out;
 }
 
@@ -258,10 +342,10 @@ function RunningHeader({ styles, left }) {
     View,
     { style: styles.runningHeader, fixed: true },
     h(Text, { style: styles.runningHeaderText }, left),
-    h(
-      Text,
-      { style: styles.runningHeaderText, render: ({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}` },
-    ),
+    h(Text, {
+      style: styles.runningHeaderText,
+      render: ({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`,
+    }),
   );
 }
 
@@ -275,7 +359,6 @@ function PageFooter({ styles, documentId }) {
 }
 
 function CiteText({ styles, cite }) {
-  // Case names italic, reporter roman: split at the first comma after " v. ".
   if (cite.includes(' v. ')) {
     const i = cite.indexOf(',');
     if (i > 0) {
@@ -290,22 +373,8 @@ function CiteText({ styles, cite }) {
   return h(Text, null, cite);
 }
 
-function ValueRow({ styles, row, isLast }) {
-  return h(
-    View,
-    { style: isLast ? [styles.row, styles.rowClose] : styles.row },
-    h(Text, { style: styles.rowLabel }, row.label),
-    h(
-      Text,
-      { style: styles.rowValue },
-      row.value,
-      ...row.markers.map((m, i) => h(Text, { key: `m${i}`, style: styles.citeMarker }, ` ${m}`)),
-    ),
-  );
-}
-
 function SourcesBlock({ styles, sources }) {
-  if (!sources.length) return null;
+  if (!sources || !sources.length) return null;
   return h(
     View,
     { style: styles.sourcesBlock, wrap: false },
@@ -322,25 +391,53 @@ function SourcesBlock({ styles, sources }) {
   );
 }
 
-function ContentBlock({ styles, block }) {
-  const rows = block.rows;
+// Invisible page-number capture for the TOC two-pass (pass 1 only).
+function PageCapture({ tocKey, onCapture }) {
+  if (!onCapture) return null;
+  return h(View, {
+    render: ({ pageNumber }) => {
+      onCapture(tocKey, pageNumber);
+      return null;
+    },
+  });
+}
+
+function SectionHeading({ styles, eyebrow, title }) {
+  return h(
+    View,
+    { wrap: false, minPresenceAhead: 110 },
+    eyebrow ? h(Text, { style: styles.sectionEyebrow }, String(eyebrow).toUpperCase()) : null,
+    h(Text, { style: styles.sectionTitle }, title),
+  );
+}
+
+function SectionBlock({ styles, block, onCapture }) {
+  const L = block.layout;
   return h(
     View,
     { style: styles.sectionWrap },
-    // Heading group glued to the first row + caption so a section/subsection
-    // heading never renders as the last element on a page (A4 orphan rule);
-    // minPresenceAhead pulls the heading to the next page if little space remains.
-    h(
-      View,
-      { wrap: false, minPresenceAhead: 90 },
-      block.number ? h(Text, { style: styles.sectionEyebrow }, block.number.toUpperCase()) : null,
-      h(Text, { style: styles.sectionTitle }, block.title),
-      rows.length > 0 ? h(ValueRow, { styles, row: rows[0], isLast: rows.length === 1 }) : null,
-    ),
-    ...rows.slice(1).map((r, i) =>
-      h(ValueRow, { key: r.id, styles, row: r, isLast: i === rows.length - 2 }),
-    ),
+    h(PageCapture, { tocKey: block.number, onCapture }),
+    h(SectionHeading, { styles, eyebrow: block.number, title: block.title }),
+    h(HeroBand, { styles, hero: L.hero }),
+    h(MetricCards, { styles, cards: L.cards }),
+    h(ProportionBars, { styles, bars: L.bars }),
+    ...L.methodTables.map((mt, i) => h(MethodTable, { key: `mt${i}`, styles, table: mt })),
+    ...L.groups.map((g, i) => h(Group, { key: `g${i}`, styles, group: g })),
+    L.lineItems.length ? h(LineItems, { styles, items: L.lineItems, tone: 'input' }) : null,
     ...(block.notes || []).map((n, i) => h(Text, { key: `n${i}`, style: styles.tableNote }, n)),
+    h(SourcesBlock, { styles, sources: block.sources }),
+  );
+}
+
+function CarrierBlock({ styles, block, onCapture }) {
+  const L = block.layout;
+  return h(
+    View,
+    { style: styles.sectionWrap },
+    h(PageCapture, { tocKey: block.title, onCapture }),
+    h(SectionHeading, { styles, eyebrow: L.number, title: L.title }),
+    ...L.entities.map((e, i) => h(EntityBox, { key: `e${i}`, styles, entity: e })),
+    L.rows && L.rows.length ? h(LineItems, { styles, items: L.rows }) : null,
     h(SourcesBlock, { styles, sources: block.sources }),
   );
 }
@@ -389,19 +486,36 @@ function StandardPage({ styles, headerLeft, documentId, children }) {
   );
 }
 
+function TocPage({ styles, headerLeft, documentId, toc, tocPages }) {
+  const items = toc.map((it) => ({ ...it, page: tocPages ? tocPages[it.key] : null }));
+  return h(StandardPage, { styles, headerLeft, documentId }, [
+    h(Text, { key: 'e', style: styles.sectionEyebrow }, 'CONTENTS'),
+    h(Text, { key: 't', style: styles.sectionTitle }, 'Table of Contents'),
+    h(TocList, { key: 'l', styles, items }),
+  ]);
+}
+
 export function AttorneyBlueprintDocument({ model, opts = {} }) {
   registerBlueprintFonts();
   const styles = makeStyles(opts.variants);
   const plan = buildRenderPlan(model, opts);
   const headerLeft = plan.content.headerLeft;
   const documentId = plan.documentId;
+  const onCapture = opts.capturePage || null; // pass 1 only
+  const tocPages = opts.tocPages || null; // pass 2 only
 
   const pages = [];
   pages.push(h(CoverPage, { key: 'cover', styles, cover: plan.cover }));
 
+  // Contents page renders on the real (pass-2) render — it needs page numbers.
+  if (tocPages) {
+    pages.push(h(TocPage, { key: 'toc', styles, headerLeft, documentId, toc: plan.toc, tocPages }));
+  }
+
   if (plan.scope) {
     pages.push(
       h(StandardPage, { key: 'scope', styles, headerLeft, documentId }, [
+        h(PageCapture, { key: 'cap', tocKey: 'scope', onCapture }),
         h(Text, { key: 'e', style: styles.sectionEyebrow }, plan.scope.eyebrow.toUpperCase()),
         h(Text, { key: 't', style: styles.sectionTitle }, plan.scope.title),
         h(Text, { key: 'i', style: styles.para }, plan.scope.intro),
@@ -424,13 +538,14 @@ export function AttorneyBlueprintDocument({ model, opts = {} }) {
 
   pages.push(
     h(StandardPage, { key: 'content', styles, headerLeft, documentId }, [
-      ...plan.content.sections.map((s) => h(ContentBlock, { key: s.number, styles, block: s })),
-      ...plan.content.carriers.map((cb) => h(ContentBlock, { key: cb.title, styles, block: cb })),
+      ...plan.content.sections.map((s) => h(SectionBlock, { key: s.number, styles, block: s, onCapture })),
+      ...plan.content.carriers.map((cb) => h(CarrierBlock, { key: cb.title, styles, block: cb, onCapture })),
     ]),
   );
 
   pages.push(
     h(StandardPage, { key: 'methodology', styles, headerLeft, documentId }, [
+      h(PageCapture, { key: 'cap', tocKey: 'Appendix A', onCapture }),
       h(Text, { key: 'e', style: styles.sectionEyebrow }, plan.methodology.eyebrow.toUpperCase()),
       h(Text, { key: 't', style: styles.sectionTitle }, plan.methodology.title),
       h(Text, { key: 'i', style: styles.para }, plan.methodology.intro),
@@ -471,9 +586,10 @@ export function AttorneyBlueprintDocument({ model, opts = {} }) {
     ]),
   );
 
-  if (plan.inputs.entries.length > 0 || plan.inputs.assumptions.length > 0) {
+  if (plan.hasInputs) {
     pages.push(
       h(StandardPage, { key: 'inputs', styles, headerLeft, documentId }, [
+        h(PageCapture, { key: 'cap', tocKey: 'Appendix B', onCapture }),
         h(Text, { key: 'e', style: styles.sectionEyebrow }, plan.inputs.eyebrow.toUpperCase()),
         h(Text, { key: 't', style: styles.sectionTitle }, plan.inputs.title),
         h(Text, { key: 'i', style: styles.para }, plan.inputs.intro),
