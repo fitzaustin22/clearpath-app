@@ -242,6 +242,8 @@ export function formatAppendixValue(value, format) {
         return formatIsoDate(value);
       case 'rate':
         return `${Number(value).toFixed(2)}%`;
+      case 'count':
+        return Number(value).toLocaleString('en-US', { maximumFractionDigits: 0 });
       default:
         break;
     }

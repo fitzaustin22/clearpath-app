@@ -209,10 +209,13 @@ export function buildRenderPlan(model, opts = {}) {
     }
     igMap.get(key).rows.push({ label: rowLabel, value: formatAppendixValue(e.value, e.format) });
   }
+  const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
   const inputItems = [];
   for (const k of igOrder) {
     const g = igMap.get(k);
-    if (g.header && g.rows.length >= 2) inputItems.push({ box: true, header: g.header, rows: g.rows });
+    // In a box the field label is a bare suffix → capitalize it so it reads as a
+    // proper row label, not a lowercase serialized key (R1).
+    if (g.header && g.rows.length >= 2) inputItems.push({ box: true, header: g.header, rows: g.rows.map((r) => ({ label: cap(r.label), value: r.value })) });
     else for (const r of g.rows) inputItems.push({ box: false, label: g.header ? `${g.header} — ${r.label}` : r.label, value: r.value });
   }
   const inputs = {

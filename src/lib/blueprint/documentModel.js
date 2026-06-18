@@ -630,8 +630,17 @@ function extractInputDisclosures(toolInputs, appendix) {
     // Method constants so the net-tax figures reproduce from the document
     // (taxable = income − standard deduction; progressive tax over the
     // Rev. Proc. 2025-32 brackets; less the Child Tax Credit). (A5-M Cat 3.)
-    appendix.push({ sectionId: 's4', label: 'Filing-status method — standard deduction (single / HoH / MFJ / MFS)', value: '$16,100.00 / $24,150.00 / $32,200.00 / $16,100.00', source: 'engine:STANDARD_DEDUCTIONS' });
-    appendix.push({ sectionId: 's4', label: 'Filing-status method — Child Tax Credit per qualifying child', value: '$2,200.00', source: 'engine:CHILD_TAX_CREDIT' });
+    // One labeled row per filing status (not an inline slash-list) so the four
+    // standard-deduction amounts are disambiguated by column/label (R6).
+    for (const [statusLabel, amount] of [
+      ['single', 16100],
+      ['head of household', 24150],
+      ['married filing jointly', 32200],
+      ['married filing separately', 16100],
+    ]) {
+      appendix.push({ sectionId: 's4', label: `Filing-status method — standard deduction, ${statusLabel}`, value: amount, format: 'currency_actual', source: 'engine:STANDARD_DEDUCTIONS' });
+    }
+    appendix.push({ sectionId: 's4', label: 'Filing-status method — Child Tax Credit per qualifying child', value: 2200, format: 'currency_actual', source: 'engine:CHILD_TAX_CREDIT' });
     appendix.push({ sectionId: 's4', label: 'Filing-status method — bracket year', value: '2026 (Rev. Proc. 2025-32)', source: 'engine:taxYear' });
   }
   (toolInputs.dcaAnalyses || []).forEach((dca, gi) => {
@@ -651,7 +660,7 @@ function extractInputDisclosures(toolInputs, appendix) {
     push('option strike price', dca.strikePrice, 'currency_actual');
     (a.tranches || []).forEach((t, idx) => {
       push(`tranche ${idx + 1} vesting date`, t.vestDate, 'date');
-      push(`tranche ${idx + 1} shares`, t.shares);
+      push(`tranche ${idx + 1} shares`, t.shares, 'count');
     });
   });
 }
