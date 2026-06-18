@@ -657,12 +657,16 @@ const METHODOLOGY_DESCRIPTIONS = Object.freeze({
 });
 
 // Deterministic short content hash → the NNNN suffix of the document ID. Hashes
-// stable block id=value pairs + jurisdiction; excludes wall-clock metadata
-// (calculationTimestamp lives in block.meta, never in block.value).
+// stable block id=value pairs + jurisdiction; excludes wall-clock metadata.
+// The QDRO carrier emits `generatedAt` as a block VALUE (a render-time ISO
+// timestamp), so it must be filtered here or the doc ID drifts every render
+// (the bug: same content, different NNNN). calculationTimestamp is excluded for
+// the same reason.
+const isWallClockBlock = (id) => /(?:generatedAt|calculationTimestamp)$/i.test(String(id));
 function shortContentHash(sections, carriers, jurisdiction) {
   const parts = [];
-  for (const s of sections) for (const b of s.blocks) parts.push(`${b.id}=${b.value}`);
-  for (const carrier of Object.values(carriers)) for (const b of carrier) parts.push(`${b.id}=${b.value}`);
+  for (const s of sections) for (const b of s.blocks) if (!isWallClockBlock(b.id)) parts.push(`${b.id}=${b.value}`);
+  for (const carrier of Object.values(carriers)) for (const b of carrier) if (!isWallClockBlock(b.id)) parts.push(`${b.id}=${b.value}`);
   parts.push(`j=${jurisdiction}`);
   const str = parts.join('|');
   let h = 0;
