@@ -95,10 +95,13 @@ function extractS1(data) {
   text(blocks, 's1.scoreScale', 'Self-assessment scale', '10 items scored 0–3 (maximum 30)', src('readinessAssessment.answers'));
   text(blocks, 's1.tier', 'Readiness tier', data.tier, src('readinessAssessment.answers'));
   text(blocks, 's1.tierCuts', 'Tier thresholds', 'score ≤ 10 exploring · ≤ 20 preparing · > 20 ready', src('readinessAssessment.answers'));
-  num(blocks, 's1.adjustedMonthlyIncome', 'Budget-gap adjusted monthly income (Module 1 estimate)', data.adjustedMonthlyIncome, 'currency_actual', src('budgetGap.inputs'));
-  num(blocks, 's1.totalMonthlyExpenses', 'Budget-gap monthly expenses (Module 1 estimate)', data.totalMonthlyExpenses, 'currency_actual', src('budgetGap.inputs'));
-  num(blocks, 's1.monthlyGap', 'Budget-gap monthly shortfall/surplus (Module 1 estimate)', data.monthlyGap, 'currency_actual', src('budgetGap.inputs'));
-  num(blocks, 's1.gapPercent', 'Budget-gap as percent of adjusted income', data.gapPercent, 'rate', src('budgetGap.inputs'));
+  // #7 / #12: the budget-gap figures are the client's PRELIMINARY self-estimate
+  // from the initial readiness exercise, superseded by the detailed income (§2)
+  // and expense (§7) analysis. Label them as such; drop the internal "Module 1".
+  num(blocks, 's1.adjustedMonthlyIncome', 'Adjusted monthly income (preliminary self-estimate)', data.adjustedMonthlyIncome, 'currency_actual', src('budgetGap.inputs'));
+  num(blocks, 's1.totalMonthlyExpenses', 'Monthly expenses (preliminary self-estimate)', data.totalMonthlyExpenses, 'currency_actual', src('budgetGap.inputs'));
+  num(blocks, 's1.monthlyGap', 'Monthly shortfall/surplus (preliminary self-estimate, superseded by the detailed expense analysis in Section 7)', data.monthlyGap, 'currency_actual', src('budgetGap.inputs'));
+  num(blocks, 's1.gapPercent', 'Budget gap as percent of adjusted income (preliminary self-estimate)', data.gapPercent, 'rate', src('budgetGap.inputs'));
   return blocks;
 }
 
@@ -136,7 +139,17 @@ function extractS2(data, ctx) {
     num(blocks, 's2.mandatoryDeductions', 'Total mandatory deductions (excludes pre-tax deferrals)', Math.round(mandatoryTotal * 100) / 100, 'currency_actual', src);
   }
   num(blocks, 's2.netMonthlyIncome', 'Net monthly take-home pay (gross − mandatory deductions)', data.netMonthlyIncome, 'currency_actual', src);
-  num(blocks, 's2.annualGrossIncome', 'Annual gross income', data.annualGrossIncome, 'currency_actual', src);
+  // #20: display the annual gross on the SAME paycheck basis the pay stub uses
+  // (gross per paycheck × pay periods per year) rather than monthly × 12, which
+  // reintroduces a sub-dollar rounding artifact ($94,899.96 vs $94,900). The
+  // monthly figure used in calculations is unchanged.
+  const PAY_PERIODS_PER_YEAR = { weekly: 52, biweekly: 26, semimonthly: 24, monthly: 12 };
+  const periods = PAY_PERIODS_PER_YEAR[data.payFrequency];
+  const annualGross =
+    Number.isFinite(Number(data.grossPerPaycheck)) && periods
+      ? Math.round(Number(data.grossPerPaycheck) * periods * 100) / 100
+      : data.annualGrossIncome;
+  num(blocks, 's2.annualGrossIncome', 'Annual gross income', annualGross, 'currency_actual', src);
   ctx.appendix.push({
     sectionId: 's2',
     label: 'Pay frequency',
@@ -177,6 +190,10 @@ const FILING_STATUS_LABELS = Object.freeze({
   mfs: 'Married filing separately',
 });
 
+// #18: the coverture-case authorities describe the marital SHARE, not the total
+// present value; they belong on the marital-portion figure, not the total PV.
+const PVA_COVERTURE_CASE_KEYS = Object.freeze(new Set(['bender_dc_1972', 'mosley_va_1994', 'deering_md_1981']));
+
 function extractS4(data, ctx) {
   const meta = normalizeFsoSection(data);
   const blocks = [];
@@ -185,7 +202,15 @@ function extractS4(data, ctx) {
   // it does not recommend a filing status (assemble-don't-advise, A5 posture).
   text(blocks, 's4.bestOption', 'Filing status with lowest projected tax', data.bestOption, src);
   num(blocks, 's4.maxSavings', 'Projected tax difference (highest vs lowest eligible)', data.maxSavings, 'currency_projection', src);
+  // #2: a client treated as unmarried at year-end (the Dec-31 determination,
+  // divorceTimeline === 'beforeDec31') CANNOT use the married-filing statuses;
+  // suppress them so the eligible figures are not read alongside married figures
+  // computed on combined marital income. maxSavings is already computed by the
+  // engine over the eligible statuses — left untouched.
+  const unmarriedAtYearEnd = data.divorceTimeline === 'beforeDec31';
+  const MARRIED_FILING_STATUSES = new Set(['mfj', 'mfs']);
   for (const [status, scenario] of Object.entries(data.scenarios || {})) {
+    if (unmarriedAtYearEnd && MARRIED_FILING_STATUSES.has(status)) continue;
     num(blocks, `s4.scenario.${status}.netTax`, `Net tax — ${FILING_STATUS_LABELS[status] ?? status}`, scenario?.netTax, 'currency_projection', src);
   }
   text(blocks, 's4.taxYear', 'Tax year (as persisted)', data.taxYear, src);
@@ -237,7 +262,7 @@ function extractS6(data, ctx) {
       ['Discount rate', 'discountRate', 'rate'],
     ]) {
       num(blocks, `s6.pit.${key}`, label, p[key], cls, src);
-      ctx.appendix.push({ sectionId: 's6', label: `PIT assumption — ${label}`, value: p[key] ?? null, format: cls, source: `clearpath-blueprint:s6.pit.${key}` });
+      ctx.appendix.push({ sectionId: 's6', label: `Point-in-time tax-discount assumptions — ${label}`, value: p[key] ?? null, format: cls, source: `clearpath-blueprint:s6.pit.${key}` });
     }
   }
   if (data?.pva) {
@@ -246,12 +271,16 @@ function extractS6(data, ctx) {
     const v = data.pva;
     num(blocks, 's6.pva.headlinePV', 'Defined-benefit pension — present value', v.headlinePV, 'currency_projection', src);
     // The present-value METHOD is § 417(e)(3) (segment rate + mortality); the
-    // path citations are the coverture/jurisdiction authorities for the marital
-    // SHARE. Cite irc_417e3 (verified) on the PV block so the PV formula appears
-    // in Appendix A and the value is reproducible (A5-M Cat 3). Cash-balance PV
-    // is the account balance (its own authorities), so skip it there.
+    // coverture/jurisdiction authorities (Bender / Mosley / Deering) describe the
+    // marital SHARE, not the total PV. Cite irc_417e3 (verified) on the total-PV
+    // block so the PV formula appears in Appendix A (A5-M Cat 3), and MOVE the
+    // coverture cases OFF the total PV — they remain on the marital-portion PV
+    // below (#18). block.citations is a spread copy, so meta is untouched.
+    // Cash-balance PV is the account balance (its own authorities, no coverture
+    // cases), so it skips this branch.
     if (v.headlinePV !== null && v.headlinePV !== undefined && v.path !== 'cash_balance' && v.path !== 'flag_only') {
       const pvBlock = blocks[blocks.length - 1];
+      pvBlock.citations = pvBlock.citations.filter((k) => !PVA_COVERTURE_CASE_KEYS.has(k));
       if (!pvBlock.citations.includes('irc_417e3')) pvBlock.citations.push('irc_417e3');
     }
     num(blocks, 's6.pva.maritalPV', 'Defined-benefit pension — marital portion present value', v.maritalPV, 'currency_projection', src);
@@ -266,7 +295,7 @@ function extractS6(data, ctx) {
       if (!frac.citations.includes('coverture_time_rule')) frac.citations.push('coverture_time_rule');
     }
     text(blocks, 's6.pva.path', 'Defined-benefit pension — valuation method', v.path, src);
-    ctx.appendix.push({ sectionId: 's6', label: 'PVA assumption — expected retirement age', value: v.expectedRetirementAge ?? null, source: 'clearpath-blueprint:s6.pva.expectedRetirementAge' });
+    ctx.appendix.push({ sectionId: 's6', label: 'Pension present-value assumptions — expected retirement age', value: v.expectedRetirementAge ?? null, source: 'clearpath-blueprint:s6.pva.expectedRetirementAge' });
   }
   if (data?.qdro && data.qdro.assets && Object.keys(data.qdro.assets).length > 0) {
     for (const [assetId, asset] of Object.entries(data.qdro.assets)) {
@@ -281,17 +310,42 @@ function extractS6(data, ctx) {
   return blocks;
 }
 
-function extractS7(data) {
+function extractS7(data, ctx) {
   const meta = normalizeUnmappedSection('budgetModeler', 'clearpath-blueprint:s7');
   const blocks = [];
   const src = { inputs: ['clearpath-m3-store:budgetModeler.current', 'clearpath-m3-store:budgetModeler.projected'], meta };
-  // Module-3 detailed budget model — a different instrument and scope than the
-  // §1 Module-1 budget-gap estimate (labels distinguish them so the two
-  // expense totals are not read as one inconsistent figure; A5-M Cat 3).
-  num(blocks, 's7.currentTotal', 'Modeled current monthly expenses (Module 3)', data.currentTotal, 'currency_actual', src);
-  num(blocks, 's7.projectedTotal', 'Modeled projected monthly expenses (Module 3)', data.projectedTotal, 'currency_projection', src);
-  num(blocks, 's7.monthlyIncome', 'Net monthly income (from Module 3 pay stub)', data.monthlyIncome, 'currency_actual', src);
-  num(blocks, 's7.monthlyGap', 'Projected monthly surplus/shortfall (income − projected expenses)', data.monthlyGap, 'currency_projection', src);
+  // The detailed expense analysis — a different instrument and scope than the §1
+  // preliminary self-estimate (labels distinguish them so the two expense totals
+  // are not read as one inconsistent figure; #12 drops "Module 3"). (A5-M Cat 3.)
+  num(blocks, 's7.currentTotal', 'Current monthly expenses (detailed expense analysis)', data.currentTotal, 'currency_actual', src);
+  num(blocks, 's7.projectedTotal', 'Projected monthly expenses (detailed expense analysis)', data.projectedTotal, 'currency_projection', src);
+  num(blocks, 's7.monthlyIncome', 'Net monthly income (from pay stub)', data.monthlyIncome, 'currency_actual', src);
+  num(blocks, 's7.monthlyGap', 'Projected monthly surplus/shortfall (income − projected expenses; support excluded)', data.monthlyGap, 'currency_projection', src);
+  // #7: a support-aware net position computed FROM EXISTING VALUES — net monthly
+  // income plus the total monthly support from §8 (added only when the client is
+  // the support recipient / payee), less projected monthly expenses. No new
+  // computation; reconciles the income-only gap above with §8 support and the §1
+  // preliminary self-estimate. Emitted only when §8 carries support AND the
+  // client is positively the recipient (the line ADDS support).
+  const s8data = ctx?.sections?.s8?.data;
+  const clientGross = Number(ctx?.sections?.s2?.data?.grossMonthlyIncome);
+  const totalSupport = Number(s8data?.totalMonthlySupport);
+  if (Number.isFinite(Number(data.monthlyIncome)) && Number.isFinite(Number(data.projectedTotal)) && Number.isFinite(totalSupport)) {
+    const payee = Number(s8data?.metadata?.payeeMonthly);
+    const payor = Number(s8data?.metadata?.payorMonthly);
+    const clientIsPayee =
+      Number.isFinite(clientGross) && Number.isFinite(payee) && Number.isFinite(payor) &&
+      Math.abs(clientGross - payee) <= Math.abs(clientGross - payor);
+    if (clientIsPayee) {
+      // Foot against the figures AS DISPLAYED: §8 total support renders at the
+      // whole dollar (currency_projection), so the net position must use the
+      // whole-dollar support or a reviewer re-footing from the page lands a dollar
+      // off (raw 7819.80 vs displayed 7820). (A5-M Cat 3 footing.)
+      const displayedSupport = Math.round(totalSupport);
+      const netPosition = Math.round((Number(data.monthlyIncome) + displayedSupport - Number(data.projectedTotal)) * 100) / 100;
+      num(blocks, 's7.supportAwareNetPosition', 'Support-aware net monthly position (net income + support from Section 8 − projected expenses)', netPosition, 'currency_projection', src);
+    }
+  }
   for (const cat of data.categories || []) {
     num(blocks, `s7.category.${cat.name}.current`, `${cat.name} — current`, cat.current, 'currency_actual', src);
     num(blocks, `s7.category.${cat.name}.projected`, `${cat.name} — projected`, cat.projected, 'currency_projection', src);
@@ -377,7 +431,7 @@ function extractS9(data, ctx) {
       const disclosed = key === 'verdictTier' ? (HDA_VERDICT_LABELS[value] ?? value) : value;
       ctx.appendix.push({
         sectionId: 's9',
-        label: `HDA assumption — ${HDA_APPENDIX_LABELS[key] ?? key}`,
+        label: `Home-decision assumptions — ${HDA_APPENDIX_LABELS[key] ?? key}`,
         value: disclosed,
         format: HDA_APPENDIX_FORMAT[key],
         source: `clearpath-blueprint:s9.metadata.${key}`,
@@ -447,13 +501,19 @@ function extractS11(data) {
   const meta = normalizeUnmappedSection('settlementOfferOrganizer', 'clearpath-blueprint:s11');
   const blocks = [];
   const src = { inputs: ['clearpath-m6:offerOrganizer.offer'], meta };
-  num(blocks, 's11.mapCount', 'Priorities mapped against offer', (data?.map || []).length, 'count', src);
-  num(blocks, 's11.gapCount', 'Offer silences (gaps)', (data?.gaps || []).length, 'count', src);
+  const map = data?.map || [];
+  num(blocks, 's11.mapCount', 'Priorities mapped against offer', map.length, 'count', src);
+  // #14: the headline count is the number of priorities the offer does NOT
+  // address — the same set rendered in the detail rows below — so the count and
+  // the detail agree. (Previously counted structural offer-section gaps, a
+  // different metric that disagreed with the per-priority "silent" detail.)
+  const notAddressedCount = map.filter((row) => row.status === 'silent').length;
+  num(blocks, 's11.gapCount', 'Priorities not addressed in the offer', notAddressedCount, 'count', src);
   // The priority is the (distinct) label; the offer's posture toward it is the
-  // humanized value — no repeated "Offer vs priority — silent" label, no raw
-  // status enum (R1/R5).
-  const OFFER_STATUS_LABELS = { silent: 'Offer is silent', addressed: 'Addressed by offer', conflict: 'Conflicts with offer', partial: 'Partially addressed' };
-  (data?.map || []).forEach((row, i) =>
+  // humanized value — no repeated label, no raw status enum (R1/R5). #4: reword
+  // the bare "silent" status to plain "Not addressed in the offer".
+  const OFFER_STATUS_LABELS = { silent: 'Not addressed in the offer', addressed: 'Addressed by offer', conflict: 'Conflicts with offer', partial: 'Partially addressed' };
+  map.forEach((row, i) =>
     text(blocks, `s11.map.${i}`, row.priority, OFFER_STATUS_LABELS[row.status] ?? row.status, src),
   );
   return blocks;
@@ -467,6 +527,11 @@ function extractS12(data) {
   num(blocks, 's12.professionalCount', 'Professionals', (data?.professionals || []).length, 'count', src);
   num(blocks, 's12.keyDateCount', 'Key dates', (data?.keyDates || []).length, 'count', src);
   (data?.nextSteps || []).forEach((s, i) => text(blocks, `s12.nextStep.${i}`, 'Next step', s.step, src));
+  // #15: render the professional detail (role + name) — previously only the
+  // count was emitted, so "Professionals: 1" appeared with no professional shown.
+  (data?.professionals || []).forEach((p, i) =>
+    text(blocks, `s12.professional.${i}`, 'Professional', [p.role, p.name].filter(Boolean).join(' — '), src),
+  );
   // Event is the label; the date is a date-typed VALUE so it renders long-form
   // (August 15, 2026), never as a raw ISO key (R1).
   (data?.keyDates || []).forEach((d, i) => dateBlock(blocks, `s12.keyDate.${i}`, d.event, d.date, src));
@@ -543,14 +608,17 @@ function extractCostBasisEntries(entries) {
     // net-equity basis = FMV − outstanding mortgage (A5-M Cat 3 — the implied-
     // but-undisclosed mortgage bridging FMV to the basis).
     const mortgage = (Number(e.fmv) || 0) - (Number(e.baseline) || 0);
-    if (mortgage > 0.005) {
+    const hasMortgage = mortgage > 0.005;
+    if (hasMortgage) {
       num(blocks, `carrier.cbe.${e.assetId}.mortgage`, 'Less: outstanding mortgage', Math.round(mortgage * 100) / 100, 'currency_actual', src);
     }
     // Net-equity valuation basis (real estate = FMV − outstanding mortgage; all
     // other classes = FMV). Disclosed so tax-adjusted value foots on the
     // document's own terms: tax-adjusted = net-equity basis − estimated tax
-    // (D-V2-7 / A5-M Cat 3 — the $0-tax-but-below-FMV footing flag).
-    num(blocks, `carrier.cbe.${e.assetId}.baseline`, 'Net-equity valuation basis (FMV − mortgage)', e.baseline, 'currency_projection', src);
+    // (D-V2-7 / A5-M Cat 3 — the $0-tax-but-below-FMV footing flag). #5: the
+    // basis label is class-aware — the mortgage term applies only where a
+    // mortgage was actually netted (working capital / other classes have none).
+    num(blocks, `carrier.cbe.${e.assetId}.baseline`, hasMortgage ? 'Net-equity valuation basis (FMV − mortgage)' : 'Net-equity valuation basis (FMV)', e.baseline, 'currency_projection', src);
     num(blocks, `carrier.cbe.${e.assetId}.builtInGain`, 'Built-in gain (FMV − cost basis)', e.builtInGain, 'currency_projection', src);
     num(blocks, `carrier.cbe.${e.assetId}.estimatedTax`, 'Estimated hidden tax', e.estimatedTax, 'currency_projection', src);
     num(blocks, `carrier.cbe.${e.assetId}.taxAdjustedValue`, 'Tax-adjusted value (net-equity basis − estimated tax)', e.taxAdjustedValue, 'currency_projection', src);
@@ -786,7 +854,10 @@ export function buildDocumentModel(state, { jurisdiction, preparedDate, toolInpu
   }
   const sections = state?.sections || {};
   const appendix = [];
-  const ctx = { appendix };
+  // ctx.sections lets a section extractor read cross-section figures for a
+  // FROM-EXISTING-VALUES disclosure (§7's support-aware net position reads §8
+  // total support and §2 gross income). No recomputation; read-only.
+  const ctx = { appendix, sections };
 
   const modelSections = SECTION_ORDER.map((key) => {
     const included = isSectionIncluded(key, sections);
