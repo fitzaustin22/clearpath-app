@@ -142,6 +142,12 @@ function buildEntities(rows, captureRe, opts, consumed) {
     }
     groups.get(key).push(r);
   }
+  // Optionally rank the entity boxes largest-first by each box's biggest figure
+  // (e.g. §5 party boxes by face value: spouse → client → undecided) (R5).
+  if (opts.sort === 'desc') {
+    const mag = (key) => Math.max(0, ...groups.get(key).map((r) => Math.abs(num(r))));
+    order.sort((a, b) => mag(b) - mag(a));
+  }
   return order.map((key) => buildEntity(key, groups.get(key), opts, consumed));
 }
 
@@ -246,7 +252,7 @@ const SECTION_CONFIG = {
   },
   s5: {
     hero: 's5.totalMaritalEstate',
-    entities: { capture: /^s5\.(?:faceValue|taxAdjusted|hiddenTax)\.([^.]+)$/, headerFromKey: (k) => titleCase(k) },
+    entities: { capture: /^s5\.(?:faceValue|taxAdjusted|hiddenTax)\.([^.]+)$/, headerFromKey: (k) => titleCase(k), sort: 'desc' },
   },
   s6: {
     // Hero is the DB pension present value (or the DC tax-adjusted value when
