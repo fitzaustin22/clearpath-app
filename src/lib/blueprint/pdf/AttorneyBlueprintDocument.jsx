@@ -187,17 +187,43 @@ export function buildRenderPlan(model, opts = {}) {
     provenance: model.appendices?.provenance?.methodologyAttribution?.text ?? '',
   };
 
+  // Group appendix entries by their label prefix (before " — ") so a repeated
+  // prefix (Pension input (…) ×11, Deferred comp grant 1 input (…) ×9) collapses
+  // into one named box with bare field rows, instead of repeating the prefix on
+  // every line (R5). A prefix with a single entry stays an inline row.
+  const rawEntries = (model.appendices?.inputsAndAssumptions?.entries ?? []).filter(
+    (e) => e && e.value != null && typeof e.value !== 'object',
+  );
+  const igMap = new Map();
+  const igOrder = [];
+  let standaloneCounter = 0;
+  for (const e of rawEntries) {
+    const full = humanizeLabel(e.label);
+    const idx = full.indexOf(' — ');
+    const header = idx > 0 ? full.slice(0, idx) : null;
+    const rowLabel = idx > 0 ? full.slice(idx + 3) : full;
+    const key = header ?? `__standalone__${standaloneCounter++}`;
+    if (!igMap.has(key)) {
+      igMap.set(key, { header, rows: [] });
+      igOrder.push(key);
+    }
+    igMap.get(key).rows.push({ label: rowLabel, value: formatAppendixValue(e.value, e.format) });
+  }
+  const inputItems = [];
+  for (const k of igOrder) {
+    const g = igMap.get(k);
+    if (g.header && g.rows.length >= 2) inputItems.push({ box: true, header: g.header, rows: g.rows });
+    else for (const r of g.rows) inputItems.push({ box: false, label: g.header ? `${g.header} — ${r.label}` : r.label, value: r.value });
+  }
   const inputs = {
     eyebrow: 'Appendix B',
     title: 'Inputs and Assumptions',
     intro:
       'The inputs and assumptions below are disclosed so a competent reviewer can reproduce each figure from this document alone.',
-    entries: (model.appendices?.inputsAndAssumptions?.entries ?? [])
-      .filter((e) => e && e.value != null && typeof e.value !== 'object')
-      .map((e) => ({ label: humanizeLabel(e.label), value: formatAppendixValue(e.value, e.format) })),
+    items: inputItems,
     assumptions: (model.appendices?.inputsAndAssumptions?.phase2Placeholders ?? []).map((p) => p.label),
   };
-  const hasInputs = inputs.entries.length > 0 || inputs.assumptions.length > 0;
+  const hasInputs = inputs.items.length > 0 || inputs.assumptions.length > 0;
 
   // Table of contents — sections, numbered supplements, and appendices, in
   // document order. `key` matches the per-heading page-capture key so the
@@ -325,9 +351,17 @@ export function collectRenderableStrings(plan) {
   push(plan.inputs.eyebrow);
   push(plan.inputs.title);
   push(plan.inputs.intro);
-  for (const e of plan.inputs.entries) {
-    push(e.label);
-    push(e.value);
+  for (const it of plan.inputs.items) {
+    if (it.box) {
+      push(it.header);
+      for (const r of it.rows) {
+        push(r.label);
+        push(r.value);
+      }
+    } else {
+      push(it.label);
+      push(it.value);
+    }
   }
   for (const a of plan.inputs.assumptions) push(a);
   push(plan.footer.disclaimer);
@@ -593,13 +627,27 @@ export function AttorneyBlueprintDocument({ model, opts = {} }) {
         h(Text, { key: 'e', style: styles.sectionEyebrow }, plan.inputs.eyebrow.toUpperCase()),
         h(Text, { key: 't', style: styles.sectionTitle }, plan.inputs.title),
         h(Text, { key: 'i', style: styles.para }, plan.inputs.intro),
-        ...plan.inputs.entries.map((e, i) =>
-          h(
-            View,
-            { key: `in${i}`, style: i === 0 ? [styles.row, styles.methodRowTop] : styles.row },
-            h(Text, { style: styles.rowLabel }, e.label),
-            h(Text, { style: styles.rowValue }, e.value),
-          ),
+        ...plan.inputs.items.map((it, i) =>
+          it.box
+            ? h(
+                View,
+                { key: `in${i}`, style: { marginTop: 9 } },
+                h(Text, { style: styles.groupHeader }, it.header.toUpperCase()),
+                ...it.rows.map((r, j) =>
+                  h(
+                    View,
+                    { key: `r${j}`, style: styles.row },
+                    h(Text, { style: styles.rowLabel }, r.label),
+                    h(Text, { style: styles.rowValue }, r.value),
+                  ),
+                ),
+              )
+            : h(
+                View,
+                { key: `in${i}`, style: styles.row },
+                h(Text, { style: styles.rowLabel }, it.label),
+                h(Text, { style: styles.rowValue }, it.value),
+              ),
         ),
         plan.inputs.assumptions.length > 0
           ? h(

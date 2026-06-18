@@ -79,7 +79,10 @@ function collectValueStrings(plan) {
   };
   for (const s of plan.content.sections) lay(s.layout);
   for (const c of plan.content.carriers) lay(c.layout);
-  for (const e of plan.inputs.entries) v(e.value);
+  for (const it of plan.inputs.items) {
+    if (it.box) for (const r of it.rows) v(r.value);
+    else v(it.value);
+  }
   return vals;
 }
 

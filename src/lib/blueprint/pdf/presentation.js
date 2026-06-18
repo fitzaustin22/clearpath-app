@@ -286,8 +286,8 @@ const SECTION_CONFIG = {
     hero: 's8.totalMonthlySupport',
     cards: ['s8.spousalSupport.monthly', 's8.childSupport.monthly'],
     groups: [
-      { header: 'Child-support worksheet', match: /^s8\.childSupport\./ },
-      { header: 'Income inputs', match: /^s8\.(payorMonthlyIncome|payeeMonthlyIncome|combinedMonthlyIncome)$/, tone: 'input' },
+      { header: 'Child-support worksheet', match: /^s8\.childSupport\./, sort: 'desc' },
+      { header: 'Income inputs', match: /^s8\.(payorMonthlyIncome|payeeMonthlyIncome|combinedMonthlyIncome)$/, tone: 'input', sort: 'desc' },
     ],
   },
   s9: {
@@ -319,7 +319,8 @@ const SECTION_CONFIG = {
     heroLabel: 'Next steps',
     cards: ['s12.professionalCount', 's12.keyDateCount'],
     groups: [
-      { header: 'Next steps', match: /^s12\.nextStep\./ },
+      // Bare action items under the header — no repeated "Next step:" label (R5).
+      { header: 'Next steps', match: /^s12\.nextStep\./, display: 'fullWidth' },
       { header: 'Key dates', match: /^s12\.keyDate\./ },
     ],
   },

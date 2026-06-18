@@ -630,8 +630,8 @@ function extractInputDisclosures(toolInputs, appendix) {
     // Method constants so the net-tax figures reproduce from the document
     // (taxable = income − standard deduction; progressive tax over the
     // Rev. Proc. 2025-32 brackets; less the Child Tax Credit). (A5-M Cat 3.)
-    appendix.push({ sectionId: 's4', label: 'Filing-status method — standard deduction (single / HoH / MFJ / MFS)', value: '$16,100 / $24,150 / $32,200 / $16,100', source: 'engine:STANDARD_DEDUCTIONS' });
-    appendix.push({ sectionId: 's4', label: 'Filing-status method — Child Tax Credit per qualifying child', value: '$2,200', source: 'engine:CHILD_TAX_CREDIT' });
+    appendix.push({ sectionId: 's4', label: 'Filing-status method — standard deduction (single / HoH / MFJ / MFS)', value: '$16,100.00 / $24,150.00 / $32,200.00 / $16,100.00', source: 'engine:STANDARD_DEDUCTIONS' });
+    appendix.push({ sectionId: 's4', label: 'Filing-status method — Child Tax Credit per qualifying child', value: '$2,200.00', source: 'engine:CHILD_TAX_CREDIT' });
     appendix.push({ sectionId: 's4', label: 'Filing-status method — bracket year', value: '2026 (Rev. Proc. 2025-32)', source: 'engine:taxYear' });
   }
   (toolInputs.dcaAnalyses || []).forEach((dca, gi) => {

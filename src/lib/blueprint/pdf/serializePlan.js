@@ -43,7 +43,10 @@ function layoutLines(L, layout) {
   }
   for (const g of layout.groups || []) {
     L.push(`  ${g.header ? g.header.toUpperCase() : 'GROUP'}${g.tone ? ` (${g.tone})` : ''}:`);
-    rowLines(L, g.rows, '    ');
+    // A full-width group (next steps, trade-offs) renders bare values — no
+    // repeated row label — exactly as the kit draws it.
+    if (g.display === 'fullWidth') for (const r of g.rows || []) L.push(`    ${r.value}`);
+    else rowLines(L, g.rows, '    ');
     methodTableLines(L, g.methodTable, '    ');
   }
   for (const e of layout.entities || []) {
@@ -118,7 +121,14 @@ export function serializeRenderPlan(plan) {
 
   L.push('================ APPENDIX B — INPUTS & ASSUMPTIONS ================');
   L.push(plan.inputs.intro);
-  for (const e of plan.inputs.entries) L.push(`  ${e.label}: ${e.value}`);
+  for (const it of plan.inputs.items) {
+    if (it.box) {
+      L.push(`  ${it.header}:`);
+      for (const r of it.rows) L.push(`    ${r.label}: ${r.value}`);
+    } else {
+      L.push(`  ${it.label}: ${it.value}`);
+    }
+  }
   if (plan.inputs.assumptions.length) {
     L.push('  DISCLOSED ASSUMPTIONS:');
     for (const a of plan.inputs.assumptions) L.push(`    · ${a}`);
