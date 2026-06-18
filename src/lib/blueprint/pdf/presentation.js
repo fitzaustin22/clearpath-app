@@ -317,7 +317,7 @@ const SECTION_CONFIG = {
   },
   s11: {
     hero: 's11.gapCount',
-    heroLabel: 'Offer silences (gaps)',
+    heroLabel: 'Priorities not addressed in the offer',
     cards: ['s11.mapCount'],
     groups: [{ header: 'Priorities mapped against the offer', match: /^s11\.map\./ }],
   },
@@ -328,6 +328,9 @@ const SECTION_CONFIG = {
     groups: [
       // Bare action items under the header — no repeated "Next step:" label (R5).
       { header: 'Next steps', match: /^s12\.nextStep\./, display: 'fullWidth' },
+      // #15: render the professional detail (role — name) as its own group, so
+      // "Professionals: 1" is not a count with nothing listed.
+      { header: 'Professionals', match: /^s12\.professional\./ },
       { header: 'Key dates', match: /^s12\.keyDate\./ },
     ],
   },

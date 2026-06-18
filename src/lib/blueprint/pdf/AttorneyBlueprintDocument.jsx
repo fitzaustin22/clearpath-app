@@ -68,7 +68,7 @@ function enrichRows(blocks) {
   return { rows, sources };
 }
 
-function sectionNotes(section) {
+function sectionNotes(section, { hasRetirementSection = false } = {}) {
   const notes = [];
   const pvaPath = section.blocks.find((b) => b.id === 's6.pva.path');
   if (pvaPath && pvaPath.value === 'cash_balance') {
@@ -76,14 +76,14 @@ function sectionNotes(section) {
       'Account-balance plan: present value equals the account balance and is not rate-sensitive (no ±100 bp discount-rate sensitivity).',
     );
   }
-  if (section.id === 's5') {
+  // #7: flag the §1 budget figures as the client's preliminary self-estimate,
+  // superseded by the detailed analysis in §2/§7.
+  if (
+    section.id === 's1' &&
+    section.blocks.some((b) => b.id === 's1.monthlyGap' || b.id === 's1.adjustedMonthlyIncome')
+  ) {
     notes.push(
-      'The client, spouse, and undecided face-value figures are the sums of individual asset values as the parties designated each item (kept by the client, by the spouse, or undecided) in the Module 2 Marital Estate Inventory. ClearPath does not classify property as marital or separate, apply a coverture or time rule, or determine an equitable-distribution share — the split reflects the parties’ own designations of who keeps each asset, not a legal or computed determination.',
-    );
-  }
-  if (section.id === 's5' && section.blocks.some((b) => b.id.includes('.taxAdjusted.'))) {
-    notes.push(
-      'Tax-adjusted value reflects net equity (after any mortgage) less estimated tax. Each party’s tax-adjusted figure is one half of the combined tax-adjusted value of the jointly-titled assets itemized in the Tax-Adjusted Asset Values block (a 50/50 split of jointly-titled property). Face value and tax-adjusted value are on different bases and are not expected to reconcile line-to-line.',
+      'The budget figures in this section are the client’s preliminary self-estimate from the initial readiness exercise. The detailed income analysis in Section 2 and expense analysis in Section 7 supersede them.',
     );
   }
   if (section.id === 's2') {
@@ -91,9 +91,56 @@ function sectionNotes(section) {
       'Deductions are as reported on the client’s pay stub (client-provided inputs); ClearPath does not compute withholding. Net take-home pay equals gross income less mandatory deductions; pre-tax retirement deferrals reduce taxable pay but are retained as the client’s savings and are included in take-home.',
     );
   }
-  if (section.id === 's4') {
+  // #9: the balance-sheet totals exclude the actuarial pension value, valued in
+  // §6. Cross-reference it ONLY when §6 is actually in the document (otherwise
+  // the cross-reference dangles to an omitted section, e.g. the sparse F4b).
+  if (section.id === 's3' && hasRetirementSection) {
     notes.push(
-      'Filing-status eligibility is determined as of December 31 per the disclosed divorce timeline. Married-filing statuses are shown for comparison only and may be unavailable to a client treated as unmarried at year-end; the projected difference is computed over the eligible statuses (single and head of household).',
+      'Net worth and the marital-estate total reflect the asset and liability values entered in the inventory. The defined-benefit pension is carried here at its inventory value (which may be nominal); its actuarial present value and marital portion are determined separately in Section 6 (Retirement Plan Division) and are not included in these totals.',
+    );
+  }
+  if (section.id === 's4') {
+    // #2: when the married-filing statuses were suppressed (unmarried at year-
+    // end), the note states they are unavailable rather than "shown for
+    // comparison"; otherwise the comparison includes them and the note differs.
+    const marriedShown = section.blocks.some(
+      (b) => b.id === 's4.scenario.mfj.netTax' || b.id === 's4.scenario.mfs.netTax',
+    );
+    notes.push(
+      marriedShown
+        ? 'Filing-status eligibility is determined as of December 31 per the disclosed divorce timeline. The projected difference is computed over the eligible statuses.'
+        : 'Filing-status eligibility is determined as of December 31 per the disclosed divorce timeline. A client treated as unmarried at year-end cannot use the married-filing statuses (jointly or separately); those statuses are unavailable and are not shown. Only the eligible statuses (single and head of household) appear, and the projected difference is computed over those eligible statuses.',
+    );
+  }
+  if (section.id === 's5') {
+    // #12: drop "Module 2" from the provenance note (keep "Marital Estate
+    // Inventory" + the does-not-classify/equitable-distribution/coverture phrasing
+    // the A4 §5-disclosure guard checks for).
+    notes.push(
+      'The client, spouse, and undecided face-value figures are the sums of individual asset values as the parties designated each item (kept by the client, by the spouse, or undecided) in the Marital Estate Inventory. ClearPath does not classify property as marital or separate, apply a coverture or time rule, or determine an equitable-distribution share — the split reflects the parties’ own designations of who keeps each asset, not a legal or computed determination.',
+    );
+  }
+  // #8: state the basis difference and cross-reference §6 for retirement/pension
+  // and the separate debt allocation — ONLY when a tax-adjusted column renders.
+  // Describe the tax-adjusted coverage GENERICALLY (the assets itemized in the
+  // block) rather than naming asset classes — the block's contents vary by
+  // matter (real property only when working capital is cash with no basis), so
+  // naming classes can contradict the block and the halving (A5-M F3 Cat 3). The
+  // face-value figures include ALL assets and sum to the marital estate; only the
+  // tax-adjusted figures are limited to the jointly-titled cost-basis assets
+  // (conflating the two was the A5-M F1 Cat 3 inconsistency).
+  if (section.id === 's5' && section.blocks.some((b) => b.id.includes('.taxAdjusted.'))) {
+    notes.push(
+      'Face value reflects all assets at the values the parties designated and sums to the total marital estate. The tax-adjusted figures, by contrast, cover only the jointly-titled assets itemized in the Tax-Adjusted Asset Values block — each party’s tax-adjusted figure is one half of that combined tax-adjusted value (a 50/50 split, net of any mortgage, less estimated tax). Retirement accounts and the defined-benefit pension — including the pension’s marital-portion present value — are valued separately in Section 6 (Retirement Plan Division) and are not reflected in the tax-adjusted figures; marital debts are allocated separately and are not netted here. The two bases are on different footings and are not expected to reconcile line-to-line.',
+    );
+  }
+  // #7: reconcile the income-only §7 gap with the support-aware net position and
+  // point to §1 (preliminary self-estimate) and §8 (support) — ONLY when the
+  // support-aware line is actually present (the client is the recipient and §8
+  // exists), so the note never dangles to an omitted §8.
+  if (section.id === 's7' && section.blocks.some((b) => b.id === 's7.supportAwareNetPosition')) {
+    notes.push(
+      'The projected surplus/shortfall above is income-only and excludes support. The support-aware net monthly position adds the estimated monthly support from Section 8 (received by the client) and supersedes the preliminary self-estimated budget gap reported in Section 1.',
     );
   }
   if (section.id === 's8') {
@@ -101,26 +148,53 @@ function sectionNotes(section) {
       'Spousal support is the AAML benchmark (Appendix A). Child support is the basic obligation — read from the published guideline schedule at combined income, or, above the schedule cap, the statutory top-of-schedule amount — apportioned to the obligor by the obligor’s share of alimony-first-adjusted combined income (child support = basic obligation × obligor income share). These are disclosed-methodology estimates, not a court order.',
     );
   }
+  // #4: legend for the reworded offer-position status.
+  if (section.id === 's11') {
+    notes.push(
+      '“Not addressed in the offer” means the settlement offer does not speak to that priority one way or the other.',
+    );
+  }
   return notes;
 }
 
-function sectionPlan(section) {
+function sectionPlan(section, { hasRetirementSection = false } = {}) {
   const { rows, sources } = enrichRows(section.blocks);
   return {
     id: section.id,
     number: sectionNumberLabel(section.id),
     title: SECTION_TITLES[section.id] ?? section.id,
     layout: layoutSection(section.id, rows),
-    notes: sectionNotes(section),
+    notes: sectionNotes(section, { hasRetirementSection }),
     sources,
   };
+}
+
+function carrierNotes(name) {
+  const notes = [];
+  // #19: Hug and Nelson are alternative time-rule methods shown side by side;
+  // disclose that the choice is jurisdiction/court-dependent and ClearPath does
+  // not select one as primary.
+  if (name === 'deferredCompStubs') {
+    notes.push(
+      'Hug and Nelson are alternative time-rule methods for allocating the marital portion of an equity award; both are shown because the applicable method is jurisdiction- and court-dependent. ClearPath presents both rather than selecting one as primary.',
+    );
+  }
+  // #21: the tax-adjusted block covers only cost-basis assets, so a §3 category
+  // total (face value) can exceed the amount shown here (cash has no cost basis
+  // or built-in gain and is not tax-adjusted).
+  if (name === 'costBasisEntries') {
+    notes.push(
+      'This block tax-adjusts only assets that carry a cost basis (for example, appreciated brokerage holdings and real property). Cash accounts have no cost basis or built-in gain and are not tax-adjusted here; they appear at face value in Section 3 (Asset Inventory), which is why a category total in Section 3 can exceed the amount shown in this block.',
+    );
+  }
+  return notes;
 }
 
 function carrierPlan(name, blocks) {
   if (!blocks || blocks.length === 0) return null;
   const { rows, sources } = enrichRows(blocks);
   const layout = layoutCarrier(name, rows);
-  return { name, number: layout.number, title: layout.title, layout, sources };
+  return { name, number: layout.number, title: layout.title, layout, notes: carrierNotes(name), sources };
 }
 
 export function buildRenderPlan(model, opts = {}) {
@@ -160,9 +234,10 @@ export function buildRenderPlan(model, opts = {}) {
         }
       : null;
 
+  const hasRetirementSection = includedSections.some((s) => s.id === 's6');
   const content = {
     headerLeft: `${headerName(clientName)} — Financial Blueprint`,
-    sections: includedSections.map(sectionPlan),
+    sections: includedSections.map((s) => sectionPlan(s, { hasRetirementSection })),
     carriers: ['deferredCompStubs', 'costBasisEntries', 'qdroBlueprint']
       .map((name) => carrierPlan(name, model.carriers?.[name]))
       .filter(Boolean),
@@ -335,6 +410,7 @@ export function collectRenderableStrings(plan) {
     push(cb.number);
     push(cb.title);
     harvestLayout(cb.layout);
+    for (const n of cb.notes || []) push(n);
     for (const src of cb.sources) {
       push(src.shortCite);
       push(src.fullCite);
@@ -481,6 +557,7 @@ function CarrierBlock({ styles, block, onCapture }) {
     h(SectionHeading, { styles, eyebrow: L.number, title: L.title, tocKey: block.title, onCapture }),
     ...L.entities.map((e, i) => h(EntityBox, { key: `e${i}`, styles, entity: e })),
     L.rows && L.rows.length ? h(LineItems, { styles, items: L.rows }) : null,
+    ...(block.notes || []).map((n, i) => h(Text, { key: `n${i}`, style: styles.tableNote }, n)),
     h(SourcesBlock, { styles, sources: block.sources }),
   );
 }
