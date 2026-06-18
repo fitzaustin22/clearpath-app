@@ -257,6 +257,7 @@ const SECTION_CONFIG = {
       {
         header: 'Defined-contribution account (point-in-time)',
         match: /^s6\.pit\.(taxDiscountPercent|taxAdjustedValue|overage)$/,
+        sort: 'desc',
         // The point-in-time vs traditional tax discount is a dual-method value →
         // labeled columns, not stacked inline rows (R6).
         pairTable: {
@@ -264,7 +265,7 @@ const SECTION_CONFIG = {
           rows: [{ label: 'Tax discount on the account', ids: ['s6.pit.taxDiscountDollars', 's6.pit.traditionalDiscountDollars'] }],
         },
       },
-      { header: 'Defined-benefit pension', match: /^s6\.pva\./ },
+      { header: 'Defined-benefit pension', match: /^s6\.pva\./, sort: 'desc' },
       { header: 'QDRO order', match: /^s6\.qdro\./ },
       // The account balance + PIT assumptions are inputs that feed the discount —
       // de-emphasized vs the outputs above so neither out-sizes the hero (R4/R5).
