@@ -6,31 +6,68 @@
 // cover/header display metadata. Pure; no react-pdf imports.
 
 // ── D-V2-5 rounding/format by value class ───────────────────────────────────
-const usd = (n, fractionDigits) =>
-  Number(n).toLocaleString('en-US', {
+// Accounting negatives: format the magnitude, wrap in parens (no locale minus).
+// The renderer colors a parenthesized value with the negative token (R3).
+const usd = (n, fractionDigits) => {
+  const v = Number(n);
+  const body = Math.abs(v).toLocaleString('en-US', {
     style: 'currency',
     currency: 'USD',
     minimumFractionDigits: fractionDigits,
     maximumFractionDigits: fractionDigits,
   });
+  return v < 0 ? `(${body})` : body;
+};
 
 export function formatValue(block) {
   const { value, valueClass } = block;
   switch (valueClass) {
     case 'currency_actual':
-      return usd(value, 2); // actuals/affidavit figures to the cent
+      // Actuals to the cent. All currency is displayed to the cent so a page
+      // never mixes "$X.00" with a bare "$Y" (R2, one convention).
+      return usd(value, 2);
     case 'currency_projection':
-      return usd(value, 0); // projections/PVs/scenario outputs to the whole dollar
+      // Projections are rounded to the nearest dollar (per the disclosed
+      // rounding contract), then displayed with .00 to match the actuals.
+      return usd(Math.round(Number(value)), 2);
     case 'rate':
       return `${Number(value).toFixed(2)}%`; // rates/percentages to two decimals
     case 'fraction':
-      return Number(value).toFixed(4); // coverture fractions to four decimals
+      // R-A: coverture fractions are shown as a percentage to two decimals
+      // (0.6204 → 62.04%, 1.0000 → 100%). Underlying value is unchanged; the
+      // disclosed rounding-contract sentence is updated to match.
+      return formatPercentFromFraction(value);
     case 'count':
       return Number(value).toLocaleString('en-US', { maximumFractionDigits: 0 });
+    case 'date':
+      return formatIsoDate(value); // ISO → "June 18, 2026" (no raw timestamp)
     case 'text':
     default:
       return humanizeText(value);
   }
+}
+
+/** Yes/No for a boolean (never render a raw true/false on the page). */
+export function formatBoolean(value) {
+  if (value === true) return 'Yes';
+  if (value === false) return 'No';
+  return String(value);
+}
+
+/**
+ * A 0–1 fraction as a percent to two decimals (68.24%, 100.00%). Always two
+ * decimals so every percentage in the document shares one convention — the
+ * disclosed rounding contract ("rates and coverture fractions … to two
+ * decimals").
+ */
+export function formatPercentFromFraction(fraction) {
+  return `${(Number(fraction) * 100).toFixed(2)}%`;
+}
+
+/** True when a numeric value is negative (drives the negative color + parens). */
+export function isNegativeValue(block) {
+  if (!block || block.valueClass === 'text') return false;
+  return Number(block.value) < 0;
 }
 
 // ── Enum humanization ───────────────────────────────────────────────────────
@@ -59,6 +96,13 @@ const HUMANIZE = Object.freeze({
   // deferred-comp category
   stockOptions: 'Stock options',
   corporateIncentives: 'Restricted stock units',
+  // readiness tier (s1 hero)
+  ready: 'Ready',
+  preparing: 'Preparing',
+  exploring: 'Exploring',
+  // QDRO completion state
+  complete: 'Complete',
+  incomplete: 'Incomplete',
 });
 
 // Split a single camelCase/snake_case token to a Title-case phrase.
@@ -134,6 +178,22 @@ export function jurisdictionLabel(code) {
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+/**
+ * Long-form date from an ISO date or datetime — timezone-safe (parses the
+ * YYYY-MM-DD prefix directly, never constructs a Date). '2026-08-15' →
+ * 'August 15, 2026'; '2026-06-18T00:34:40.562Z' → 'June 18, 2026'. Used to
+ * kill raw ISO timestamps reaching the page (QDRO generatedAt, key dates).
+ */
+export function formatIsoDate(iso) {
+  if (!iso) return '';
+  const m = String(iso).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return String(iso);
+  const [, y, mo, d] = m;
+  const name = MONTHS[Number(mo) - 1];
+  return name ? `${name} ${Number(d)}, ${y}` : String(iso);
+}
+
 export function preparedLabel(isoDate) {
   if (!isoDate || !/^\d{4}-\d{2}/.test(String(isoDate))) return '';
   const [y, m] = String(isoDate).split('-');
@@ -141,23 +201,73 @@ export function preparedLabel(isoDate) {
   return MONTHS[idx] ? `${MONTHS[idx]} ${y}` : y;
 }
 
+// Known appendix enum VALUES that aren't camelCase/snake_case (so the generic
+// token humanizer leaves them raw): hyphen-slugs, verdict colors, timeline +
+// pay-frequency words. Each maps to attorney-readable copy.
+const APPENDIX_ENUMS = Object.freeze({
+  'refi-at-current': 'Refinance at current rate',
+  'margin-of-safety': 'Margin of safety',
+  yellow: 'Yellow',
+  green: 'Green',
+  red: 'Red',
+  beforeDec31: 'Before December 31',
+  afterDec31: 'After December 31',
+  biweekly: 'Biweekly',
+  weekly: 'Weekly',
+  semimonthly: 'Semi-monthly',
+  monthly: 'Monthly',
+});
+
 /**
- * Inputs-&-assumptions appendix value formatter: round non-integer numerics to
- * four decimals (D-V2-5 — no raw engine floats like 0.6823529411764706 on the
- * page); humanize token-bearing strings; pass through everything else.
+ * Inputs-&-assumptions appendix value formatter. An explicit `format` hint
+ * (wired at the model push site) gives the value its unit — `percent`,
+ * `currency_actual`/`currency_projection`, `boolean`, `date`, `rate` — so a
+ * bare 0.6824 / 260000 / false never reaches the page. Without a hint:
+ * booleans → Yes/No, known enums → readable copy, hyphen-slugs → Title-cased,
+ * non-integer numerics round to four decimals, free text passes through.
  */
-export function formatAppendixValue(value) {
+export function formatAppendixValue(value, format) {
   if (value == null) return '';
+  if (format) {
+    switch (format) {
+      case 'boolean':
+        return formatBoolean(value);
+      case 'percent':
+        return formatPercentFromFraction(value);
+      case 'currency_actual':
+        return usd(Number(value), 2);
+      case 'currency_projection':
+        return usd(Math.round(Number(value)), 2);
+      case 'date':
+        return formatIsoDate(value);
+      case 'rate':
+        return `${Number(value).toFixed(2)}%`;
+      case 'count':
+        return Number(value).toLocaleString('en-US', { maximumFractionDigits: 0 });
+      default:
+        break;
+    }
+  }
+  if (typeof value === 'boolean') return formatBoolean(value);
   if (typeof value === 'number') {
     return Number.isInteger(value) ? String(value) : String(Math.round(value * 10000) / 10000);
   }
   const s = String(value);
+  if (Object.prototype.hasOwnProperty.call(APPENDIX_ENUMS, s)) return APPENDIX_ENUMS[s];
   if (/^-?\d+(\.\d+)?$/.test(s.trim())) {
     const n = Number(s);
     if (Number.isFinite(n) && !Number.isInteger(n)) return String(Math.round(n * 10000) / 10000);
     return s.trim();
   }
-  return humanizeLabel(s);
+  // Bare hyphen-slug with no spaces (sell-now) → Title-cased phrase so no raw
+  // enum slug ever renders, even when it isn't in the known-enum map.
+  if (/-/.test(s) && !/\s/.test(s)) {
+    const phrase = s.replace(/-/g, ' ').toLowerCase();
+    return phrase.charAt(0).toUpperCase() + phrase.slice(1);
+  }
+  // Value humanizer (not the label one): maps known enum VALUES (single → Single,
+  // hoh → Head of household) and splits camelCase; free text passes through.
+  return humanizeText(s);
 }
 
 /** Header short form — surname when a multi-word name is given. */

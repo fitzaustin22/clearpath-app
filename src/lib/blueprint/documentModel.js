@@ -21,6 +21,7 @@
 
 import { isSectionIncluded } from '../../components/blueprint/sectionInclusion';
 import { hasKey, getEntry, REGISTRY_KEYS } from './citationRegistry';
+import { preparedLabel } from './pdf/format';
 import {
   normalizePvaSection,
   normalizeQdroAssetMetadata,
@@ -45,6 +46,7 @@ export const VALUE_CLASSES = Object.freeze([
   'rate',
   'fraction',
   'count',
+  'date',
   'text',
 ]);
 
@@ -69,6 +71,12 @@ function num(blocks, id, label, value, valueClass, opts) {
 function text(blocks, id, label, value, opts) {
   if (value === null || value === undefined || value === '') return;
   blocks.push(block(id, label, String(value), 'text', opts));
+}
+
+/** Date-typed text block — the renderer formats it to a long date (no raw ISO). */
+function dateBlock(blocks, id, label, value, opts) {
+  if (value === null || value === undefined || value === '') return;
+  blocks.push(block(id, label, String(value), 'date', opts));
 }
 
 // ── Per-section extractors ───────────────────────────────────────────────────
@@ -160,6 +168,15 @@ function extractS3(data) {
   return blocks;
 }
 
+// Filing-status enum → attorney-readable label (used in the §4 scenario rows so
+// no raw "mfj/hoh" code renders in a label).
+const FILING_STATUS_LABELS = Object.freeze({
+  single: 'Single',
+  hoh: 'Head of household',
+  mfj: 'Married filing jointly',
+  mfs: 'Married filing separately',
+});
+
 function extractS4(data, ctx) {
   const meta = normalizeFsoSection(data);
   const blocks = [];
@@ -169,7 +186,7 @@ function extractS4(data, ctx) {
   text(blocks, 's4.bestOption', 'Filing status with lowest projected tax', data.bestOption, src);
   num(blocks, 's4.maxSavings', 'Projected tax difference (highest vs lowest eligible)', data.maxSavings, 'currency_projection', src);
   for (const [status, scenario] of Object.entries(data.scenarios || {})) {
-    num(blocks, `s4.scenario.${status}.netTax`, `Net tax — ${status}`, scenario?.netTax, 'currency_projection', src);
+    num(blocks, `s4.scenario.${status}.netTax`, `Net tax — ${FILING_STATUS_LABELS[status] ?? status}`, scenario?.netTax, 'currency_projection', src);
   }
   text(blocks, 's4.taxYear', 'Tax year (as persisted)', data.taxYear, src);
   ctx.appendix.push({
@@ -220,7 +237,7 @@ function extractS6(data, ctx) {
       ['Discount rate', 'discountRate', 'rate'],
     ]) {
       num(blocks, `s6.pit.${key}`, label, p[key], cls, src);
-      ctx.appendix.push({ sectionId: 's6', label: `PIT assumption — ${label}`, value: p[key] ?? null, source: `clearpath-blueprint:s6.pit.${key}` });
+      ctx.appendix.push({ sectionId: 's6', label: `PIT assumption — ${label}`, value: p[key] ?? null, format: cls, source: `clearpath-blueprint:s6.pit.${key}` });
     }
   }
   if (data?.pva) {
@@ -343,18 +360,68 @@ function extractS9(data, ctx) {
   // contract (documented in the PR body).
   const scenarios = Array.isArray(data?.scenarios) ? data.scenarios : [];
   const SCENARIO_IDS = ['keepAndRefi', 'sellNow', 'deferredSale'];
+  const SCENARIO_LABELS = { keepAndRefi: 'Keep and refinance', sellNow: 'Sell now', deferredSale: 'Deferred sale' };
+  // Each scenario is its own named row (the scenario IS the label) → no repeated
+  // "HDA scenario present" label and no internal acronym on the page (R1/R5).
   scenarios.forEach((s, i) => {
-    if (s) text(blocks, `s9.scenario.${SCENARIO_IDS[i] ?? `slot${i}`}`, 'HDA scenario present', SCENARIO_IDS[i] ?? `slot${i}`, src);
+    const id = SCENARIO_IDS[i] ?? `slot${i}`;
+    if (s) text(blocks, `s9.scenario.${id}`, SCENARIO_LABELS[id] ?? `Scenario ${i + 1}`, 'Analyzed', src);
   });
   text(blocks, 's9.userSelection', 'Selected scenario', data?.userSelection, src);
   for (const [key, value] of Object.entries(data?.metadata || {})) {
     if (key === '_prePopSources') continue;
     if (typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean') {
-      ctx.appendix.push({ sectionId: 's9', label: `HDA assumption — ${key}`, value, source: `clearpath-blueprint:s9.metadata.${key}` });
+      // Format hint so a bare 0.6824 / 260000 / true never reaches the page
+      // (booleans are auto-formatted to Yes/No without a hint). The affordability
+      // verdict tier is mapped to a semantic phrase (Caution/On track/At risk).
+      const disclosed = key === 'verdictTier' ? (HDA_VERDICT_LABELS[value] ?? value) : value;
+      ctx.appendix.push({
+        sectionId: 's9',
+        label: `HDA assumption — ${HDA_APPENDIX_LABELS[key] ?? key}`,
+        value: disclosed,
+        format: HDA_APPENDIX_FORMAT[key],
+        source: `clearpath-blueprint:s9.metadata.${key}`,
+      });
     }
   }
   return blocks;
 }
+
+// Affordability verdict tier → semantic phrase (not the bare color token).
+const HDA_VERDICT_LABELS = Object.freeze({ green: 'On track', yellow: 'Caution', red: 'At risk' });
+
+// HDA metadata appendix: per-key unit hints (numeric leaks) + readable labels.
+const HDA_APPENDIX_FORMAT = Object.freeze({
+  ltvAtRefi: 'percent',
+  realtorCommissionPercent: 'percent',
+  saleClosingCostsPercent: 'percent',
+  interimCostSharePct: 'percent',
+  propertyAppreciationRateReal: 'percent',
+  startingLiquidCash: 'currency_actual',
+  mfjSingleDifferentialAtSaleYear: 'currency_actual',
+});
+const HDA_APPENDIX_LABELS = Object.freeze({
+  ltvAtRefi: 'loan-to-value at refinance',
+  realtorCommissionPercent: 'realtor commission',
+  saleClosingCostsPercent: 'sale closing costs',
+  interimCostSharePct: 'interim cost share',
+  propertyAppreciationRateReal: 'real property appreciation rate',
+  startingLiquidCash: 'starting liquid cash',
+  stressTestUserPays100Pct: 'stress test — client pays 100%',
+  bpmiAssumption: 'borrower-paid PMI assumed',
+  conventionalLoanAssumption: 'conventional loan assumed',
+  realDollarConvention: 'real-dollar convention',
+  mfjSingleDifferentialAtSaleYear: 'MFJ-vs-single tax differential at sale year',
+  expectedFilingStatusAtSellNow: 'expected filing status (sell-now scenario)',
+  existingMortgageRemainingTermMonths: 'existing mortgage remaining term (months)',
+  homeAcquisitionYear: 'home acquisition year',
+  ownershipYearsAtSale: 'ownership years at sale',
+  userMovedOutYearsAgo: 'years since client moved out',
+  deferredSaleMortgageContinuity: 'deferred-sale mortgage continuity',
+  bindingConstraint: 'binding constraint',
+  verdictTier: 'affordability verdict tier',
+  shortfall: 'projected shortfall',
+});
 
 function extractS10(data) {
   const meta = normalizeUnmappedSection('negotiationStrategy', 'clearpath-blueprint:s10');
@@ -364,8 +431,15 @@ function extractS10(data) {
   const tradeOffs = data?.tradeOffs || [];
   num(blocks, 's10.priorityCount', 'Priorities recorded', priorities.length, 'count', src);
   num(blocks, 's10.tradeOffCount', 'Trade-offs recorded', tradeOffs.length, 'count', src);
-  priorities.forEach((p, i) => text(blocks, `s10.priority.${i}`, `Priority ${p.rank ?? i + 1} (${p.importance})`, p.item, src));
-  tradeOffs.forEach((t, i) => text(blocks, `s10.tradeOff.${i}`, 'Trade-off', `${t.get} ⇄ ${t.give}`, src));
+  // Lead with the importance tier (humanized) so two priorities never collide on
+  // an identical "Priority 1" ordinal, and no raw "must-have" slug renders (R1/R5).
+  const IMPORTANCE_LABELS = { 'must-have': 'Must-have', 'would-like': 'Would-like', 'nice-to-have': 'Nice-to-have' };
+  priorities.forEach((p, i) =>
+    text(blocks, `s10.priority.${i}`, `${IMPORTANCE_LABELS[p.importance] ?? p.importance} priority`, p.item, src),
+  );
+  // ↔ (U+2194, covered by Inter) — NOT ⇄ (U+21C4), which is NOTDEF in Inter and
+  // rendered as the stray box glyph (D4 encoding bug).
+  tradeOffs.forEach((t, i) => text(blocks, `s10.tradeOff.${i}`, 'Trade-off', `${t.get} ↔ ${t.give}`, src));
   return blocks;
 }
 
@@ -375,8 +449,12 @@ function extractS11(data) {
   const src = { inputs: ['clearpath-m6:offerOrganizer.offer'], meta };
   num(blocks, 's11.mapCount', 'Priorities mapped against offer', (data?.map || []).length, 'count', src);
   num(blocks, 's11.gapCount', 'Offer silences (gaps)', (data?.gaps || []).length, 'count', src);
+  // The priority is the (distinct) label; the offer's posture toward it is the
+  // humanized value — no repeated "Offer vs priority — silent" label, no raw
+  // status enum (R1/R5).
+  const OFFER_STATUS_LABELS = { silent: 'Offer is silent', addressed: 'Addressed by offer', conflict: 'Conflicts with offer', partial: 'Partially addressed' };
   (data?.map || []).forEach((row, i) =>
-    text(blocks, `s11.map.${i}`, `Offer vs priority — ${row.status}`, row.priority, src)
+    text(blocks, `s11.map.${i}`, row.priority, OFFER_STATUS_LABELS[row.status] ?? row.status, src),
   );
   return blocks;
 }
@@ -389,7 +467,9 @@ function extractS12(data) {
   num(blocks, 's12.professionalCount', 'Professionals', (data?.professionals || []).length, 'count', src);
   num(blocks, 's12.keyDateCount', 'Key dates', (data?.keyDates || []).length, 'count', src);
   (data?.nextSteps || []).forEach((s, i) => text(blocks, `s12.nextStep.${i}`, 'Next step', s.step, src));
-  (data?.keyDates || []).forEach((d, i) => text(blocks, `s12.keyDate.${i}`, d.date, d.event, src));
+  // Event is the label; the date is a date-typed VALUE so it renders long-form
+  // (August 15, 2026), never as a raw ISO key (R1).
+  (data?.keyDates || []).forEach((d, i) => dateBlock(blocks, `s12.keyDate.${i}`, d.event, d.date, src));
   return blocks;
 }
 
@@ -410,7 +490,7 @@ const SECTION_EXTRACTORS = {
 
 // ── Carriers (D5: read explicitly, never dropped) ───────────────────────────
 
-function extractDeferredCompStubs(stubs, ctx) {
+function extractDeferredCompStubs(stubs) {
   const blocks = [];
   for (const stub of stubs || []) {
     const meta = stub.resolved
@@ -430,9 +510,8 @@ function extractDeferredCompStubs(stubs, ctx) {
         num(blocks, `carrier.dcs.${stub.id}.tranche.${t.id}.hug`, `Tranche ${i + 1} coverture — Hug time rule`, t.hug, 'fraction', src);
         num(blocks, `carrier.dcs.${stub.id}.tranche.${t.id}.nelson`, `Tranche ${i + 1} coverture — Nelson time rule`, t.nelson, 'fraction', src);
       });
-      for (const dateKey of ['hireDate', 'grantDate', 'separationDate']) {
-        ctx.appendix.push({ sectionId: 'carrier.deferredCompStubs', label: `DCA ${dateKey} (${stub.id})`, value: stub.metadata[dateKey] ?? null, source: `clearpath-blueprint:deferredCompStubs.${stub.id}.metadata.${dateKey}` });
-      }
+      // Grant hire/grant/separation dates are disclosed (per grant, disambiguated)
+      // by extractInputDisclosures' DCA pass; no duplicate stub-level push here.
     }
   }
   return blocks;
@@ -444,7 +523,7 @@ function extractQdroBlueprintCarrier(qdroBlueprint) {
   const proj = qdroBlueprint?.savedProjection;
   if (!proj) return blocks;
   const src = { inputs: ['clearpath-blueprint:qdroBlueprint.savedProjection'], meta };
-  text(blocks, 'carrier.qdro.generatedAt', 'QDRO projection generated at', proj.generatedAt, src);
+  dateBlock(blocks, 'carrier.qdro.generatedAt', 'QDRO projection generated', proj.generatedAt, src);
   (proj.assets || []).forEach((a) => {
     text(blocks, `carrier.qdro.${a.id}.planType`, 'QDRO projection — plan type', a.planType, src);
   });
@@ -510,69 +589,80 @@ function extractInputDisclosures(toolInputs, appendix) {
   for (const asset of toolInputs.pensionAssets || []) {
     const i = asset.inputs || {};
     const plan = i.planName || 'Defined-benefit pension';
-    const push = (label, value) => {
+    const push = (label, value, format) => {
       if (value !== null && value !== undefined && value !== '') {
-        appendix.push({ sectionId: 's6', label: `Pension input (${plan}) — ${label}`, value, source: `clearpath-m5:pensionValuation.assets.${asset.assetId}.inputs` });
+        appendix.push({ sectionId: 's6', label: `Pension input (${plan}) — ${label}`, value, format, source: `clearpath-m5:pensionValuation.assets.${asset.assetId}.inputs` });
       }
     };
-    push('accrued monthly benefit at valuation', i.currentAccruedMonthlyBenefit);
-    push('current account balance', i.currentAccountBalance);
-    push('date of hire', i.dateOfHire);
-    push('date of marriage', i.dateOfMarriage);
-    push('marital cutoff date', i.maritalCutoffDate);
-    push('participant date of birth', i.participantDOB);
+    push('accrued monthly benefit at valuation', i.currentAccruedMonthlyBenefit, 'currency_actual');
+    push('current account balance', i.currentAccountBalance, 'currency_actual');
+    push('date of hire', i.dateOfHire, 'date');
+    push('date of marriage', i.dateOfMarriage, 'date');
+    push('marital cutoff date', i.maritalCutoffDate, 'date');
+    push('participant date of birth', i.participantDOB, 'date');
     push('assumed retirement age', i.expectedRetirementAge);
     // Computed retirement date (DOB + assumed retirement age, month/day
     // preserved) — the coverture denominator endpoint; disclosed so the
     // coverture fraction is reproducible from the document (A5-M Cat 3).
     if (typeof i.participantDOB === 'string' && Number.isFinite(Number(i.expectedRetirementAge))) {
       const [yy, mm, dd] = i.participantDOB.split('-');
-      if (yy && mm && dd) push('computed retirement date (DOB + retirement age)', `${Number(yy) + Number(i.expectedRetirementAge)}-${mm}-${dd}`);
+      if (yy && mm && dd) push('computed retirement date (DOB + retirement age)', `${Number(yy) + Number(i.expectedRetirementAge)}-${mm}-${dd}`, 'date');
     }
-    push('annual COLA assumption (percent)', i.cola);
-    push('valuation date', i.caseEffectiveDate);
+    push('annual COLA assumption (percent)', i.cola, 'rate');
+    push('valuation date', i.caseEffectiveDate, 'date');
     push('mortality table', MORTALITY_LABELS[i.mortalityTable] ?? i.mortalityTable);
     if (asset.segment && i.planType !== 'private_db_cash_balance') {
-      push('§417(e) segment-2 discount rate', `${asset.segment.segment2Pct}% (${asset.segment.noticeId}, month ${asset.segment.rateMonth})`);
+      push('§417(e) segment-2 discount rate', `${asset.segment.segment2Pct}% (${asset.segment.noticeId}, ${preparedLabel(asset.segment.rateMonth) || asset.segment.rateMonth})`);
     }
   }
   if (toolInputs.fso) {
     const i = toolInputs.fso;
-    const push = (label, value) => {
+    const push = (label, value, format) => {
       if (value !== null && value !== undefined && value !== '') {
-        appendix.push({ sectionId: 's4', label: `Filing-status input — ${label}`, value, source: 'clearpath-m4:filingStatusOptimizer.inputs' });
+        appendix.push({ sectionId: 's4', label: `Filing-status input — ${label}`, value, format, source: 'clearpath-m4:filingStatusOptimizer.inputs' });
       }
     };
-    push('client gross annual income', i.grossAnnualIncome);
-    push('spouse gross annual income (married-filing basis only)', i.spouseGrossAnnualIncome);
-    push('other annual income', i.otherIncome);
+    push('client gross annual income', i.grossAnnualIncome, 'currency_actual');
+    push('spouse gross annual income (married-filing basis only)', i.spouseGrossAnnualIncome, 'currency_actual');
+    push('other annual income', i.otherIncome, 'currency_actual');
     push('dependents (qualifying children)', i.dependents);
     push('divorce timeline (Dec-31 status determination)', i.divorceTimeline);
     // Method constants so the net-tax figures reproduce from the document
     // (taxable = income − standard deduction; progressive tax over the
     // Rev. Proc. 2025-32 brackets; less the Child Tax Credit). (A5-M Cat 3.)
-    appendix.push({ sectionId: 's4', label: 'Filing-status method — standard deduction (single / HoH / MFJ / MFS)', value: '$16,100 / $24,150 / $32,200 / $16,100', source: 'engine:STANDARD_DEDUCTIONS' });
-    appendix.push({ sectionId: 's4', label: 'Filing-status method — Child Tax Credit per qualifying child', value: '$2,200', source: 'engine:CHILD_TAX_CREDIT' });
+    // One labeled row per filing status (not an inline slash-list) so the four
+    // standard-deduction amounts are disambiguated by column/label (R6).
+    for (const [statusLabel, amount] of [
+      ['single', 16100],
+      ['head of household', 24150],
+      ['married filing jointly', 32200],
+      ['married filing separately', 16100],
+    ]) {
+      appendix.push({ sectionId: 's4', label: `Filing-status method — standard deduction, ${statusLabel}`, value: amount, format: 'currency_actual', source: 'engine:STANDARD_DEDUCTIONS' });
+    }
+    appendix.push({ sectionId: 's4', label: 'Filing-status method — Child Tax Credit per qualifying child', value: 2200, format: 'currency_actual', source: 'engine:CHILD_TAX_CREDIT' });
     appendix.push({ sectionId: 's4', label: 'Filing-status method — bracket year', value: '2026 (Rev. Proc. 2025-32)', source: 'engine:taxYear' });
   }
-  for (const dca of toolInputs.dcaAnalyses || []) {
+  (toolInputs.dcaAnalyses || []).forEach((dca, gi) => {
     const a = dca.analysis || {};
     const co = dca.company || 'grant';
-    const push = (label, value) => {
+    // Number each grant so two grants from the same company don't collapse to
+    // identical appendix labels (R5 — the reviewer can tell the grants apart).
+    const push = (label, value, format) => {
       if (value !== null && value !== undefined && value !== '') {
-        appendix.push({ sectionId: 'carrier.deferredCompStubs', label: `Deferred comp input (${co}) — ${label}`, value, source: `clearpath-blueprint:deferredCompStubs.${dca.stubId}` });
+        appendix.push({ sectionId: 'carrier.deferredCompStubs', label: `Deferred comp grant ${gi + 1} input (${co}) — ${label}`, value, format, source: `clearpath-blueprint:deferredCompStubs.${dca.stubId}` });
       }
     };
-    push('date of hire', a.hireDate);
-    push('grant date', a.grantDate);
-    push('separation date', a.separationDate);
-    push('fair market value per share at valuation', a.fmv);
-    push('option strike price', dca.strikePrice);
+    push('date of hire', a.hireDate, 'date');
+    push('grant date', a.grantDate, 'date');
+    push('separation date', a.separationDate, 'date');
+    push('fair market value per share at valuation', a.fmv, 'currency_actual');
+    push('option strike price', dca.strikePrice, 'currency_actual');
     (a.tranches || []).forEach((t, idx) => {
-      push(`tranche ${idx + 1} vesting date`, t.vestDate);
-      push(`tranche ${idx + 1} shares`, t.shares);
+      push(`tranche ${idx + 1} vesting date`, t.vestDate, 'date');
+      push(`tranche ${idx + 1} shares`, t.shares, 'count');
     });
-  }
+  });
 }
 
 // ── D-V2-7 appendix placeholders (engine-constant sweep = Phase 2) ──────────
@@ -583,9 +673,9 @@ const PHASE2_ASSUMPTION_PLACEHOLDERS = Object.freeze(
     'PMI rate matrix',
     'DTI front/back-end thresholds',
     '50-state + DC closing-cost table',
-    'Inflation assumption 2.5% (Fed long-run target)',
-    '35% housing-affordability benchmark',
-    'Realtor 5% / closing 2% / 50% interim-cost-share defaults',
+    'Inflation assumption 2.50% (Fed long-run target)',
+    '35.00% housing-affordability benchmark',
+    'Realtor 5.00% / closing 2.00% / 50.00% interim-cost-share defaults',
     'Fisher real-rate convention',
     'Annuity-factor annual approximation (no Woolhouse; terminal age 120)',
     'Intrinsic-value-only equity valuation (never Black-Scholes)',
@@ -657,12 +747,16 @@ const METHODOLOGY_DESCRIPTIONS = Object.freeze({
 });
 
 // Deterministic short content hash → the NNNN suffix of the document ID. Hashes
-// stable block id=value pairs + jurisdiction; excludes wall-clock metadata
-// (calculationTimestamp lives in block.meta, never in block.value).
+// stable block id=value pairs + jurisdiction; excludes wall-clock metadata.
+// The QDRO carrier emits `generatedAt` as a block VALUE (a render-time ISO
+// timestamp), so it must be filtered here or the doc ID drifts every render
+// (the bug: same content, different NNNN). calculationTimestamp is excluded for
+// the same reason.
+const isWallClockBlock = (id) => /(?:generatedAt|calculationTimestamp)$/i.test(String(id));
 function shortContentHash(sections, carriers, jurisdiction) {
   const parts = [];
-  for (const s of sections) for (const b of s.blocks) parts.push(`${b.id}=${b.value}`);
-  for (const carrier of Object.values(carriers)) for (const b of carrier) parts.push(`${b.id}=${b.value}`);
+  for (const s of sections) for (const b of s.blocks) if (!isWallClockBlock(b.id)) parts.push(`${b.id}=${b.value}`);
+  for (const carrier of Object.values(carriers)) for (const b of carrier) if (!isWallClockBlock(b.id)) parts.push(`${b.id}=${b.value}`);
   parts.push(`j=${jurisdiction}`);
   const str = parts.join('|');
   let h = 0;
@@ -702,7 +796,7 @@ export function buildDocumentModel(state, { jurisdiction, preparedDate, toolInpu
   });
 
   const carriers = {
-    deferredCompStubs: extractDeferredCompStubs(state?.deferredCompStubs, ctx),
+    deferredCompStubs: extractDeferredCompStubs(state?.deferredCompStubs),
     qdroBlueprint: extractQdroBlueprintCarrier(state?.qdroBlueprint),
     costBasisEntries: extractCostBasisEntries(state?.costBasisEntries),
   };
@@ -776,7 +870,7 @@ export function buildDocumentModel(state, { jurisdiction, preparedDate, toolInpu
           slot: 'd_v2_5_rounding_contract',
           status: 'final',
           summary:
-            'Actual amounts are stated to the cent; projected values to the nearest dollar; rates to two decimals; coverture fractions to four decimals.',
+            'All dollar amounts are displayed to the cent; actual amounts are precise to the cent, and projected values are rounded to the nearest dollar before display. Rates and coverture fractions are shown as a percentage to two decimals.',
         },
         entries: methodologyEntries,
       },
