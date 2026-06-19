@@ -121,10 +121,16 @@ function sectionNotes(section, { hasRetirementSection = false } = {}) {
   }
   if (section.id === 's5') {
     // #12: drop "Module 2" from the provenance note (keep "Marital Estate
-    // Inventory" + the does-not-classify/equitable-distribution/coverture phrasing
-    // the A4 §5-disclosure guard checks for).
+    // Inventory"). PR-B rescopes the DISCLAIMER (second sentence): the blanket
+    // "does not apply a coverture or time rule" claim is removed — it
+    // contradicted §6, which DOES apply coverture/time-rule methods to VALUE the
+    // marital portion of retirement/deferred-comp. The no-coverture statement is
+    // now scoped to the property split, and §6 is pointed to for valuation
+    // coverture. The provenance sentence (and "Marital Estate Inventory") and the
+    // A4 §5-disclosure guard's does-not-classify / equitable-distribution /
+    // "not a legal" / coverture phrasing are preserved.
     notes.push(
-      'The client, spouse, and undecided face-value figures are the sums of individual asset values as the parties designated each item (kept by the client, by the spouse, or undecided) in the Marital Estate Inventory. ClearPath does not classify property as marital or separate, apply a coverture or time rule, or determine an equitable-distribution share — the split reflects the parties’ own designations of who keeps each asset, not a legal or computed determination.',
+      'The client, spouse, and undecided face-value figures are the sums of individual asset values as the parties designated each item (kept by the client, by the spouse, or undecided) in the Marital Estate Inventory. For this property-division summary, the split reflects the parties’ own designations of who keeps each asset — not a legal or computed determination. ClearPath does not classify property as marital or separate, or determine an equitable-distribution share, here. Coverture and time-rule methods are applied separately in Section 6 and its supplements, solely to value the marital portion of retirement and deferred-compensation assets — not to divide property.',
     );
   }
   // #8: state the basis difference and cross-reference §6 for retirement/pension
@@ -256,7 +262,7 @@ export function buildRenderPlan(model, opts = {}) {
     title: 'Methodologies and Authorities',
     intro:
       methodologyEntryCount > 0
-        ? 'Each computed value in this document is produced by one of the methods below, applied as described. An authority annotated “methodology under review” has not yet been independently confirmed against its primary source; that pending-verification status is a disclosure about the citation only and does not change how the disclosed method is applied or computed.'
+        ? 'The authorities supporting the figures in this blueprint are drawn from a maintained citation registry. Statutory and case authorities are verified against their primary sources. Where a calculation relies on a professional methodology rather than a controlling legal authority, it is identified as ClearPath’s disclosed implementation, with its published source credited.'
         : 'This document cites no external methodology authorities. Its figures are arithmetic sums of client-entered values and ClearPath’s structured readiness self-assessment (scale disclosed in Section 1). The rounding contract and provenance below apply.',
     entries: (model.appendices?.methodology?.entries ?? []).map((e) => ({
       name: e.shortCite,
