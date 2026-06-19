@@ -916,6 +916,10 @@ export function buildDocumentModel(state, { jurisdiction, preparedDate, toolInpu
       verified: e.verified,
       verifiedDate: e.verifiedDate,
       description: METHODOLOGY_DESCRIPTIONS[k] ?? null,
+      // A disclosed ClearPath method renders as settled (no "methodology under
+      // review" suffix) despite carrying no verification date. Field omitted
+      // unless set, so ordinary entries are unaffected.
+      ...(e.disclosedMethod ? { disclosedMethod: true } : {}),
     };
   });
 

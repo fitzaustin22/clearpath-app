@@ -122,12 +122,22 @@ describe('A4 — page furniture (document ID on cover + footer)', () => {
 });
 
 describe('A4 — methodology appendix verified treatment', () => {
-  it('F1 marks unverified authorities under review and verified ones as settled', () => {
+  it('F1 renders batch #2 authorities as settled and the disclosed method without the under-review suffix', () => {
     const entries = PLANS.F1.methodology.entries;
     const deering = entries.find((e) => e.cite.includes('Deering'));
     const boemio = entries.find((e) => e.cite.includes('Boemio'));
-    expect(deering.verified).toBe(false); // coverture case — under review
+    expect(deering.verified).toBe(true); // coverture case — verified in batch #2 (2026-06-18)
     expect(boemio.verified).toBe(true); // verified 2026-06-12
+    // The point-in-time step is a DISCLOSED method (ClearPath's implementation of
+    // Sutherland's published "Point in Time" formula): not verified, but flagged
+    // disclosedMethod so the renderer treats it as settled (no suffix). The cite
+    // CREDITS Sutherland's article.
+    const disclosed = entries.find((e) => e.disclosedMethod);
+    expect(disclosed, 'a disclosed-method entry is present').toBeTruthy();
+    expect(disclosed.verified).toBe(false);
+    expect(disclosed.name).toMatch(/Point-in-time/i);
+    expect(disclosed.name).toMatch(/Sutherland/i);
+    expect(disclosed.cite).toMatch(/Sutherland/i);
   });
 });
 

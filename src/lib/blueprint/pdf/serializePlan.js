@@ -89,7 +89,7 @@ export function serializeRenderPlan(plan) {
     if (sources && sources.length) {
       L.push('  Sources:');
       for (const s of sources) {
-        L.push(`    ${s.n}. ${s.fullCite}${s.verified ? '' : '  (methodology under review)'}`);
+        L.push(`    ${s.n}. ${s.fullCite}${s.verified || s.disclosedMethod ? '' : '  (methodology under review)'}`);
       }
     }
   };
@@ -112,7 +112,7 @@ export function serializeRenderPlan(plan) {
   L.push(plan.methodology.intro);
   for (const e of plan.methodology.entries) {
     const desc = e.description ? ` — ${e.description}` : '';
-    const rev = e.verified ? '' : '  — METHODOLOGY UNDER REVIEW';
+    const rev = e.verified || e.disclosedMethod ? '' : '  — METHODOLOGY UNDER REVIEW';
     L.push(`  • ${e.name}${desc}\n      ${e.cite}${rev}`);
   }
   L.push(`[${plan.methodology.roundingLabel}] ${plan.methodology.rounding}`);

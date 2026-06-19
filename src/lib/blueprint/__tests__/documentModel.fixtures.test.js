@@ -303,12 +303,25 @@ describe('document model — finalized appendices + document ID (Phase 2)', () =
     for (const k of cited) expect(entryKeys.has(k), `${k} cited but missing from Appendix A`).toBe(true);
   });
 
-  it('F1 Appendix A exercises BOTH verified and unverified ("under review") entries', () => {
+  it('F1 Appendix A: batch #2 verified the cited authorities; the point-in-time step is a disclosed method (settled, not "under review")', () => {
     const entries = MODELS.F1.appendices.methodology.entries;
     const verified = entries.filter((e) => e.verified).map((e) => e.key);
-    const unverified = entries.filter((e) => !e.verified).map((e) => e.key);
-    expect(verified).toEqual(expect.arrayContaining(['md_fl_11_106', 'boemio_2010', 'rev_proc_2025_32']));
-    expect(unverified).toEqual(expect.arrayContaining(['deering_md_1981', 'sutherland_pit', 'hug_1984']));
+    const unverified = entries.filter((e) => !e.verified);
+    // Batch #2 verified F1's cited authorities — including the coverture cases
+    // and the re-cited DC seat (bender_dc_1972 now renders Barbour) — so they
+    // render as settled rather than "methodology under review".
+    expect(verified).toEqual(
+      expect.arrayContaining([
+        'md_fl_11_106', 'boemio_2010', 'rev_proc_2025_32',
+        'deering_md_1981', 'hug_1984', 'bender_dc_1972',
+      ]),
+    );
+    // The ONLY non-verified F1 entry is sutherland_pit — a DISCLOSED ClearPath
+    // method that renders settled (no suffix) via disclosedMethod. F1 therefore
+    // no longer exercises the under-review path, by design (the renderer's
+    // under-review unit coverage lives in the pdf __tests__).
+    expect(unverified.map((e) => e.key)).toEqual(['sutherland_pit']);
+    expect(unverified[0].disclosedMethod).toBe(true);
   });
 
   it('rounding-contract + provenance disclosures are finalized (slot/attribution preserved, status off placeholder)', () => {

@@ -28,7 +28,19 @@
  *     formula+duration+Boemio, NY-CSSA fallback, tax/mortality constants),
  *     evidence memos A/B/C/D + engine corrections PR #72.
  *   - irc_417e3 flipped 2026-06-10 (repair PR #69; 417e-evidence memo).
+ *   - 21 flipped 2026-06-18 (batch #2, Cowork primary-source verification):
+ *     coverture method + the DMV/CA coverture cases (Mosley/Deering/Hug/Nelson),
+ *     the §417(e) reg + mortality tables (Pub-2010/RP-2014) + cash-balance
+ *     basis (Notice 96-8/Cooper), the §121 family + §7703 + CTC + LTCG + HPA,
+ *     and the three RE-CITED authorities (Barbour for the DC coverture seat,
+ *     ASOP No. 34 for the actuarial basis, IRC §411(a)(13) for the cash-balance
+ *     safe harbor) — cite text replaced below, then flipped.
  * Keys ABSENT here stay unverified seeds (verified:false, verifiedDate:null).
+ * sutherland_pit is INTENTIONALLY absent: it credits Sutherland's published
+ * "Point in Time" formula but is ClearPath's disclosed IMPLEMENTATION of it (not
+ * an independently verified primary-source authority), so it carries
+ * `disclosedMethod` (renders without the "methodology under review" suffix)
+ * rather than a verification date.
  */
 const VERIFIED_DATES = Object.freeze({
   aaml_30_20_40: '2026-06-12',
@@ -50,15 +62,43 @@ const VERIFIED_DATES = Object.freeze({
   ssa_wage_base: '2026-06-12',
   irs_401k_limits: '2026-06-12',
   irc_417e3: '2026-06-10',
+  // ── Batch #2 (2026-06-18) — Cowork primary-source verification ─────────────
+  coverture_time_rule: '2026-06-18',
+  bender_dc_1972: '2026-06-18', // re-cited to Barbour v. Barbour (below)
+  mosley_va_1994: '2026-06-18',
+  deering_md_1981: '2026-06-18',
+  hug_1984: '2026-06-18',
+  nelson_1986: '2026-06-18',
+  reg_1_417e_1: '2026-06-18',
+  soa_commutation: '2026-06-18', // re-cited to ASOP No. 34 (below)
+  soa_pub2010: '2026-06-18',
+  soa_rp2014: '2026-06-18',
+  irs_notice_96_8: '2026-06-18',
+  ppa_2006_1107: '2026-06-18', // re-cited to IRC §411(a)(13)(A) (below)
+  cooper_v_ibm_2006: '2026-06-18',
+  irc_121: '2026-06-18',
+  irc_121_d_3: '2026-06-18',
+  treas_reg_1_121_3: '2026-06-18',
+  irc_1041: '2026-06-18',
+  irc_7703: '2026-06-18',
+  irc_24_ctc_2026: '2026-06-18',
+  ltcg_15_simplification: '2026-06-18',
+  hpa_pmi_cancellation: '2026-06-18',
 });
 
-const entry = (key, shortCite, fullCite, scopeNote) => ({
+const entry = (key, shortCite, fullCite, scopeNote, opts = {}) => ({
   key,
   shortCite,
   fullCite,
   scopeNote,
   verified: Object.prototype.hasOwnProperty.call(VERIFIED_DATES, key),
   verifiedDate: VERIFIED_DATES[key] ?? null,
+  // A disclosed ClearPath method (not an external authority): renders as settled
+  // — the renderer suppresses the "methodology under review" suffix for it — even
+  // though it carries no verification date. Field is OMITTED unless set so it
+  // never appears on ordinary entries. Mutually exclusive with `verified` by
+  // construction (a disclosed method is never added to VERIFIED_DATES).
+  ...(opts.disclosedMethod ? { disclosedMethod: true } : {}),
 });
 
 export const REGISTRY = Object.freeze({
@@ -163,9 +203,9 @@ export const REGISTRY = Object.freeze({
   ),
   bender_dc_1972: entry(
     'bender_dc_1972',
-    'Bender v. Bender',
-    'Bender v. Bender, 297 A.2d 786 (D.C. 1972)',
-    'DC coverture authority (PVA tier 3).'
+    'Barbour v. Barbour',
+    'Barbour v. Barbour, 464 A.2d 915 (D.C. 1983)',
+    'DC coverture authority (PVA tier 3). Re-cited 2026-06-18 (batch #2): the DC coverture seat is Barbour, not Bender; registry key retained for the persisted-string resolution mapping.'
   ),
   mosley_va_1994: entry(
     'mosley_va_1994',
@@ -183,13 +223,13 @@ export const REGISTRY = Object.freeze({
     'hug_1984',
     'In re Marriage of Hug',
     'In re Marriage of Hug, 154 Cal. App. 3d 780 (1984)',
-    'Time-rule variant for deferred comp (DCA). California authority used as METHOD attribution, not jurisdictional authority — phrasing must not imply CA law governs.'
+    'Time-rule variant for deferred comp (DCA). California case — illustrative of an accepted method; not controlling DMV authority.'
   ),
   nelson_1986: entry(
     'nelson_1986',
     'In re Marriage of Nelson',
     'In re Marriage of Nelson, 177 Cal. App. 3d 150 (1986)',
-    'Companion time-rule variant; same method-not-jurisdiction note as hug_1984.'
+    'Companion time-rule variant. California case — illustrative of an accepted method; not controlling DMV authority.'
   ),
 
   // ── §3 Pension / PV apparatus ─────────────────────────────────────────────
@@ -207,9 +247,9 @@ export const REGISTRY = Object.freeze({
   ),
   soa_commutation: entry(
     'soa_commutation',
-    'SOA actuarial standards (commutation)',
-    'Society of Actuaries actuarial standards — commutation methodology',
-    'Actuarial basis, tiers 1/2 + in-pay; verification must pin a concrete ASOP/standard, not the generic string.'
+    'ASOP No. 34',
+    'Actuarial Standard of Practice No. 34 (Actuarial Practice Concerning Retirement Plan Benefits in Domestic Relations Actions); ASOP No. 4 (secondary)',
+    'Actuarial basis, tiers 1/2 + in-pay. Re-cited 2026-06-18 (batch #2): pinned to ASOP No. 34 (ASOP No. 4 secondary); the generic "commutation" label is dropped. Registry key retained for the persisted-string resolution mapping.'
   ),
   irs_notice_2025_40: entry(
     'irs_notice_2025_40',
@@ -237,9 +277,9 @@ export const REGISTRY = Object.freeze({
   ),
   ppa_2006_1107: entry(
     'ppa_2006_1107',
-    'PPA 2006 § 1107',
-    'Pension Protection Act of 2006 § 1107',
-    'Lump-sum-equals-balance safe harbor (cash-balance path).'
+    'IRC § 411(a)(13)(A)',
+    '26 U.S.C. § 411(a)(13)(A); 26 C.F.R. § 1.411(a)(13)-1',
+    'Lump-sum-equals-balance safe harbor (cash-balance path). Re-cited 2026-06-18 (batch #2): the governing law is IRC § 411(a)(13)(A) and its regulation, not a PPA act-section number. Registry key retained for the persisted-string resolution mapping.'
   ),
   cooper_v_ibm_2006: entry(
     'cooper_v_ibm_2006',
@@ -287,9 +327,10 @@ export const REGISTRY = Object.freeze({
   ),
   sutherland_pit: entry(
     'sutherland_pit',
-    'Sutherland methodology',
-    'Sutherland, Point-in-Time personal income tax discount methodology',
-    "PIT tax-discount basis. Verification must pin the actual publication (the 'DJ Q2 2025' shorthand is insufficient as a rendered cite); scope must also define the rendered relationship to the uncited 'traditional method' comparator."
+    'Point-in-time tax discount (Sutherland "Point in Time" formula)',
+    'Sutherland, "Is Your Retirement Plan Tax Discount Too High?", DFA Journal (IDFA), Q2 2025 — point-in-time 401(k) tax-discount formula; ClearPath disclosed implementation, formula in Appendix A.',
+    "PIT tax-discount basis. Implements Steven E. Sutherland's published 'Point in Time' 401(k) tax-discount formula (DFA Journal/IDFA, Q2 2025) verbatim — same formula, terminology, and result (9.79% at n=23 in F1). Credited 2026-06-18 (batch #2) to the article rather than dropped: it is ClearPath's disclosed implementation of a third-party-derived formula, not an independently verified primary-source authority, so it stays verified:false and renders WITHOUT the 'methodology under review' suffix via disclosedMethod, and is NOT counted among the verified authorities. The point-in-time MATH (METHODOLOGY_DESCRIPTIONS) is unchanged.",
+    { disclosedMethod: true }
   ),
   rev_proc_2025_32: entry(
     'rev_proc_2025_32',
