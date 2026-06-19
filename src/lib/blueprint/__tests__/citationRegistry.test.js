@@ -124,6 +124,39 @@ describe('citation registry — RESOLUTION_MAP', () => {
     expect(unresolved).toEqual([]);
   });
 
+  // Batch #2 (2026-06-18) re-cited three authorities. The consumer display
+  // string (src/lib/pensionValuation/citations.js) was corrected to the NEW
+  // cite, but already-persisted user data still carries the OLD string. Both the
+  // old persisted string AND the new display string MUST resolve to the same
+  // registry key — backward-compat is unconditional (PR-A criterion 2).
+  it('resolves BOTH old persisted and new display strings to the same key (batch #2 re-cites)', () => {
+    const pairs = [
+      {
+        key: 'bender_dc_1972',
+        oldStr: 'Bender v. Bender, 297 A.2d 786 (DC 1972)',
+        newStr: 'Barbour v. Barbour, 464 A.2d 915 (D.C. 1983)',
+      },
+      {
+        key: 'soa_commutation',
+        oldStr: 'SOA actuarial standards (commutation methodology)',
+        newStr: 'ASOP No. 34',
+      },
+      {
+        key: 'ppa_2006_1107',
+        oldStr: 'Pension Protection Act of 2006 §1107 (lump-sum-equals-balance safe harbor)',
+        newStr: 'IRC §411(a)(13)(A)',
+      },
+    ];
+    for (const { key, oldStr, newStr } of pairs) {
+      const oldRes = resolveCitationStrings([oldStr]);
+      const newRes = resolveCitationStrings([newStr]);
+      expect(oldRes.keys, `old: ${oldStr}`).toEqual([key]);
+      expect(oldRes.unresolved, `old unresolved: ${oldStr}`).toEqual([]);
+      expect(newRes.keys, `new: ${newStr}`).toEqual([key]);
+      expect(newRes.unresolved, `new unresolved: ${newStr}`).toEqual([]);
+    }
+  });
+
   it('resolves the DCA combined Hug/Nelson string to TWO keys', () => {
     const { keys, unresolved } = resolveCitationStrings([
       'In re Marriage of Hug (1984) 154 Cal.App.3d 780; In re Marriage of Nelson (1986) 177 Cal.App.3d 150',

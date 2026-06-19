@@ -1,10 +1,10 @@
 /**
  * Tests for CovertureRationale (§7.9.3 Tier 3 only).
  *
- * Spec-pinned copy verbatim per LL-25. Required assertions: time-rule
- * intro, frozen vs projected variants, four case-law citations (Bender,
- * Mosley, Deering, Lehman), marital-cutoff-date guidance, marriage-
- * before-hire edge case.
+ * Spec-pinned copy per LL-25. Required assertions: time-rule
+ * intro, frozen vs projected variants, four case-law citations (Barbour,
+ * Mosley, Deering, Lehman — DC seat re-cited Bender → Barbour in batch #2),
+ * marital-cutoff-date guidance, marriage-before-hire edge case.
  */
 
 import { describe, it, expect } from 'vitest';
@@ -27,10 +27,10 @@ describe('CovertureRationale (§7.9.3 Tier 3)', () => {
     expect(screen.getByText(/Projected-at-retirement/)).toBeInTheDocument();
   });
 
-  it('renders all four required case-law citations (Bender, Mosley, Deering, Lehman)', () => {
+  it('renders all four required case-law citations (Barbour, Mosley, Deering, Lehman)', () => {
     render(<CovertureRationale />);
     fireEvent.click(screen.getByTestId('coverture-rationale-toggle'));
-    expect(screen.getByText(/Bender v\. Bender/)).toBeInTheDocument();
+    expect(screen.getByText(/Barbour v\. Barbour/)).toBeInTheDocument();
     expect(screen.getByText(/Mosley v\. Mosley/)).toBeInTheDocument();
     expect(screen.getByText(/Deering v\. Deering/)).toBeInTheDocument();
     expect(screen.getByText(/In re Marriage of Lehman/)).toBeInTheDocument();

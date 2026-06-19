@@ -38,7 +38,7 @@ describe('In-Pay Status calc engine (§7.4.4)', () => {
     expect(result.metadata.formOfBenefitInPay).toBe('single_life');
     expect(result.metadata.citations).toEqual([
       'IRC §417(e)(3)',
-      'SOA actuarial standards (commutation methodology)',
+      'ASOP No. 34',
     ]);
     expect(collected).toHaveLength(0);
   });

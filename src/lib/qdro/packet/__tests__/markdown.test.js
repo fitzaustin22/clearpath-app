@@ -262,8 +262,9 @@ describe('buildFullBranchSection — §8.6.5 PVA fixture embed (PR-B2-β)', () =
     expect(md).toMatch(
       /- PVA computation: Tier 2 PV \$[\d,]+ \(range \$[\d,]+–\$[\d,]+\), formulaId `pva_db_tier2_v1` — see PVA report for methodology\./,
     );
-    // Real PVA citations from CITATIONS_BY_PATH.tier_2 (verbatim):
-    expect(md).toContain('- Citations: IRC §417(e)(3); 26 CFR §1.417(e)-1; SOA actuarial standards (commutation methodology)');
+    // Real PVA citations from CITATIONS_BY_PATH.tier_2 (verbatim; commutation
+    // re-cited to ASOP No. 34 in citation batch #2):
+    expect(md).toContain('- Citations: IRC §417(e)(3); 26 CFR §1.417(e)-1; ASOP No. 34');
     // ISO snapshot present (any ISO string with T):
     expect(md).toMatch(/- PVA computed: \d{4}-\d{2}-\d{2}T/);
     // No marital line for non-coverture results.

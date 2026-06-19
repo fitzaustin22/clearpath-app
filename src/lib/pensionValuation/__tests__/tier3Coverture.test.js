@@ -53,7 +53,8 @@ describe('Tier 3 coverture calc engine (§7.4.3 + §7.4.3a)', () => {
     // variant was pulled per founder decision; the variant it cites is
     // v1.1-deferred, so it must not surface in the export.)
     expect(result.metadata.citations).toHaveLength(3);
-    expect(result.metadata.citations[0]).toContain('Bender');
+    // DC coverture seat re-cited Bender → Barbour (citation batch #2, 2026-06-18).
+    expect(result.metadata.citations[0]).toContain('Barbour');
     expect(result.metadata.citations[1]).toContain('Mosley');
     expect(result.metadata.citations[2]).toContain('Deering');
     expect(result.metadata.citations.some((c) => c.includes('Lehman'))).toBe(false);

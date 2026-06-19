@@ -377,14 +377,25 @@ export const REGISTRY_KEYS = Object.freeze(Object.keys(REGISTRY));
  */
 export const RESOLUTION_MAP = Object.freeze({
   // PVA — src/lib/pensionValuation/citations.js
+  // Batch #2 (2026-06-18) re-cited three of these authorities. The CONSUMER
+  // display string (CITATIONS_BY_PATH) was corrected to the NEW cite; the OLD
+  // persisted string is RETAINED here UNCONDITIONALLY so already-saved user data
+  // still resolves. Both old and new map to the same key (see the resolution
+  // test in citationRegistry.test.js). Never drop the old strings.
   'IRC §417(e)(3)': ['irc_417e3'],
   '26 CFR §1.417(e)-1': ['reg_1_417e_1'],
-  'SOA actuarial standards (commutation methodology)': ['soa_commutation'],
-  'Bender v. Bender, 297 A.2d 786 (DC 1972)': ['bender_dc_1972'],
+  // soa_commutation re-cited "SOA … commutation methodology" → "ASOP No. 34":
+  'SOA actuarial standards (commutation methodology)': ['soa_commutation'], // OLD persisted — backward-compat
+  'ASOP No. 34': ['soa_commutation'], // NEW consumer display
+  // bender_dc_1972 re-cited "Bender v. Bender" → "Barbour v. Barbour":
+  'Bender v. Bender, 297 A.2d 786 (DC 1972)': ['bender_dc_1972'], // OLD persisted — backward-compat
+  'Barbour v. Barbour, 464 A.2d 915 (D.C. 1983)': ['bender_dc_1972'], // NEW consumer display
   'Mosley v. Mosley, 19 Va. App. 192, 450 S.E.2d 161 (1994)': ['mosley_va_1994'],
   'Deering v. Deering, 292 Md. 115, 437 A.2d 883 (1981)': ['deering_md_1981'],
   'IRS Notice 96-8': ['irs_notice_96_8'],
-  'Pension Protection Act of 2006 §1107 (lump-sum-equals-balance safe harbor)': ['ppa_2006_1107'],
+  // ppa_2006_1107 re-cited "Pension Protection Act of 2006 §1107" → "IRC §411(a)(13)(A)":
+  'Pension Protection Act of 2006 §1107 (lump-sum-equals-balance safe harbor)': ['ppa_2006_1107'], // OLD persisted — backward-compat
+  'IRC §411(a)(13)(A)': ['ppa_2006_1107'], // NEW consumer display
   'Cooper v. IBM Personal Pension Plan, 457 F.3d 636 (7th Cir. 2006)': ['cooper_v_ibm_2006'],
   // DCA — m6Store DEFERRED_COMP_CITATION (one string, two authorities)
   'In re Marriage of Hug (1984) 154 Cal.App.3d 780; In re Marriage of Nelson (1986) 177 Cal.App.3d 150':

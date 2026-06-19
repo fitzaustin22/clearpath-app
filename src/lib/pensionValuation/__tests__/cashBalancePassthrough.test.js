@@ -39,7 +39,7 @@ describe('Cash Balance pass-through calc engine (§7.4.5)', () => {
 
     expect(result.metadata.citations).toEqual([
       'IRS Notice 96-8',
-      'Pension Protection Act of 2006 §1107 (lump-sum-equals-balance safe harbor)',
+      'IRC §411(a)(13)(A)',
       'Cooper v. IBM Personal Pension Plan, 457 F.3d 636 (7th Cir. 2006)',
     ]);
     expect(collected).toHaveLength(0);
