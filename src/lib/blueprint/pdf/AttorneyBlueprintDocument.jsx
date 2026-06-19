@@ -37,14 +37,58 @@ const h = React.createElement;
 
 // ── Render plan (single source of truth for rendered strings) ───────────────
 
+// Per-citation controlling jurisdiction — render-time presentation metadata for
+// the footnote sort only. The document model and CITATIONS_BY_PATH are NOT
+// touched. Only the DMV state authorities are classified; federal, California,
+// and method/national authorities are intentionally absent (they never match a
+// matter's jurisdiction, so the sort leaves their relative order untouched).
+const CITATION_JURISDICTION = Object.freeze({
+  // District of Columbia
+  bender_dc_1972: 'DC', // Barbour v. Barbour
+  builta_2024: 'DC',
+  dc_16_916_01_911: 'DC',
+  dc_16_913: 'DC',
+  // Virginia
+  mosley_va_1994: 'VA',
+  va_16_1_278_17_1: 'VA',
+  va_20_108_2: 'VA',
+  va_20_103: 'VA',
+  va_20_107_1: 'VA',
+  // Maryland
+  deering_md_1981: 'MD',
+  boemio_2010: 'MD',
+  voishan_1992: 'MD',
+  md_fl_12_201_202_204: 'MD',
+  md_fl_11_106: 'MD',
+});
+
+// Stable, render-time WITHIN-GROUP sort: authorities controlling in the matter's
+// jurisdiction lead; everything else keeps its existing relative order. A group
+// with no matter-jurisdiction authority is returned unchanged (fallback). The
+// lead jurisdiction is driven by the `jurisdiction` param — never hardcoded to
+// one state. Returns a NEW array; the underlying block.citations is not mutated.
+export function sortCitationsByJurisdiction(keys, jurisdiction) {
+  const list = keys || [];
+  if (!jurisdiction) return [...list];
+  const lead = [];
+  const rest = [];
+  for (const k of list) {
+    if (CITATION_JURISDICTION[k] === jurisdiction) lead.push(k);
+    else rest.push(k);
+  }
+  return [...lead, ...rest];
+}
+
 // Enrich a block list into presentation rows (formatted value + raw + flags +
 // citation markers) and the per-block-list source list (numbered at first use).
-function enrichRows(blocks) {
+// Within each block's citation group, the matter's jurisdiction leads (render-
+// time sort); first-use marker numbering then follows that order.
+function enrichRows(blocks, jurisdiction = null) {
   const orderedKeys = [];
   const seen = new Set();
   const rows = blocks.map((b) => {
     const markers = [];
-    for (const k of b.citations || []) {
+    for (const k of sortCitationsByJurisdiction(b.citations || [], jurisdiction)) {
       if (!seen.has(k)) {
         seen.add(k);
         orderedKeys.push(k);
@@ -170,8 +214,8 @@ function sectionNotes(section, { hasRetirementSection = false } = {}) {
   return notes;
 }
 
-function sectionPlan(section, { hasRetirementSection = false } = {}) {
-  const { rows, sources } = enrichRows(section.blocks);
+function sectionPlan(section, { hasRetirementSection = false, jurisdiction = null } = {}) {
+  const { rows, sources } = enrichRows(section.blocks, jurisdiction);
   return {
     id: section.id,
     number: sectionNumberLabel(section.id),
@@ -203,9 +247,9 @@ function carrierNotes(name) {
   return notes;
 }
 
-function carrierPlan(name, blocks) {
+function carrierPlan(name, blocks, jurisdiction = null) {
   if (!blocks || blocks.length === 0) return null;
-  const { rows, sources } = enrichRows(blocks);
+  const { rows, sources } = enrichRows(blocks, jurisdiction);
   const layout = layoutCarrier(name, rows);
   return { name, number: layout.number, title: layout.title, layout, notes: carrierNotes(name), sources };
 }
@@ -250,9 +294,11 @@ export function buildRenderPlan(model, opts = {}) {
   const hasRetirementSection = includedSections.some((s) => s.id === 's6');
   const content = {
     headerLeft: `${headerName(clientName)} — Financial Blueprint`,
-    sections: includedSections.map((s) => sectionPlan(s, { hasRetirementSection })),
+    sections: includedSections.map((s) =>
+      sectionPlan(s, { hasRetirementSection, jurisdiction: model.jurisdiction }),
+    ),
     carriers: ['deferredCompStubs', 'costBasisEntries', 'qdroBlueprint']
-      .map((name) => carrierPlan(name, model.carriers?.[name]))
+      .map((name) => carrierPlan(name, model.carriers?.[name], model.jurisdiction))
       .filter(Boolean),
   };
 

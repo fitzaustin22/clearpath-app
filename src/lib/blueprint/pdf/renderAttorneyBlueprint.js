@@ -6,7 +6,12 @@
 // export wiring (entitlement gate, response stream) is the D-V2-1 Phase 4 item.
 import React from 'react';
 import { renderToBuffer } from '@react-pdf/renderer';
-import { AttorneyBlueprintDocument, buildRenderPlan, collectRenderableStrings } from './AttorneyBlueprintDocument';
+import {
+  AttorneyBlueprintDocument,
+  buildRenderPlan,
+  collectRenderableStrings,
+  sortCitationsByJurisdiction,
+} from './AttorneyBlueprintDocument';
 
 /**
  * @param {object} model  buildDocumentModel(...) output
@@ -60,4 +65,4 @@ export async function auditTocPageNumbers(model, opts = {}) {
   return { tocPages, actualPages };
 }
 
-export { buildRenderPlan, collectRenderableStrings };
+export { buildRenderPlan, collectRenderableStrings, sortCitationsByJurisdiction };
