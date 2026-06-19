@@ -63,7 +63,14 @@ function enrichRows(blocks) {
   });
   const sources = orderedKeys.map((key, i) => {
     const e = getEntry(key);
-    return { n: i + 1, key, shortCite: e.shortCite, fullCite: e.fullCite, verified: e.verified };
+    return {
+      n: i + 1,
+      key,
+      shortCite: e.shortCite,
+      fullCite: e.fullCite,
+      verified: e.verified,
+      disclosedMethod: !!e.disclosedMethod,
+    };
   });
   return { rows, sources };
 }
@@ -256,6 +263,7 @@ export function buildRenderPlan(model, opts = {}) {
       description: e.description || null,
       cite: e.fullCite,
       verified: e.verified,
+      disclosedMethod: !!e.disclosedMethod,
     })),
     roundingLabel: 'Rounding and precision',
     rounding: model.appendices?.methodology?.roundingContractDisclosure?.summary ?? '',
@@ -498,7 +506,7 @@ function SourcesBlock({ styles, sources }) {
         { key: s.key, style: styles.sourceLine },
         h(Text, { style: styles.sourceMarker }, `${s.n}  `),
         h(CiteText, { styles, cite: s.fullCite }),
-        s.verified ? null : h(Text, { style: styles.underReview }, REVIEW_SUFFIX),
+        s.verified || s.disclosedMethod ? null : h(Text, { style: styles.underReview }, REVIEW_SUFFIX),
       ),
     ),
   );
@@ -688,7 +696,7 @@ export function AttorneyBlueprintDocument({ model, opts = {} }) {
                 Text,
                 { style: styles.methodCite },
                 h(CiteText, { styles, cite: e.cite }),
-                e.verified ? null : h(Text, { style: styles.underReview }, REVIEW_SUFFIX),
+                e.verified || e.disclosedMethod ? null : h(Text, { style: styles.underReview }, REVIEW_SUFFIX),
               ),
             ),
           ),

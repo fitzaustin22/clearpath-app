@@ -271,7 +271,8 @@ export default function S6RetirementDivision({ data, status }) {
           </section>
 
           <p style={{ ...bodyStyle, marginTop: 32, lineHeight: 1.55 }}>
-            Using the traditional method would overstate the tax discount by{' '}
+            Using the traditional method — the conventional approach, which applies your
+            full effective tax rate — would overstate the tax discount by{' '}
             <strong style={{ color: RED, fontWeight: 600 }}>{currency(overage)}</strong> —
             reducing your share of the property division by that amount.
           </p>

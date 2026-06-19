@@ -54,7 +54,7 @@ const HIGH_GAIN_TEXT =
   'This asset has significant built-in gain — more than half its value is unrealized appreciation.';
 
 const SECTION_121_ASSUMPTIONS_TEXT =
-  "§121 assumptions: This calculation assumes you've owned the home AND lived in it as your primary residence for at least 2 of the last 5 years, and haven't claimed this exclusion on another home in the last 2 years. In a divorce, IRC §1041 lets you count time your spouse owned or used the home toward these tests. If any of this doesn't describe your situation, the exclusion may not fully apply — consult your CDFA or CPA.";
+  "§121 assumptions: This calculation assumes you've owned the home AND lived in it as your primary residence for at least 2 of the last 5 years, and haven't claimed this exclusion on another home in the last 2 years. In a divorce, IRC §121(d)(3) lets you count time your spouse owned or used the home toward these tests. If any of this doesn't describe your situation, the exclusion may not fully apply — consult your CDFA or CPA.";
 
 // DEF-9: Contextual prompts shown below the table when relevant rows exist.
 const BROKERAGE_BASIS_TEXT =

@@ -26,19 +26,30 @@ describe('citation registry — manifest parity (anti-edit tripwire)', () => {
   });
 });
 
-// Vault verification state of record (V2-Citation-Registry.md): 19 entries are
-// verified:true (18 @ 2026-06-12 + irc_417e3 @ 2026-06-10); the remaining 23
-// stay unverified seeds. The Phase 2 renderer's verified-vs-"methodology under
-// review" treatment (Acceptance Spec §4-A2, the A2 directive) reads
-// entry.verified, so the code mirror MUST carry the flags. Flips remain Fitz's
-// by primary-source verification; this set records the verifications of record.
+// Vault verification state of record (V2-Citation-Registry.md): 40 entries are
+// verified:true (19 @ 2026-06-12 / irc_417e3 @ 2026-06-10, then 21 @ 2026-06-18
+// in batch #2, which includes the three RE-CITED authorities bender→Barbour,
+// soa_commutation→ASOP 34, ppa→IRC §411(a)(13)). The remaining 2 stay
+// unverified: kaufman_guidelines (educational mention only) and sutherland_pit
+// (a DISCLOSED ClearPath method, not an external authority — it carries
+// disclosedMethod and renders without the "methodology under review" suffix,
+// rather than a verification date). The Phase 2 renderer's verified-vs-"under
+// review" treatment (Acceptance Spec §4-A2) reads entry.verified, so the code
+// mirror MUST carry the flags. Flips remain Fitz's by primary-source verification.
 const VERIFIED_KEYS = new Set([
+  // 19 verified pre-batch-2 (2026-06-12; irc_417e3 @ 2026-06-10)
   'aaml_30_20_40', 'aaml_duration_schedule', 'boemio_2010',
   'va_16_1_278_17_1', 'va_20_108_2', 'va_20_103', 'va_20_107_1',
   'md_fl_12_201_202_204', 'md_fl_11_106', 'voishan_1992',
   'dc_16_916_01_911', 'dc_16_913', 'builta_2024', 'hhs_ocse_income_shares',
   'irc_417e3', 'irs_notice_2025_40', 'rev_proc_2025_32',
   'ssa_wage_base', 'irs_401k_limits',
+  // 21 verified in batch #2 (2026-06-18); bender/soa_commutation/ppa re-cited then flipped
+  'coverture_time_rule', 'bender_dc_1972', 'mosley_va_1994', 'deering_md_1981',
+  'hug_1984', 'nelson_1986', 'reg_1_417e_1', 'soa_commutation', 'soa_pub2010',
+  'soa_rp2014', 'irs_notice_96_8', 'ppa_2006_1107', 'cooper_v_ibm_2006',
+  'irc_121', 'irc_121_d_3', 'treas_reg_1_121_3', 'irc_1041', 'irc_7703',
+  'irc_24_ctc_2026', 'ltcg_15_simplification', 'hpa_pmi_cancellation',
 ]);
 
 describe('citation registry — entry contract', () => {
@@ -54,7 +65,7 @@ describe('citation registry — entry contract', () => {
     }
   });
 
-  it('verified state mirrors the vault: 19 verified (with dates), 23 unverified', () => {
+  it('verified state mirrors the vault: 40 verified (with dates), 2 unverified', () => {
     let verifiedCount = 0;
     for (const [key, e] of Object.entries(REGISTRY)) {
       if (VERIFIED_KEYS.has(key)) {
@@ -68,8 +79,23 @@ describe('citation registry — entry contract', () => {
         expect(e.verifiedDate, key).toBeNull();
       }
     }
-    expect(verifiedCount).toBe(19);
-    expect(VERIFIED_KEYS.size).toBe(19);
+    expect(verifiedCount).toBe(40);
+    expect(VERIFIED_KEYS.size).toBe(40);
+  });
+
+  it('sutherland_pit is a DISCLOSED method: not verified, no date, carries disclosedMethod, and credits the Sutherland article', () => {
+    const e = getEntry('sutherland_pit');
+    expect(e.verified).toBe(false);
+    expect(e.verifiedDate).toBeNull();
+    expect(e.disclosedMethod).toBe(true);
+    // The cite CREDITS Sutherland's published "Point in Time" formula (ClearPath's
+    // disclosed implementation of it), rather than dropping the attribution.
+    expect(e.shortCite).toMatch(/Sutherland/i);
+    expect(e.fullCite).toMatch(/Sutherland/i);
+    // It is the ONLY disclosed-method entry; ordinary entries omit the field.
+    const disclosed = REGISTRY_KEYS.filter((k) => REGISTRY[k].disclosedMethod);
+    expect(disclosed).toEqual(['sutherland_pit']);
+    expect('disclosedMethod' in getEntry('irc_121')).toBe(false);
   });
 
   it('hasKey/getEntry agree and reject unknown keys', () => {
