@@ -41,7 +41,7 @@ describe('Tier 1/2 calc engine (§7.4.2)', () => {
     expect(result.metadata.citations).toEqual([
       'IRC §417(e)(3)',
       '26 CFR §1.417(e)-1',
-      'SOA actuarial standards (commutation methodology)',
+      'ASOP No. 34',
     ]);
     expect(collected).toHaveLength(0);
   });

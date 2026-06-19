@@ -6,8 +6,10 @@ import { T } from '@/src/lib/brand/tokens';
 /**
  * §7.9.3 — "Coverture rationale" expandable (Tier 3 only).
  *
- * Spec-pinned copy verbatim per LL-25 — including the case-law citations
- * (Bender, Mosley, Deering, Lehman) which are required by spec.
+ * Spec-pinned copy per LL-25 — including the case-law citations
+ * (Barbour, Mosley, Deering, Lehman) which are required by spec. The DC
+ * frozen-coverture seat was re-cited Bender → Barbour v. Barbour in citation
+ * batch #2 (2026-06-18); the prior Bender v. Bender reporter cite does not exist.
  */
 export default function CovertureRationale() {
   const [expanded, setExpanded] = useState(false);
@@ -60,7 +62,7 @@ export default function CovertureRationale() {
           <p>Two flavors of coverture exist in CDFA practice:</p>
           <ol style={{ paddingLeft: '1.25rem' }}>
             <li style={{ marginBottom: '0.5rem' }}>
-              <strong>Frozen-at-valuation-date</strong> (PVA's v1 approach): Marital portion is the coverture fraction × the accrued benefit AS OF the valuation date. Doesn't require salary projection. Simple and defensible. Most VA / MD / DC practice favors this. Authority: <em>Bender v. Bender</em>, 297 A.2d 786 (DC 1972); <em>Mosley v. Mosley</em>, 19 Va. App. 192, 450 S.E.2d 161 (1994); <em>Deering v. Deering</em>, 292 Md. 115, 437 A.2d 883 (1981).
+              <strong>Frozen-at-valuation-date</strong> (PVA's v1 approach): Marital portion is the coverture fraction × the accrued benefit AS OF the valuation date. Doesn't require salary projection. Simple and defensible. Most VA / MD / DC practice favors this. Authority: <em>Barbour v. Barbour</em>, 464 A.2d 915 (D.C. 1983); <em>Mosley v. Mosley</em>, 19 Va. App. 192, 450 S.E.2d 161 (1994); <em>Deering v. Deering</em>, 292 Md. 115, 437 A.2d 883 (1981).
             </li>
             <li style={{ marginBottom: '0.5rem' }}>
               <strong>Projected-at-retirement</strong>: Marital portion is the coverture fraction × the projected benefit AT retirement. Captures more of the marital contribution to the projected benefit but requires a salary growth assumption. CA practice often uses this variant. Authority: <em>In re Marriage of Lehman</em>, 18 Cal. 4th 169 (1998).

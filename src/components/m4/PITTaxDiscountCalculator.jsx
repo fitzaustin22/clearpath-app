@@ -804,7 +804,7 @@ export default function PITTaxDiscountCalculator({ userTier = 'essentials' }) {
           lineHeight: 1.55,
         }}
       >
-        This calculator implements the "Point in Time" methodology as described by Steven E. Sutherland, CPA, CFP®, CFE, CDFA®. Results are for educational purposes only. Actual tax discounts depend on individual circumstances including tax law changes, actual withdrawal patterns, and investment returns. Consult a Certified Divorce Financial Analyst® for case-specific analysis.
+        This calculator implements the &quot;Point in Time&quot; methodology described by Steven E. Sutherland, CPA, CFP®, CFE, CDFA®, in &quot;Is Your Retirement Plan Tax Discount Too High?&quot; (DFA Journal, IDFA, Q2 2025). Results are for educational purposes only. Actual tax discounts depend on individual circumstances including tax law changes, actual withdrawal patterns, and investment returns. Consult a Certified Divorce Financial Analyst® for case-specific analysis.
       </div>
 
       {/* Print stylesheet — makes the calculator render cleanly in print/PDF */}

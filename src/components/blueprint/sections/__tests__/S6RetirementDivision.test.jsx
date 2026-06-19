@@ -47,7 +47,9 @@ const PVA_VALUED = {
   maritalPV: 180000,
   expectedRetirementAge: 65,
   coverturePercent: 0.6,
-  citations: ['IRC §417(e)(3)', 'Bender v. Bender, 297 A.2d 786 (DC 1972)'],
+  // DC coverture seat re-cited Bender → Barbour (citation batch #2); this is the
+  // corrected tier_3 string the PVA engine now emits (CITATIONS_BY_PATH.tier_3).
+  citations: ['IRC §417(e)(3)', 'Barbour v. Barbour, 464 A.2d 915 (D.C. 1983)'],
 };
 
 // flag_only: pension flagged but not valued — both PVs null. Must NOT print $0.

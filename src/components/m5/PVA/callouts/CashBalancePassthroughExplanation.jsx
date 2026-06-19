@@ -22,7 +22,7 @@ export default function CashBalancePassthroughExplanation() {
       }}
     >
       <p style={{ margin: 0 }}>
-        Cash balance plans technically convert to an annuity at retirement, but the participant has a hypothetical account balance shown on the statement. Under PPA-era plan terms (post-2008), the lump-sum value typically equals the account balance — the Pension Protection Act §1107 effectively eliminated the pre-PPA 'whipsaw' where §417(e) discount rates and the plan's interest crediting rate could diverge. PVA's pass-through (PV = balance) is the CDFA standard for divorce planning and is appropriate for the vast majority of cash balance plans. For pre-PPA legacy plans or plans with non-standard interest crediting, small variances may exist; if material, consult a pension actuary.
+        Cash balance plans technically convert to an annuity at retirement, but the participant has a hypothetical account balance shown on the statement. Under PPA-era plan terms (post-2008), the lump-sum value typically equals the account balance — the Pension Protection Act of 2006 added IRC §411(a)(13)(A), which effectively eliminated the pre-PPA 'whipsaw' where §417(e) discount rates and the plan's interest crediting rate could diverge. PVA's pass-through (PV = balance) is the CDFA standard for divorce planning and is appropriate for the vast majority of cash balance plans. For pre-PPA legacy plans or plans with non-standard interest crediting, small variances may exist; if material, consult a pension actuary.
       </p>
     </div>
   );
