@@ -144,11 +144,20 @@ describe('citations — match audited tool + add § 1450(f)(3)(C)', () => {
     expect(flagById(m, 'sbp').cite).toMatch(/1447/);
     expect(flagById(m, 'sbp').cite).toMatch(/1450\(f\)\(3\)\(C\)/);
   });
-  it('VA flag restores Mansell alongside Howell and Yourko', () => {
+  it('VA flag carries full attorney-grade reporter cites for all three cases', () => {
     const cite = flagById(m, 'va').cite;
-    expect(cite).toMatch(/Mansell/);
-    expect(cite).toMatch(/Howell/);
-    expect(cite).toMatch(/Yourko/);
+    expect(cite).toMatch(/Mansell v\. Mansell, 490 U\.S\. 581 \(1989\)/);
+    expect(cite).toMatch(/Howell v\. Howell, 581 U\.S\. 214, 137 S\. Ct\. 1400 \(2017\)/);
+    expect(cite).toMatch(/Yourko v\. Yourko, 302 Va\. 149 \(2023\)/);
+    expect(cite).not.toMatch(/Mansell \(1989\)/); // never a bare-year abbreviation
+  });
+
+  it('no flag cite abbreviates a case name to a bare year (e.g. "Mansell (1989)")', () => {
+    // A capitalized word immediately followed by a parenthesised 4-digit year,
+    // with no reporter in between — the bare-year form we forbid.
+    for (const f of m.flags) {
+      expect(f.cite, `bare-year cite in ${f.id}: ${f.cite}`).not.toMatch(/[A-Z][A-Za-z]+ \(\d{4}\)/);
+    }
   });
 });
 

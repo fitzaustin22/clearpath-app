@@ -16,7 +16,7 @@ export const CITES = {
   tenten: '10 U.S.C. § 1408(d)(2)', //                          → SOURCES.ten_ten_rule
   frozen: 'Pub. L. 114-328, § 641(a) (Dec. 23, 2016); 10 U.S.C. § 1408(a)(4)(B)(i)–(ii)', // → SOURCES.frozen_benefit_rule (full audited form; the cutoff date is the rule's trigger)
   sbp: '10 U.S.C. §§ 1447–1455; 10 U.S.C. § 1450(f)(3)(C)', //   → SOURCES.sbp + sbp_deemed_election
-  va: 'Mansell, 490 U.S. 581 (1989); Howell, 581 U.S. 214 (2017); Yourko, 302 Va. 149 (2023)', // → mansell/howell/yourko
+  va: 'Mansell v. Mansell, 490 U.S. 581 (1989); Howell v. Howell, 581 U.S. 214, 137 S. Ct. 1400 (2017); Yourko v. Yourko, 302 Va. 149 (2023)', // → mansell/howell/yourko (full attorney-grade reporter cites)
 };
 
 // ── Conditional flag builders ────────────────────────────────────────────────
