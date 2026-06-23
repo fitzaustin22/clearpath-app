@@ -27,10 +27,10 @@ import { layoutSection, layoutCarrier } from './presentation';
 import { HeroBand, MetricCards, ProportionBars, MethodTable, Group, EntityBox, LineItems, TocList } from './components';
 import { getEntry } from '../citationRegistry';
 
-const COVER_DISCLAIMER =
-  'Prepared with ClearPath software. This document assembles client-provided information and disclosed methodologies. It is not legal, tax, or investment advice and does not substitute for review by retained counsel.';
-const FOOTER_DISCLAIMER =
-  'Prepared with ClearPath software · Not legal, tax, or investment advice; not a substitute for review by retained counsel.';
+export const COVER_DISCLAIMER =
+  'Prepared with ClearPath software. This document assembles client-provided information and disclosed methodologies. ClearPath is not a law firm; this document is not legal, tax, or investment advice and does not substitute for review by retained counsel.';
+export const FOOTER_DISCLAIMER =
+  'Prepared with ClearPath software · Not a law firm · Not legal, tax, or investment advice; not a substitute for review by retained counsel.';
 const REVIEW_SUFFIX = ' (methodology under review)';
 const SCOPE_REASON = 'Not completed in ClearPath as of the preparation date.';
 const h = React.createElement;
