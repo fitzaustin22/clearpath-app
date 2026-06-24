@@ -9,6 +9,11 @@ const isPublicRoute = createRouteMatcher([
   "/pricing(.*)",
   "/api/webhooks(.*)",
   "/api/leads(.*)",
+  // Military Pension Value Tool — public lead-magnet funnel (no Clerk auth):
+  // the tool page, its report-capture POST, and the email unsubscribe link.
+  "/military-pension-value(.*)",
+  "/api/military-pension-report(.*)",
+  "/api/unsubscribe(.*)",
 ]);
 
 export default clerkMiddleware(async (auth, request) => {
