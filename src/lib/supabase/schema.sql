@@ -93,3 +93,21 @@ create table public.leads (
 -- key writes (it bypasses RLS); anon/authenticated get no access — leads are
 -- never client-readable.
 alter table public.leads enable row level security;
+
+-- Email suppression list (added 2026-06-24 — Military Pension Value Tool funnel).
+-- CAN-SPAM unsubscribe: the report-send path checks this table before every send,
+-- and the public /api/unsubscribe route inserts here (keyed on an HMAC-signed
+-- token — no raw email in the URL). Email is lower-cased before insert, so the
+-- text primary key gives case-insensitive dedupe AND matches the upsert's
+-- ON CONFLICT (email) target. Writes arrive via the service-role key (bypasses RLS).
+--
+-- NOT auto-applied: this project has no migration tooling. Apply this block by
+-- hand (Supabase dashboard SQL editor or MCP) before the funnel goes live.
+create table public.email_suppressions (
+  email text primary key,
+  created_at timestamptz not null default now()
+);
+
+-- RLS on. No policies: only the service-role key reads/writes; anon/authenticated
+-- get no access.
+alter table public.email_suppressions enable row level security;
