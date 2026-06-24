@@ -15,26 +15,8 @@ export default async function InventoryPage() {
     if (data?.tier) userTier = data.tier;
   }
 
-  return (
-    <main style={{ backgroundColor: '#FAF8F2', minHeight: '100vh' }}>
-      <div style={{ maxWidth: 960, margin: '0 auto', padding: '20px 20px 0' }}>
-        <a
-          href="/modules/m2"
-          style={{
-            fontFamily: '"Source Sans Pro", -apple-system, system-ui, sans-serif',
-            fontSize: 14,
-            color: '#1B2A4A',
-            opacity: 0.65,
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          ← Back to Know What You Own
-        </a>
-      </div>
-      <MaritalEstateInventory userTier={userTier} />
-    </main>
-  );
+  // The Guided Path screen renders its own breadcrumb + 1180px container; the
+  // page only resolves auth + the M2 tier and hands it down. Auth gating is via
+  // Clerk middleware (src/proxy.ts) — this route is NOT in publicRoutes.
+  return <MaritalEstateInventory userTier={userTier} />;
 }
