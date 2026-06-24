@@ -98,3 +98,25 @@ export const T = {
     fontOpticalSizing: 'auto',
   },
 } as const;
+
+/**
+ * Allocation semantics — the estate-division language introduced by the
+ * Marital Estate Inventory "Guided Path" reskin (2026-06-24) and intended for
+ * reuse across the ~7 guided wizard tools that share this layout template.
+ *
+ * "You" reuses GOLD (the user's warm column); "Spouse" reuses NAVY (ink). Only
+ * the UNALLOC neutral, its 45° HATCH, and the soft fill tints are genuinely
+ * new — UNALLOC is a muted putty that must read as "still to decide", never as
+ * an error. Meaning is never colour-alone: pills + status text always carry
+ * words. Additive — zero edits to existing T keys.
+ */
+export const ALLOC = {
+  YOU: T.GOLD,
+  YOU_SOFT: 'rgba(200, 169, 110, 0.16)', // summary "You keep" card fill
+  SPOUSE: T.NAVY,
+  SPOUSE_SOFT: 'rgba(27, 42, 74, 0.10)', // summary "Spouse keeps" card fill
+  UNALLOC: '#B9B09A', // muted putty — "still to decide"
+  UNALLOC_SOFT: 'rgba(138, 147, 168, 0.12)',
+  // The one genuinely-new texture: 45° two-tone hatch for the undecided bucket.
+  HATCH: 'repeating-linear-gradient(45deg, #B9B09A 0 5px, #C7BFAC 5px 10px)',
+} as const;
