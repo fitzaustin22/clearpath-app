@@ -1,134 +1,47 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { Lock, Shield } from 'lucide-react';
 import { useM1Store } from '@/src/stores/m1Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';
+import { T } from '@/src/lib/brand/tokens';
 import {
-  PieChart,
-  Pie,
-  Cell,
-  Legend,
-  ResponsiveContainer,
-} from 'recharts';
+  EXPENSE_FIELDS,
+  computeBudgetGap,
+  getVerdictPresentation,
+  getBarModel,
+  getDonutModel,
+} from '@/src/lib/m1/budgetGapMath';
 
-// ─── Brand tokens ──────────────────────────────────────────────
-const NAVY = '#1B2A4A';
-const GOLD = '#C8A96E';
-const PARCHMENT = '#FAF8F2';
-const WHITE = '#FFFFFF';
-const GREEN = '#2D8A4E';
-const RED = '#C0392B';
+// ─── Fonts ─────────────────────────────────────────────────────
+// Playfair is loaded by next/font/google (var --font-playfair, layout.tsx).
+// Newsreader / Inter come from the brand tokens (T.FONT_NUMERIC / T.FONT_BODY).
+const PLAYFAIR = 'var(--font-playfair), "Playfair Display", Georgia, serif';
 
-// ─── Pie chart palette (spec order) ───────────────────────────
-const PIE_COLORS = [
-  '#1B2A4A', '#C8A96E', '#4A6FA5', '#8B6F47',
-  '#6B8E9B', '#A67C52', '#5C7A6E', '#9B7D6A',
-];
-
-// ─── Pay frequency definitions ─────────────────────────────────
-const PAY_FREQUENCIES = [
-  { value: 'weekly', label: 'Weekly', fieldLabel: 'Gross weekly household income' },
-  { value: 'biweekly', label: 'Biweekly', fieldLabel: 'Gross biweekly household income' },
-  { value: 'semimonthly', label: 'Semi-monthly', fieldLabel: 'Gross semi-monthly household income' },
-  { value: 'monthly', label: 'Monthly', fieldLabel: 'Gross monthly household income' },
-];
-
-const FREQ_TOOLTIP =
-  'Biweekly means you\u2019re paid every two weeks (26 paychecks per year). Semi-monthly means you\u2019re paid twice a month on set dates (24 paychecks per year). This matters because biweekly pay results in slightly higher monthly income than semi-monthly.';
-
-// ─── Expense field definitions ─────────────────────────────────
-const EXPENSE_FIELDS = [
-  { key: 'housing', label: 'Housing (rent or mortgage)', required: true, helper: 'What you\u2019d pay for housing on your own \u2014 whether that\u2019s your current mortgage, a new rental, or an estimate.' },
-  { key: 'utilities', label: 'Utilities (electric, gas, water, internet, phone)', required: false },
-  { key: 'groceries', label: 'Groceries and household supplies', required: false },
-  { key: 'transportation', label: 'Transportation (car payment, gas, insurance, maintenance)', required: false },
-  { key: 'healthInsurance', label: 'Health insurance', required: false, helper: 'If you\u2019re currently on your spouse\u2019s plan, estimate what individual coverage would cost. $400\u2013$700/month is typical for individual marketplace coverage.' },
-  { key: 'childcare', label: 'Childcare and children\u2019s expenses', required: false, helper: 'Include daycare, school costs, extracurriculars, clothing, and medical copays for children.' },
-  { key: 'debtPayments', label: 'Debt payments (credit cards, student loans, personal loans)', required: false, helper: 'Monthly minimum payments on all debts you\u2019d be responsible for.' },
-  { key: 'personal', label: 'Personal (clothing, subscriptions, dining out, everything else)', required: false },
-];
-
-// ─── Shared styles ─────────────────────────────────────────────
-const srOnly = {
-  position: 'absolute', width: '1px', height: '1px', padding: 0,
-  margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)',
-  whiteSpace: 'nowrap', borderWidth: 0,
-};
-const labelStyle = {
-  display: 'block', fontFamily: '"Source Sans Pro", sans-serif',
-  fontSize: 14, color: `${NAVY}CC`, marginBottom: 4, fontWeight: 600,
-};
-const helperStyle = {
-  fontFamily: '"Source Sans Pro", sans-serif', fontSize: 13,
-  color: `${NAVY}99`, margin: '4px 0 0', lineHeight: 1.5,
-};
-const errorStyle = {
-  fontFamily: '"Source Sans Pro", sans-serif', fontSize: 13,
-  color: RED, margin: '4px 0 0',
-};
-const inputWrap = {
-  display: 'flex', alignItems: 'center', gap: 6,
-};
-const dollarPrefix = {
-  fontFamily: '"Source Sans Pro", sans-serif', fontSize: 16,
-  color: `${NAVY}88`, lineHeight: '42px', userSelect: 'none',
-};
-const baseInput = {
-  width: '100%', padding: '10px 12px', fontFamily: '"Source Sans Pro", sans-serif',
-  fontSize: 16, color: NAVY, backgroundColor: WHITE, border: `1px solid ${NAVY}1A`,
-  borderRadius: 4, outline: 'none', transition: 'border-color 0.15s',
+// ─── Design-specific colors not covered by the brand token map T ──
+// Per the hand-off README; reported to Fitz. SHORTFALL_RED (#C0392B) is the
+// design's verdict red, intentionally distinct from brand T.RED (#A8351E).
+const D = {
+  CONTAINER_BORDER: '#DDD8CC', // stage card border
+  DOTTED_LEADER: '#C9C2B2', // ledger dotted leaders
+  TRACK_BG: '#EFECE3', // bar track background
+  SHORTFALL_RED: '#C0392B', // verdict red + expense gap chip text
+  RED_WASH: 'rgba(192, 57, 43, 0.13)', // uncovered expense slice
+  // Rail (navy bg) white-opacity ramp
+  RAIL_EYEBROW: 'rgba(255,255,255,0.45)',
+  RAIL_SUB: 'rgba(255,255,255,0.6)',
+  RAIL_CARD_BG: 'rgba(255,255,255,0.07)',
+  RAIL_CARD_BORDER: 'rgba(255,255,255,0.14)',
+  RAIL_HAIRLINE: 'rgba(255,255,255,0.12)',
+  RAIL_GAP_VALUE: 'rgba(255,255,255,0.85)',
+  RAIL_FOOT: 'rgba(255,255,255,0.55)',
 };
 
-// ─── Helpers ───────────────────────────────────────────────────
+// ─── Formatting ────────────────────────────────────────────────
+const money = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
+const fmtInt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 
-function convertToMonthly(gross, freq) {
-  if (!gross || gross <= 0) return 0;
-  switch (freq) {
-    case 'weekly': return (gross * 52) / 12;
-    case 'biweekly': return (gross * 26) / 12;
-    case 'semimonthly': return gross * 2;
-    default: return gross;
-  }
-}
-
-function fmt(n) {
-  if (n == null || isNaN(n)) return '$0';
-  return '$' + Math.round(n).toLocaleString('en-US');
-}
-
-function fmtDisplay(n) {
-  if (n == null || n === '' || isNaN(n)) return '';
-  return Math.round(Number(n)).toLocaleString('en-US');
-}
-
-function parseCurrencyInput(str) {
-  if (!str) return '';
-  const cleaned = str.replace(/[^0-9.]/g, '');
-  // Allow at most one decimal point
-  const parts = cleaned.split('.');
-  if (parts.length > 2) return parts[0] + '.' + parts.slice(1).join('');
-  return cleaned;
-}
-
-function getVerdict(gapPercent) {
-  if (gapPercent === null) return 'There\u2019s a gap. That\u2019s not a dead end \u2014 it\u2019s a starting point. Most women in your situation find income sources and expense adjustments they hadn\u2019t considered.';
-  if (gapPercent > 20) return 'You have breathing room. The next step is understanding what you own and owe.';
-  if (gapPercent >= 0) return 'It\u2019s tight, but workable. Where you live and how you structure expenses will shape this number \u2014 and Module 2 helps you see the full picture.';
-  return 'There\u2019s a gap. That\u2019s not a dead end \u2014 it\u2019s a starting point. Most women in your situation find income sources and expense adjustments they hadn\u2019t considered.';
-}
-
-function getM2CTA(gapPercent) {
-  if (gapPercent === null) return 'A gap doesn\u2019t mean you\u2019re stuck. Module 2 shows you every asset and debt in the picture \u2014 and that\u2019s where most women find options they didn\u2019t know they had.';
-  if (gapPercent > 20) return 'You have room to plan. Module 2 helps you understand what you own and owe \u2014 so your decisions are grounded in the full picture.';
-  if (gapPercent >= 0) return 'The margin is there. Module 2 maps your complete financial picture \u2014 assets, debts, and everything in between \u2014 so your next decisions are grounded.';
-  return 'A gap doesn\u2019t mean you\u2019re stuck. Module 2 shows you every asset and debt in the picture \u2014 and that\u2019s where most women find options they didn\u2019t know they had.';
-}
-
-function getGapColor(gap, isBreakeven) {
-  if (isBreakeven) return NAVY;
-  return gap >= 0 ? GREEN : RED;
-}
-
+// Existing gate email validation — reused verbatim (not the README regex).
 function isValidEmail(email) {
   const atIdx = email.indexOf('@');
   if (atIdx < 1) return false;
@@ -136,280 +49,187 @@ function isValidEmail(email) {
   return afterAt.indexOf('.') > 0 && afterAt.indexOf('.') < afterAt.length - 1;
 }
 
-// ─── Disclaimer text ───────────────────────────────────────────
-const DISCLAIMER = 'This calculator is for educational and planning purposes only. It provides a simplified estimate based on the numbers you enter. It does not account for taxes, spousal support, child support, or other factors that affect post-divorce income. For guidance specific to your situation, consult a Certified Divorce Financial Analyst\u00AE or attorney.';
+const srOnly = {
+  position: 'absolute', width: 1, height: 1, padding: 0, margin: -1,
+  overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', borderWidth: 0,
+};
+
+const RESULTS_DISCLAIMER =
+  'For educational and planning purposes only. For guidance specific to your situation, consult a Certified Divorce Financial Analyst®.';
+const LEGAL_LINE =
+  'ClearPath Divorce Financial LLC is not a law firm and does not provide legal advice.';
+
+// Pay-frequency pills.
+const FREQUENCIES = [
+  { value: 'weekly', label: 'Weekly', noun: 'weekly' },
+  { value: 'biweekly', label: 'Biweekly', noun: 'biweekly' },
+  { value: 'semimonthly', label: 'Semi-monthly', noun: 'semi-monthly' },
+  { value: 'monthly', label: 'Monthly', noun: 'monthly' },
+];
+
+const railStatLabel = {
+  fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px',
+  color: 'rgba(255,255,255,0.5)', marginBottom: 3,
+};
 
 // ════════════════════════════════════════════════════════════════
-// Currency Input sub-component
+// Scoped CSS — focus states + slider thumb can't be expressed inline.
+// Namespaced cp-bgc-* to avoid collisions.
 // ════════════════════════════════════════════════════════════════
+function StyleBlock() {
+  return (
+    <style>{`
+      .cp-bgc-uinput { border: none; border-bottom: 1px solid ${T.LINE_STRONG};
+        background: transparent; outline: none; padding: 2px 4px;
+        font-variant-numeric: lining-nums tabular-nums; transition: border-color 120ms ease; }
+      .cp-bgc-uinput.lg { border-bottom-width: 1.5px; }
+      .cp-bgc-uinput:focus { border-bottom: 1.5px solid ${T.GOLD}; }
+      .cp-bgc-uinput::placeholder { color: ${T.MUTED}; opacity: 0.7; }
 
-function CurrencyField({ id, label: labelText, value, onChange, onFieldBlur, helper, error, required }) {
-  const [display, setDisplay] = useState(() => (value ? fmtDisplay(value) : ''));
-  const prevValueRef = useRef(value);
+      .cp-bgc-email { border: 1px solid ${T.LINE_STRONG}; outline: none;
+        transition: border-color 120ms ease, box-shadow 120ms ease; }
+      .cp-bgc-email:focus { border: 1px solid ${T.GOLD};
+        box-shadow: 0 0 0 3px ${T.GOLD_FOCUS_RING}; }
 
-  // Sync display when store value changes externally (e.g., hydration)
-  useEffect(() => {
-    if (value !== prevValueRef.current) {
-      prevValueRef.current = value;
-      if (document.activeElement?.id !== id) {
-        setDisplay(value ? fmtDisplay(value) : '');
-      }
-    }
-  }, [value, id]);
+      .cp-bgc-primary { transition: background-color 120ms ease; }
+      .cp-bgc-primary:hover:not(:disabled) { background: ${T.NAVY_DEEP}; }
+
+      .cp-bgc-share { -webkit-appearance: none; appearance: none; height: 6px;
+        border-radius: 999px; outline: none; width: 100%; cursor: pointer;
+        border: none; padding: 0; }
+      .cp-bgc-share::-webkit-slider-thumb { -webkit-appearance: none; appearance: none;
+        width: 22px; height: 22px; border-radius: 50%; background: #FFFFFF;
+        border: 1px solid ${T.LINE_STRONG}; box-shadow: 0 1px 4px rgba(27,42,74,0.28); cursor: grab; }
+      .cp-bgc-share::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%;
+        background: #FFFFFF; border: 1px solid ${T.LINE_STRONG};
+        box-shadow: 0 1px 4px rgba(27,42,74,0.28); cursor: grab; }
+
+      .cp-bgc-pill { transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease; }
+      .cp-bgc-link { color: ${T.INK_2}; text-decoration: underline; text-underline-offset: 3px;
+        cursor: pointer; background: none; border: none; padding: 0; font: inherit; }
+    `}</style>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════
+// Underline currency input (ledger style). Stores a number; formats on blur,
+// shows raw digits while focused (no cursor jump).
+// ════════════════════════════════════════════════════════════════
+function CurrencyInput({ value, onCommit, ariaLabel, fontSize, width, align = 'left', large }) {
+  const [display, setDisplay] = useState('');
+  const [focused, setFocused] = useState(false);
+  const numericValue = value === '' || value == null ? '' : value;
 
   const handleChange = (e) => {
-    const raw = parseCurrencyInput(e.target.value);
+    const raw = e.target.value.replace(/[^0-9.]/g, '');
     setDisplay(raw);
-    if (raw === '') {
-      onChange(0);
-    } else {
-      const num = parseFloat(raw);
-      onChange(isNaN(num) ? 0 : num);
-    }
+    onCommit(raw === '' ? 0 : parseFloat(raw) || 0);
   };
 
-  const handleBlur = () => {
-    if (value !== '' && value != null && !isNaN(value)) {
-      setDisplay(fmtDisplay(value));
-    }
-    onFieldBlur?.();
-  };
-
-  const handleFocus = () => {
-    if (value === 0) {
-      setDisplay('');
-    } else if (value != null && value !== '' && !isNaN(value)) {
-      setDisplay(String(value));
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault();
-  };
+  const shown = focused ? display : numericValue !== '' ? fmtInt(numericValue) : '';
 
   return (
-    <div style={{ marginBottom: 16 }}>
-      <label htmlFor={id} style={labelStyle}>
-        {labelText}{required ? ' *' : ''}
-      </label>
-      <div style={inputWrap}>
-        <span style={dollarPrefix} aria-hidden="true">$</span>
-        <input
-          id={id}
-          type="text"
-          inputMode="decimal"
-          value={display}
-          onChange={handleChange}
-          onBlur={handleBlur}
-          onFocus={handleFocus}
-          onKeyDown={handleKeyDown}
-          style={{
-            ...baseInput,
-            ...(error ? { borderColor: RED } : {}),
-          }}
-          aria-required={required || undefined}
-          aria-invalid={error ? 'true' : undefined}
-          aria-describedby={helper ? `${id}-helper` : undefined}
-        />
-      </div>
-      {helper && <p id={`${id}-helper`} style={helperStyle}>{helper}</p>}
-      {error && <p role="alert" style={errorStyle}>{error}</p>}
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4, flexShrink: 0 }}>
+      <span aria-hidden="true" style={{ fontFamily: T.FONT_NUMERIC, fontSize: large ? 22 : 14, color: T.MUTED }}>$</span>
+      <input
+        className={`cp-bgc-uinput${large ? ' lg' : ''}`}
+        type="text"
+        inputMode="decimal"
+        value={shown}
+        onChange={handleChange}
+        onFocus={() => { setFocused(true); setDisplay(numericValue !== '' ? String(numericValue) : ''); }}
+        onBlur={() => setFocused(false)}
+        onKeyDown={(e) => { if (e.key === '-' || e.key === 'e' || e.key === 'E') e.preventDefault(); }}
+        placeholder="0"
+        aria-label={ariaLabel}
+        style={{
+          width, fontFamily: T.FONT_NUMERIC, fontSize, fontWeight: large ? 600 : 400,
+          color: T.NAVY, textAlign: align,
+        }}
+      />
+    </span>
+  );
+}
+
+// ── Section header: gold numeral + uppercase label + flexing hairline ──
+function SectionHeader({ numeral, label, style }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, ...style }}>
+      <span style={{ fontFamily: T.FONT_NUMERIC, fontSize: 15, fontWeight: 600, color: T.PILL_TEXT, fontVariantNumeric: 'lining-nums' }}>{numeral}</span>
+      <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.9px', color: T.NAVY }}>{label}</span>
+      <span style={{ flexGrow: 1, height: 1, background: T.LINE }} />
     </div>
   );
 }
 
-// ════════════════════════════════════════════════════════════════
-// Horizontal Gap Bar Chart (custom SVG)
-// ════════════════════════════════════════════════════════════════
-
-function GapBarChart({ income, expenses }) {
-  const containerRef = useRef(null);
-  const [width, setWidth] = useState(400);
-
-  useEffect(() => {
-    if (!containerRef.current) return;
-    const ro = new ResizeObserver((entries) => {
-      setWidth(entries[0].contentRect.width);
-    });
-    ro.observe(containerRef.current);
-    return () => ro.disconnect();
-  }, []);
-
-  const isZeroIncome = income === 0;
-  const maxVal = Math.max(income, expenses) || 1;
-  const scale = (v) => (v / maxVal) * width;
-  const barH = 40;
-  const gap = 16;
-  const svgH = isZeroIncome ? barH : barH * 2 + gap;
-  const isSurplus = income > expenses;
-  const isShortfall = expenses > income;
-  const overlap = Math.min(income, expenses);
-
-  const incomeLabel = `Your estimated monthly income: ${fmt(income)}`;
-  const expenseLabel = `Your estimated monthly expenses: ${fmt(expenses)}`;
-
+// ── Rail stat (income / expenses) ──
+function RailStat({ label, value, color }) {
   return (
-    <div ref={containerRef} style={{ width: '100%', marginBottom: 24 }}>
-      <svg width={width} height={svgH} role="img" aria-hidden="true"
-        style={{ display: 'block', overflow: 'visible' }}
-      >
-        {/* Income bar (hidden when 0% share) */}
-        {!isZeroIncome && (
-          <g>
-            {/* Gold base */}
-            <rect x={0} y={0} width={scale(isSurplus ? overlap : income)} height={barH}
-              rx={3} fill={GOLD}
-            />
-            {/* Green surplus segment */}
-            {isSurplus && scale(income) > scale(overlap) && (
-              <rect x={scale(overlap)} y={0}
-                width={scale(income) - scale(overlap)} height={barH}
-                rx={3} fill={GREEN}
-              />
-            )}
-            {/* Label */}
-            <text
-              x={scale(income) > 200 ? 8 : scale(income) + 8}
-              y={barH / 2}
-              dominantBaseline="central"
-              style={{
-                fontFamily: '"Source Sans Pro", sans-serif', fontSize: 13,
-                fill: scale(income) > 200 ? WHITE : NAVY,
-              }}
-            >
-              {incomeLabel}
-            </text>
-          </g>
-        )}
+    <div>
+      <div style={railStatLabel}>{label}</div>
+      <div style={{ fontFamily: T.FONT_NUMERIC, fontSize: 26, fontWeight: 600, color, fontVariantNumeric: 'lining-nums tabular-nums' }}>{value}</div>
+    </div>
+  );
+}
 
-        {/* Expense bar */}
-        <g transform={`translate(0,${isZeroIncome ? 0 : barH + gap})`}>
-          {isZeroIncome ? (
-            /* 0% share: full red bar */
-            <rect x={0} y={0} width={scale(expenses)} height={barH}
-              rx={3} fill={RED}
-            />
-          ) : (
-            <>
-              {/* Navy base */}
-              <rect x={0} y={0}
-                width={scale(isShortfall ? overlap : expenses)} height={barH}
-                rx={3} fill={NAVY}
-              />
-              {/* Red shortfall segment */}
-              {isShortfall && scale(expenses) > scale(overlap) && (
-                <rect x={scale(overlap)} y={0}
-                  width={scale(expenses) - scale(overlap)} height={barH}
-                  rx={3} fill={RED}
-                />
-              )}
-            </>
-          )}
-          {/* Label */}
-          <text
-            x={scale(expenses) > 200 ? 8 : scale(expenses) + 8}
-            y={barH / 2}
-            dominantBaseline="central"
-            style={{
-              fontFamily: '"Source Sans Pro", sans-serif', fontSize: 13,
-              fill: scale(expenses) > 200 ? (isZeroIncome ? WHITE : PARCHMENT) : NAVY,
-            }}
-          >
-            {expenseLabel}
-          </text>
-        </g>
-      </svg>
+// ── Bar row label + value ──
+function BarRow({ label, value, style }) {
+  return (
+    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12.5, color: T.INK_2, marginBottom: 6, ...style }}>
+      <span style={{ fontWeight: 600 }}>{label}</span>
+      <span style={{ fontVariantNumeric: 'tabular-nums' }}>{value}</span>
+    </div>
+  );
+}
 
-      {/* Screen-reader table */}
-      <div style={srOnly}>
-        <table>
-          <caption>Income vs. expenses comparison</caption>
-          <thead><tr><th>Category</th><th>Amount</th></tr></thead>
-          <tbody>
-            {!isZeroIncome && <tr><td>Estimated monthly income</td><td>{fmt(income)}</td></tr>}
-            <tr><td>Estimated monthly expenses</td><td>{fmt(expenses)}</td></tr>
-          </tbody>
-        </table>
+// ── Top chrome: wordmark + non-clickable 3-step progress tracker ──
+function Chrome({ screen }) {
+  const order = { input: 1, gate: 2, results: 3 };
+  const cur = order[screen];
+  const steps = [
+    { n: 1, label: 'Your numbers' },
+    { n: 2, label: 'Verify email' },
+    { n: 3, label: 'Your results' },
+  ];
+  return (
+    <div style={{
+      maxWidth: 1120, margin: '0 auto 20px', display: 'flex', alignItems: 'center',
+      justifyContent: 'space-between', gap: 24, flexWrap: 'wrap',
+    }}>
+      <div style={{ fontFamily: PLAYFAIR, fontWeight: 700, fontSize: 22, color: T.NAVY }}>ClearPath</div>
+      {/* Progress indicator only — not interactive (the flow drives navigation). */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }} aria-hidden="true">
+        {steps.map((st) => {
+          const active = st.n === cur;
+          const done = st.n < cur;
+          return (
+            <div key={st.n} style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '7px 14px', borderRadius: 999,
+              border: `1px solid ${active ? T.NAVY : T.LINE_STRONG}`,
+              background: active ? T.NAVY : T.CARD,
+              color: active ? '#FFFFFF' : done ? T.NAVY : T.MUTED,
+              fontSize: 12.5, fontWeight: 600,
+            }}>
+              <span style={{
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                width: 18, height: 18, borderRadius: '50%',
+                background: active ? T.GOLD : done ? T.NAVY : T.LINE,
+                color: active ? T.NAVY : done ? '#FFFFFF' : T.MUTED,
+                fontSize: 11, fontWeight: 700, fontVariantNumeric: 'lining-nums',
+              }}>{st.n}</span>
+              {st.label}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
 // ════════════════════════════════════════════════════════════════
-// Expense Pie Chart
+// Main component
 // ════════════════════════════════════════════════════════════════
-
-function ExpensePieChart({ expenses, isMobile }) {
-  const data = EXPENSE_FIELDS
-    .map((f, i) => ({ name: f.label.split(' (')[0], value: expenses[f.key] || 0, color: PIE_COLORS[i] }))
-    .filter((d) => d.value > 0);
-
-  if (data.length === 0) return null;
-
-  const total = data.reduce((s, d) => s + d.value, 0);
-  const size = isMobile ? 250 : 300;
-
-  const renderLabel = isMobile
-    ? undefined
-    : ({ name, value }) => `${name}: ${fmt(value)} (${((value / total) * 100).toFixed(0)}%)`;
-
-  return (
-    <div style={{ marginBottom: 32 }}>
-      <ResponsiveContainer width="100%" height={isMobile ? 340 : size + 20}>
-        <PieChart>
-          <Pie
-            data={data}
-            dataKey="value"
-            nameKey="name"
-            cx="50%"
-            cy="50%"
-            outerRadius={size / 2 - 30}
-            label={renderLabel}
-            labelLine={!isMobile}
-            style={{ fontFamily: '"Source Sans Pro", sans-serif', fontSize: 12 }}
-          >
-            {data.map((d, i) => (
-              <Cell key={d.name} fill={d.color} />
-            ))}
-          </Pie>
-          {isMobile && (
-            <Legend
-              formatter={(value, entry) => {
-                const item = data.find((d) => d.name === value);
-                if (!item) return value;
-                return `${value}: ${fmt(item.value)} (${((item.value / total) * 100).toFixed(0)}%)`;
-              }}
-              wrapperStyle={{ fontFamily: '"Source Sans Pro", sans-serif', fontSize: 13, color: NAVY }}
-            />
-          )}
-        </PieChart>
-      </ResponsiveContainer>
-
-      {/* Screen-reader table */}
-      <div style={srOnly}>
-        <table>
-          <caption>Expense breakdown by category</caption>
-          <thead><tr><th>Category</th><th>Amount</th><th>Percentage</th></tr></thead>
-          <tbody>
-            {data.map((d) => (
-              <tr key={d.name}>
-                <td>{d.name}</td>
-                <td>{fmt(d.value)}</td>
-                <td>{((d.value / total) * 100).toFixed(1)}%</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════
-// Main Component
-// ════════════════════════════════════════════════════════════════
-
-export default function BudgetGapCalculator() {
+export default function BudgetGapCalculator({ entry = 'direct' }) {
   const {
     budgetGap,
     setBudgetGapInputs,
@@ -419,114 +239,61 @@ export default function BudgetGapCalculator() {
     readinessAssessment,
   } = useM1Store();
 
-  // ── Local UI state ──
-  const [phase, setPhase] = useState('form'); // form | loading | results
-  const [showModal, setShowModal] = useState(false);
+  // ── Local UI state (per session; not persisted — copy promise) ──
+  const [screen, setScreen] = useState('input'); // input | gate | results
   const [email, setEmail] = useState('');
-  const [newsletter, setNewsletter] = useState(false);
   const [emailError, setEmailError] = useState('');
-  const [tooltipOpen, setTooltipOpen] = useState(false);
-  const [touched, setTouched] = useState({});
+  // Newsletter opt-in retained for the existing gate payload; the hi-fi gate
+  // omits the checkbox, so it stays false. (Reported to Fitz.)
+  const [newsletter] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const resultsRef = useRef(null);
 
-  // ── Form field values from store (with defaults) ──
+  // ── Frozen-store inputs (read exactly as the existing tool wrote them) ──
   const inputs = budgetGap.inputs || {};
   const grossIncome = inputs.grossIncome ?? '';
   const payFrequency = inputs.payFrequency ?? 'monthly';
   const expectedShare = inputs.expectedShare ?? 50;
-  const expenses = {
-    housing: inputs.housing ?? '',
-    utilities: inputs.utilities ?? 0,
-    groceries: inputs.groceries ?? 0,
-    transportation: inputs.transportation ?? 0,
-    healthInsurance: inputs.healthInsurance ?? 0,
-    childcare: inputs.childcare ?? 0,
-    debtPayments: inputs.debtPayments ?? 0,
-    personal: inputs.personal ?? 0,
-  };
+  const expenses = EXPENSE_FIELDS.reduce((o, f) => {
+    o[f.key] = inputs[f.key] ?? '';
+    return o;
+  }, {});
 
-  // ── Responsive check ──
+  // ── Responsive ──
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 640);
+    const check = () => setIsMobile(window.innerWidth < 760);
     check();
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  // ── Hydrate: if already completed, jump to results ──
+  // ── Hydrate: jump straight to results if already completed. Runs post-mount
+  // (not a lazy initializer) so server + first client render both start at
+  // 'input' and only then jump — avoiding an SSR hydration mismatch.
   useEffect(() => {
     const s = useM1Store.getState().budgetGap;
-    if (s.completed && s.results) setPhase('results');
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- intentional post-hydration jump
+    if (s.completed && s.results) setScreen('results');
+  }, []);
 
-  // ── Computed values ──
+  // ── Scroll to top on screen change ──
+  useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [screen]);
+
+  // ── Live model (display verdict via tightBand; see budgetGapMath) ──
+  const model = computeBudgetGap({
+    grossPerCheck: grossIncome, freq: payFrequency, share: expectedShare, expenses,
+  });
+  const adjustedMonthlyIncome = model.income;
+  const totalExpenses = model.totalExpenses;
+  const monthlyGap = model.gap;
+  const gapPercent = adjustedMonthlyIncome === 0 ? null : (monthlyGap / adjustedMonthlyIncome) * 100;
   const grossNum = typeof grossIncome === 'number' ? grossIncome : parseFloat(grossIncome) || 0;
-  const monthlyGross = convertToMonthly(grossNum, payFrequency);
-  const adjustedMonthlyIncome = monthlyGross * (expectedShare / 100);
-
-  const totalExpenses = EXPENSE_FIELDS.reduce((sum, f) => {
-    const v = expenses[f.key];
-    return sum + (typeof v === 'number' ? v : parseFloat(v) || 0);
-  }, 0);
-
-  const monthlyGap = adjustedMonthlyIncome - totalExpenses;
-  const gapPercent = adjustedMonthlyIncome === 0
-    ? null
-    : (monthlyGap / adjustedMonthlyIncome) * 100;
-
-  const isBreakeven = Math.abs(monthlyGap) <= 25;
-
-  // ── Debounced display values for live previews (150ms) ──
-  const [displayIncome, setDisplayIncome] = useState(adjustedMonthlyIncome);
-  const [displayExpenses, setDisplayExpenses] = useState(totalExpenses);
-  useEffect(() => {
-    const t = setTimeout(() => setDisplayIncome(adjustedMonthlyIncome), 150);
-    return () => clearTimeout(t);
-  }, [adjustedMonthlyIncome]);
-  useEffect(() => {
-    const t = setTimeout(() => setDisplayExpenses(totalExpenses), 150);
-    return () => clearTimeout(t);
-  }, [totalExpenses]);
+  const canSubmit = grossNum > 0;
 
   // ── Field updater ──
-  const setField = useCallback(
-    (key, val) => setBudgetGapInputs({ [key]: val }),
-    [setBudgetGapInputs]
-  );
+  const setField = useCallback((key, val) => setBudgetGapInputs({ [key]: val }), [setBudgetGapInputs]);
 
-  const markTouched = useCallback(
-    (key) => setTouched((p) => ({ ...p, [key]: true })),
-    []
-  );
-
-  // ── Validation ──
-  const incomeError =
-    touched.grossIncome && (grossNum <= 0)
-      ? 'Enter your household\u2019s gross income to continue.'
-      : '';
-  const housingTouched = touched.housing;
-  const housingVal = typeof expenses.housing === 'number' ? expenses.housing : parseFloat(expenses.housing);
-  const housingError =
-    housingTouched && (isNaN(housingVal) || expenses.housing === '')
-      ? 'Enter your estimated housing cost (enter 0 if unsure).'
-      : '';
-
-  const canSubmit = grossNum > 0 && expectedShare >= 0 && !isNaN(housingVal) && expenses.housing !== '';
-
-  // ── Frequency label & dynamic helper text ──
-  const freqDef = PAY_FREQUENCIES.find((f) => f.value === payFrequency) || PAY_FREQUENCIES[3];
-  const INCOME_HELPER_SUFFIX = ' Include salary, bonuses, and any other regular income.';
-  const grossIncomeHelper = ({
-    weekly: 'This is the total income your household brings in each week, before taxes or deductions.',
-    biweekly: 'This is the total income your household brings in every two weeks, before taxes or deductions.',
-    semimonthly: 'This is the total income your household brings in twice a month, before taxes or deductions.',
-    monthly: 'This is the total income your household brings in each month, before taxes or deductions.',
-  })[payFrequency] + INCOME_HELPER_SUFFIX;
-
-  // ── Build the full data-pipeline results object ──
-  // completedAt is set at call time (inside setTimeout) so the timestamp
-  // reflects the moment results are actually displayed.
+  // ── Cumulative-data-pipeline result (UNCHANGED contract — feeds Blueprint §1).
+  // completedAt set at call time so it reflects when results are shown.
   const buildPipelineResults = useCallback(() => {
     const exp = useM1Store.getState().budgetGap.inputs || {};
     return {
@@ -551,7 +318,7 @@ export default function BudgetGapCalculator() {
     };
   }, [grossNum, expectedShare, payFrequency, adjustedMonthlyIncome, totalExpenses, monthlyGap, gapPercent]);
 
-  // ── Write Budget Gap results to Blueprint §1 (paired with assessment if already done) ──
+  // ── Write Budget Gap results to Blueprint §1 (UNCHANGED) ──
   const writeBlueprintProfile = useCallback((pipelineResults) => {
     const assessment = useM1Store.getState().readinessAssessment;
     useBlueprintStore.getState().updatePersonalProfile({
@@ -563,26 +330,25 @@ export default function BudgetGapCalculator() {
     });
   }, []);
 
-  // ── Submit form → show modal or results ──
+  const persistAndReveal = useCallback(() => {
+    const pipelineResults = buildPipelineResults();
+    completeBudgetGap(pipelineResults);
+    writeBlueprintProfile(pipelineResults);
+    setScreen('results');
+  }, [buildPipelineResults, completeBudgetGap, writeBlueprintProfile]);
+
+  // ── See My Results → email gate (or straight to results for returning user) ──
   const handleSeeResults = useCallback(() => {
     if (!canSubmit) return;
-    // Returning user: skip email gate
     if (budgetGap.emailCaptured) {
-      setPhase('loading');
-      setTimeout(() => {
-        const pipelineResults = buildPipelineResults();
-        completeBudgetGap(pipelineResults);
-        writeBlueprintProfile(pipelineResults);
-        setPhase('results');
-        setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-      }, 400);
+      persistAndReveal();
     } else {
-      setShowModal(true);
+      setScreen('gate');
     }
-  }, [canSubmit, budgetGap.emailCaptured, buildPipelineResults, completeBudgetGap]);
+  }, [canSubmit, budgetGap.emailCaptured, persistAndReveal]);
 
-  // ── Email submit ──
-  const handleEmailSubmit = useCallback(async () => {
+  // ── Email submit (existing gate logic; CRM capture is the existing stub) ──
+  const handleEmailSubmit = useCallback(() => {
     if (!isValidEmail(email)) {
       setEmailError('Enter a valid email address.');
       return;
@@ -594,576 +360,442 @@ export default function BudgetGapCalculator() {
       : gapPercent >= 0 ? 'moderate'
       : 'shortfall';
 
-    // TODO: Replace with actual CRM API call (ConvertKit or ActiveCampaign).
-    // Endpoint: POST /api/crm-lead
-    // Payload:
-    //   email, tags: ['M1-budget-gap-lead', ...(newsletter ? ['newsletter-opt-in'] : []),
-    //   ...(expectedShare === 0 ? ['edge-case-zero-share'] : [])],
-    //   customFields: { budget_gap_result: monthlyGap, budget_gap_tier: gapTier }
-    //
-    // On CRM failure: show results immediately (never block UX).
-    // Queue failed submission to /api/crm-retry (server-side 3x exponential backoff:
-    // 30s, 2min, 10min). If all retries fail, write to Supabase `crm_failures` table.
+    // TODO: Replace with the production CRM/lead call. The existing gate logs a
+    // stub here and never blocks the reveal on capture; left intact per the
+    // reskin scope. (A real /api/leads exists for the marketing magnet but is
+    // not wired to this gate — see handoff notes.)
     try {
       console.info('[BudgetGap] CRM stub: would send', {
         email, gapTier, monthlyGap, newsletter, zeroShare: expectedShare === 0,
       });
     } catch {
-      // Intentionally swallowed — never block results on CRM failure
+      // Never block results on CRM failure.
     }
 
     setEmailCaptured();
-    setShowModal(false);
-    setPhase('loading');
-    setTimeout(() => {
-      const pipelineResults = buildPipelineResults();
-      completeBudgetGap(pipelineResults);
-      writeBlueprintProfile(pipelineResults);
-      setPhase('results');
-      setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
-    }, 400);
-  }, [email, newsletter, expectedShare, monthlyGap, gapPercent, setEmailCaptured, completeBudgetGap, buildPipelineResults]);
+    persistAndReveal();
+  }, [email, newsletter, expectedShare, monthlyGap, gapPercent, setEmailCaptured, persistAndReveal]);
 
-  // ── Recalculate ──
+  // ── Recalculate: keep inputs, clear completion, skip the gate next time ──
   const handleRecalculate = useCallback(() => {
-    // Keep inputs, reset completion so she can re-run
     const currentInputs = useM1Store.getState().budgetGap.inputs;
     resetBudgetGap();
     setBudgetGapInputs(currentInputs);
-    // Email is already captured, so re-submitting skips the modal
     setEmailCaptured();
-    setPhase('form');
+    setScreen('input');
   }, [resetBudgetGap, setBudgetGapInputs, setEmailCaptured]);
 
-  // ── Contextual header from assessment ──
-  const showAssessmentHeader =
-    readinessAssessment?.completed &&
-    readinessAssessment?.results?.tier === 'exploring';
+  // ── Entry context: 'ra' treatment if the route passed entry="ra" OR she has
+  // completed the Readiness Assessment. TODO: the RA route links here with
+  // ?from=ra (page.tsx) so the rail/banner flip without relying on store state.
+  const isRA = entry === 'ra' || !!readinessAssessment?.completed;
+  const railHead = isRA ? 'You’ve taken the first step.' : 'Can you afford to live on your own?';
+
+  // ── Derived presentation ──
+  const verdict = getVerdictPresentation(model.kind, monthlyGap);
+  const posGap = monthlyGap >= 0;
+  const bigNumber = (posGap ? '+' : '−') + money(Math.abs(monthlyGap));
+  const bar = getBarModel({ income: adjustedMonthlyIncome, totalExpenses, gap: monthlyGap });
+  const donut = getDonutModel(expenses);
+
+  const perPay = payFrequency === 'monthly'
+    ? 'per month'
+    : `per ${FREQUENCIES.find((f) => f.value === payFrequency)?.noun ?? payFrequency} paycheck`;
+
+  const pageWrap = {
+    backgroundColor: T.PARCHMENT, minHeight: '100vh', boxSizing: 'border-box',
+    padding: isMobile ? '20px 14px 48px' : '28px 28px 60px',
+    fontFamily: T.FONT_BODY, color: T.NAVY,
+  };
+  const cardShadow = '0 20px 40px rgba(28,28,25,0.06)';
 
   // ════════════════════════════════════════════════════════════
-  // RENDER: Loading spinner
+  // STAGE 1 — Inputs ("The Quiet Ledger")
   // ════════════════════════════════════════════════════════════
-  if (phase === 'loading') {
+  function renderInput() {
     return (
       <div style={{
-        display: 'flex', justifyContent: 'center', alignItems: 'center',
-        minHeight: '60vh', backgroundColor: PARCHMENT,
+        maxWidth: 1120, margin: '0 auto', background: T.PARCHMENT,
+        border: `1px solid ${D.CONTAINER_BORDER}`, borderRadius: 16, boxShadow: cardShadow,
+        overflow: 'hidden', display: 'grid',
+        gridTemplateColumns: isMobile ? '1fr' : '340px 1fr',
       }}>
-        <div style={{
-          width: 48, height: 48, border: `4px solid ${GOLD}33`,
-          borderTopColor: GOLD, borderRadius: '50%',
-          animation: 'cpSpin 0.8s linear infinite',
-        }} />
-        <style>{`@keyframes cpSpin { to { transform: rotate(360deg); } }`}</style>
-      </div>
-    );
-  }
-
-  // ════════════════════════════════════════════════════════════
-  // RENDER: Results screen
-  // ════════════════════════════════════════════════════════════
-  if (phase === 'results') {
-    const r = budgetGap.results;
-    if (!r) return null;
-
-    const { monthlyGap: gap, gapPercent: gp, adjustedMonthlyIncome: inc, totalMonthlyExpenses: exp } = r;
-    const brk = Math.abs(gap) <= 25;
-    const color = getGapColor(gap, brk);
-
-    let gapDisplay;
-    if (brk) {
-      gapDisplay = '\u2248 $0/month \u2014 right at the line';
-    } else if (gap >= 0) {
-      gapDisplay = `+${fmt(gap)}/month`;
-    } else {
-      gapDisplay = `\u2212${fmt(Math.abs(gap))}/month`;
-    }
-
-    return (
-      <div ref={resultsRef} style={{ backgroundColor: PARCHMENT, minHeight: '60vh', padding: '40px 16px' }}>
-        <div style={{ maxWidth: 640, margin: '0 auto' }}>
-
-          {/* ── Gap number ── */}
-          <div style={{ textAlign: 'center', marginBottom: 16 }}>
-            <p style={{
-              fontFamily: '"Playfair Display", serif',
-              fontSize: isMobile ? 36 : 48,
-              fontWeight: 700, color, margin: 0,
-            }}>
-              {gapDisplay}
-            </p>
+        {/* ── Navy rail ── */}
+        <div style={{ background: T.NAVY, padding: isMobile ? '30px 24px' : '38px 30px', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.9px', color: D.RAIL_EYEBROW, marginBottom: 10 }}>
+            Module 1 · Budget Gap
           </div>
-
-          {/* ── Verdict ── */}
-          <p style={{
-            fontFamily: '"Source Sans Pro", sans-serif', fontSize: 18,
-            color: NAVY, textAlign: 'center', lineHeight: 1.6,
-            margin: '0 0 32px', maxWidth: 540, marginLeft: 'auto', marginRight: 'auto',
-          }}>
-            {getVerdict(gp)}
+          <div style={{ fontFamily: T.FONT_NUMERIC, fontSize: 26, fontWeight: 500, lineHeight: 1.25, color: '#FFFFFF', marginBottom: 12 }}>
+            {railHead}
+          </div>
+          <p style={{ fontSize: 13.5, lineHeight: 1.6, color: D.RAIL_SUB, margin: '0 0 28px' }}>
+            Two short sections, about five minutes. Nothing is saved or shared.
           </p>
 
-          {/* ── Horizontal bar chart ── */}
-          <GapBarChart income={inc} expenses={exp} />
+          <div style={{ background: D.RAIL_CARD_BG, border: `1px solid ${D.RAIL_CARD_BORDER}`, borderRadius: 10, padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <RailStat label="Monthly income — your share" value={money(adjustedMonthlyIncome)} color={T.GOLD} />
+            <RailStat label="Expenses so far" value={money(totalExpenses)} color="#FFFFFF" />
+            <div style={{ height: 1, background: D.RAIL_HAIRLINE }} />
+            <div>
+              <div style={railStatLabel}>Your monthly gap</div>
+              <div style={{ fontFamily: T.FONT_NUMERIC, fontSize: 30, fontWeight: 600, color: D.RAIL_GAP_VALUE, filter: 'blur(9px)', userSelect: 'none' }}>
+                $1,234
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                <Lock size={12} color={T.GOLD} strokeWidth={2} aria-hidden="true" />
+                <span style={{ fontSize: 11.5, color: D.RAIL_FOOT }}>Revealed when you see your results</span>
+              </div>
+            </div>
+          </div>
 
-          {/* ── Pie chart ── */}
-          <ExpensePieChart
-            expenses={budgetGap.inputs || {}}
-            isMobile={isMobile}
+          <div style={{ flexGrow: 1 }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 28 }}>
+            <Shield size={13} color={T.GOLD} strokeWidth={2} aria-hidden="true" />
+            <span style={{ fontSize: 12, color: D.RAIL_FOOT }}>Private. We never store these numbers.</span>
+          </div>
+        </div>
+
+        {/* ── Worksheet ── */}
+        <div style={{ padding: isMobile ? '28px 22px 30px' : '40px 44px 36px' }}>
+          {isRA && (
+            <div style={{ marginBottom: 22, padding: '10px 16px', borderRadius: 8, background: T.GOLD_TINT, border: `1px solid ${T.GOLD_BORDER}`, fontSize: 13.5, color: T.NAVY }}>
+              <strong>You&rsquo;ve taken the first step.</strong> Now let&rsquo;s look at the numbers.
+            </div>
+          )}
+
+          <SectionHeader numeral="01" label="Income" style={{ marginBottom: 22 }} />
+
+          <div style={{ display: 'flex', gap: 36, alignItems: 'flex-end', flexWrap: 'wrap', marginBottom: 8 }}>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: T.NAVY, marginBottom: 6 }}>
+                Gross household income <span style={{ fontWeight: 400, color: T.MUTED }}>· {perPay}</span>
+              </div>
+              <CurrencyInput
+                value={grossIncome}
+                onCommit={(v) => setField('grossIncome', v)}
+                ariaLabel="Gross household income per paycheck"
+                fontSize={28}
+                width={150}
+                large
+              />
+            </div>
+            <div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: T.NAVY, marginBottom: 8 }}>Pay frequency</div>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {FREQUENCIES.map((f) => {
+                  const sel = payFrequency === f.value;
+                  return (
+                    <button
+                      key={f.value}
+                      type="button"
+                      className="cp-bgc-pill"
+                      onClick={() => setField('payFrequency', f.value)}
+                      aria-pressed={sel}
+                      style={{
+                        padding: '8px 14px', borderRadius: 999, cursor: 'pointer', whiteSpace: 'nowrap',
+                        fontFamily: T.FONT_BODY, fontSize: 12.5, fontWeight: 600,
+                        border: `1px solid ${sel ? T.NAVY : T.LINE_STRONG}`,
+                        background: sel ? T.NAVY : T.CARD,
+                        color: sel ? '#FFFFFF' : T.INK_2,
+                      }}
+                    >
+                      {f.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          <div style={{ fontSize: 12.5, color: T.MUTED, lineHeight: 1.5, marginBottom: 26 }}>
+            Before taxes or deductions. Biweekly = 26 paychecks a year · semi-monthly = 24 — we convert everything to one monthly number.
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 8 }}>
+            <label htmlFor="cp-bgc-share" style={{ fontSize: 12.5, fontWeight: 600, color: T.NAVY }}>Your expected share of that income</label>
+            <span style={{ fontFamily: T.FONT_NUMERIC, fontSize: 26, fontWeight: 600, color: T.PILL_TEXT, fontVariantNumeric: 'lining-nums tabular-nums' }}>{expectedShare}%</span>
+          </div>
+          <input
+            id="cp-bgc-share"
+            className="cp-bgc-share"
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={expectedShare}
+            onChange={(e) => setField('expectedShare', Math.max(0, Math.min(100, Number(e.target.value))))}
+            aria-label="Your expected share of household income"
+            style={{ background: `linear-gradient(90deg, ${T.GOLD} 0%, ${T.GOLD} ${expectedShare}%, ${T.LINE} ${expectedShare}%, ${T.LINE} 100%)` }}
           />
-
-          {/* ── M2 upsell CTA ── */}
-          <div style={{
-            borderTop: `2px solid ${NAVY}`,
-            backgroundColor: PARCHMENT,
-            padding: '28px 24px',
-            marginBottom: 24,
-          }}>
-            <h3 style={{
-              fontFamily: '"Playfair Display", serif', fontSize: 22,
-              color: NAVY, fontWeight: 700, margin: '0 0 8px',
-            }}>
-              Want to go deeper?
-            </h3>
-            <p style={{
-              fontFamily: '"Source Sans Pro", sans-serif', fontSize: 15,
-              color: NAVY, lineHeight: 1.6, margin: '0 0 20px',
-            }}>
-              {getM2CTA(gp)}
-            </p>
-            <a href="/modules/m2" style={{
-              display: 'inline-block', backgroundColor: NAVY, color: PARCHMENT,
-              fontFamily: '"Source Sans Pro", sans-serif', fontWeight: 600,
-              fontSize: 16, padding: '14px 32px', borderRadius: 4, textDecoration: 'none',
-            }}>
-              Explore Module 2 &rarr;
-            </a>
-            <br />
-            <a href="/modules/m1/readiness" style={{
-              fontFamily: '"Source Sans Pro", sans-serif', fontSize: 14,
-              color: NAVY, textDecoration: 'underline', opacity: 0.6,
-              display: 'inline-block', marginTop: 12,
-            }}>
-              Or start with the Life Transition Readiness Assessment to see
-              where you stand across all five financial domains.
-            </a>
+          <div style={{ fontSize: 12.5, color: T.MUTED, lineHeight: 1.5, marginTop: 8 }}>
+            Not sure? 50% is a planning starting point — not a legal determination.
           </div>
 
-          {/* ── Recalculate ── */}
-          <div style={{ textAlign: 'center', marginBottom: 24 }}>
-            <button onClick={handleRecalculate} style={{
-              background: 'none', border: 'none',
-              fontFamily: '"Source Sans Pro", sans-serif', fontSize: 14,
-              color: NAVY, textDecoration: 'underline', cursor: 'pointer',
-              opacity: 0.6, padding: 0,
-            }}>
-              Recalculate with new numbers
-            </button>
+          {expectedShare === 0 && (
+            <div role="alert" style={{ marginTop: 14, padding: '12px 16px', borderRadius: 8, background: T.AMBER_BG, border: `1px solid ${T.AMBER_BORDER}`, fontSize: 13, lineHeight: 1.55, color: T.NAVY }}>
+              With your share at 0%, your monthly income comes out to <strong>$0</strong>. If you&rsquo;re unsure, leave it at 50% for now — it&rsquo;s a planning number, nothing more.
+            </div>
+          )}
+
+          <SectionHeader numeral="02" label="What life costs on your own" style={{ margin: '32px 0 8px' }} />
+          <div style={{ fontSize: 12.5, color: T.MUTED, lineHeight: 1.5, marginBottom: 10 }}>
+            Best guesses are fine. You can come back and refine any line.
           </div>
 
-          {/* ── Disclaimer ── */}
-          <p style={{
-            fontFamily: '"Source Sans Pro", sans-serif', fontSize: 12,
-            color: `${NAVY}99`, lineHeight: 1.6, textAlign: 'center',
-            maxWidth: 560, margin: '0 auto',
-          }}>
-            {DISCLAIMER}
-          </p>
+          {EXPENSE_FIELDS.map((f) => (
+            <div key={f.key} style={{ display: 'flex', alignItems: 'flex-end', gap: 14, padding: '10px 0', borderBottom: '1px solid rgba(230,226,216,0.6)' }}>
+              <div style={{ flexShrink: 0, maxWidth: 400 }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: T.NAVY, lineHeight: 1.35 }}>{f.label}</div>
+                {f.helper && <div style={{ fontSize: 12, color: T.MUTED, marginTop: 2, lineHeight: 1.45, maxWidth: 380 }}>{f.helper}</div>}
+              </div>
+              <div style={{ flex: 1, borderBottom: `1px dotted ${D.DOTTED_LEADER}`, marginBottom: 7, minWidth: 24 }} />
+              <CurrencyInput
+                value={expenses[f.key]}
+                onCommit={(v) => setField(f.key, v)}
+                ariaLabel={`${f.label} monthly cost`}
+                fontSize={20}
+                width={104}
+                align="right"
+              />
+            </div>
+          ))}
+
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 14, padding: '14px 0 0' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: T.NAVY }}>Adds up to</span>
+            <span style={{ flex: 1, borderBottom: `1px dotted ${D.DOTTED_LEADER}`, marginBottom: 6 }} />
+            <span style={{ fontFamily: T.FONT_NUMERIC, fontSize: 24, fontWeight: 700, color: T.PILL_TEXT, fontVariantNumeric: 'lining-nums tabular-nums' }}>
+              {money(totalExpenses)}<span style={{ fontSize: 14, fontWeight: 400, color: T.MUTED }}> /month</span>
+            </span>
+          </div>
+
+          <button
+            type="button"
+            className="cp-bgc-primary"
+            onClick={handleSeeResults}
+            disabled={!canSubmit}
+            style={{
+              width: '100%', marginTop: 26, padding: '15px 24px', borderRadius: 8, border: 'none',
+              background: canSubmit ? T.NAVY : T.MUTED, color: '#FFFFFF', fontFamily: T.FONT_BODY,
+              fontSize: 15, fontWeight: 600, cursor: canSubmit ? 'pointer' : 'not-allowed',
+              opacity: canSubmit ? 1 : 0.6,
+            }}
+          >
+            See My Results
+          </button>
+          <div style={{ fontSize: 12, color: T.MUTED, textAlign: 'center', marginTop: 8 }}>
+            {canSubmit ? 'Your gap, explained — no judgment.' : 'Enter your gross income to see your results.'}
+          </div>
         </div>
       </div>
     );
   }
 
   // ════════════════════════════════════════════════════════════
-  // RENDER: Form
+  // STAGE 2 — Email gate (restyled chrome over the existing gate logic)
   // ════════════════════════════════════════════════════════════
-  return (
-    <div style={{ backgroundColor: PARCHMENT, minHeight: '60vh', padding: '40px 16px' }}>
-      <div style={{ maxWidth: 640, margin: '0 auto' }}>
+  function renderGate() {
+    const emailOk = isValidEmail(email);
+    return (
+      <div style={{
+        maxWidth: 1120, margin: '0 auto', background: T.PARCHMENT,
+        border: `1px solid ${D.CONTAINER_BORDER}`, borderRadius: 16, boxShadow: cardShadow,
+        position: 'relative', overflow: 'hidden', minHeight: 620,
+      }}>
+        {/* Blurred results preview */}
+        <div style={{ position: 'absolute', inset: 0, filter: 'blur(14px)', opacity: 0.5, pointerEvents: 'none', padding: 56, boxSizing: 'border-box' }} aria-hidden="true">
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontFamily: PLAYFAIR, fontWeight: 700, fontSize: 76, lineHeight: 1, color: verdict.color }}>{bigNumber}</div>
+            <div style={{ width: 96, height: 0, borderTop: `2px solid ${T.GOLD}`, margin: '18px auto' }} />
+            <div style={{ height: 14, width: 320, background: '#E0DBCF', borderRadius: 6, margin: '0 auto 10px' }} />
+            <div style={{ height: 14, width: 260, background: '#E0DBCF', borderRadius: 6, margin: '0 auto' }} />
+          </div>
+        </div>
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(250,248,242,0.55)' }} />
 
-        {/* ── Contextual header from assessment ── */}
-        {showAssessmentHeader && (
-          <p style={{
-            fontFamily: '"Playfair Display", serif', fontSize: 20,
-            color: NAVY, fontWeight: 700, textAlign: 'center',
-            marginBottom: 8,
+        {/* Glass modal */}
+        <div style={{ position: 'relative', zIndex: 2, minHeight: 620, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isMobile ? 20 : 48 }}>
+          <div style={{
+            width: 440, maxWidth: '100%', background: 'rgba(255,255,255,0.82)',
+            backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+            border: `1px solid ${T.GOLD_BORDER}`, borderRadius: 14, boxShadow: '0 20px 40px rgba(28,28,25,0.10)',
+            padding: '38px 38px 32px', boxSizing: 'border-box',
           }}>
-            You&rsquo;ve taken the first step. Now let&rsquo;s look at the numbers.
-          </p>
-        )}
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '5px 12px', borderRadius: 999, background: 'rgba(200,169,110,0.12)', border: `1px solid ${T.GOLD_BORDER}`, marginBottom: 18 }}>
+              <Lock size={12} color={T.PILL_TEXT} strokeWidth={2} aria-hidden="true" />
+              <span style={{ fontSize: 10.5, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.7px', color: T.PILL_TEXT }}>One step from your number</span>
+            </div>
+            <h2 style={{ fontFamily: PLAYFAIR, fontWeight: 700, fontSize: 27, lineHeight: 1.15, margin: '0 0 10px', color: T.NAVY }}>
+              Where should we send your results?
+            </h2>
+            <p style={{ fontSize: 14.5, lineHeight: 1.6, color: T.INK_2, margin: '0 0 22px' }}>
+              We&rsquo;ll show your monthly picture right away and email you a copy you can return to — along with the next step when you&rsquo;re ready. No spam, unsubscribe anytime.
+            </p>
 
-        {/* ── Page title ── */}
-        <h1 style={{
-          fontFamily: '"Playfair Display", serif',
-          fontSize: 'clamp(24px, 5vw, 32px)',
-          color: NAVY, fontWeight: 700, margin: '0 0 8px', textAlign: 'center',
-        }}>
-          Budget Gap Calculator
-        </h1>
-        <p style={{
-          fontFamily: '"Source Sans Pro", sans-serif', fontSize: 16,
-          color: NAVY, textAlign: 'center', lineHeight: 1.6, margin: '0 0 32px',
-        }}>
-          Can I afford to live on my own? Enter your numbers to find out.
-        </p>
+            <label htmlFor="cp-bgc-email" style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: T.NAVY, marginBottom: 6 }}>Email address</label>
+            <input
+              id="cp-bgc-email"
+              className="cp-bgc-email"
+              type="email"
+              value={email}
+              onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
+              onKeyDown={(e) => { if (e.key === 'Enter' && emailOk) handleEmailSubmit(); }}
+              placeholder="you@example.com"
+              autoFocus
+              aria-invalid={emailError ? 'true' : undefined}
+              aria-describedby={emailError ? 'cp-bgc-email-err' : undefined}
+              style={{ width: '100%', boxSizing: 'border-box', height: 44, borderRadius: 8, background: T.CARD, fontSize: 15, fontFamily: T.FONT_BODY, color: T.NAVY, padding: '0 14px', marginBottom: emailError ? 6 : 18 }}
+            />
+            {emailError && (
+              <p id="cp-bgc-email-err" role="alert" style={{ fontSize: 12.5, color: D.SHORTFALL_RED, margin: '0 0 14px' }}>{emailError}</p>
+            )}
 
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* SECTION A — Income                                    */}
-        {/* ══════════════════════════════════════════════════════ */}
-        <h2 style={{
-          fontFamily: '"Playfair Display", serif', fontSize: 20,
-          color: NAVY, fontWeight: 700, margin: '0 0 20px',
-          borderBottom: `1px solid ${NAVY}15`, paddingBottom: 8,
-        }}>
-          Income
-        </h2>
-
-        {/* Pay frequency */}
-        <div style={{ marginBottom: 16 }}>
-          <label htmlFor="payFrequency" style={labelStyle}>
-            Pay frequency *
-          </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <select
-              id="payFrequency"
-              value={payFrequency}
-              onChange={(e) => setField('payFrequency', e.target.value)}
-              style={{
-                ...baseInput, width: 'auto', minWidth: 180,
-                cursor: 'pointer', appearance: 'auto',
-              }}
-            >
-              {PAY_FREQUENCIES.map((f) => (
-                <option key={f.value} value={f.value}>{f.label}</option>
-              ))}
-            </select>
             <button
               type="button"
-              aria-label="Pay frequency explanation"
-              aria-expanded={tooltipOpen}
-              onClick={() => setTooltipOpen((p) => !p)}
-              style={{
-                background: 'none', border: `1px solid ${NAVY}33`,
-                borderRadius: '50%', width: 24, height: 24,
-                fontFamily: '"Source Sans Pro", sans-serif', fontSize: 14,
-                color: NAVY, cursor: 'pointer', display: 'flex',
-                alignItems: 'center', justifyContent: 'center',
-                opacity: 0.6, flexShrink: 0,
-              }}
-            >
-              &#9432;
-            </button>
-          </div>
-          {tooltipOpen && (
-            <p style={{
-              ...helperStyle, backgroundColor: `${NAVY}08`, padding: '10px 12px',
-              borderRadius: 4, marginTop: 8,
-            }}>
-              {FREQ_TOOLTIP}
-            </p>
-          )}
-        </div>
-
-        {/* Gross income */}
-        <CurrencyField
-          id="grossIncome"
-          label={freqDef.fieldLabel}
-          value={grossIncome}
-          onChange={(v) => setField('grossIncome', v)}
-          onFieldBlur={() => markTouched('grossIncome')}
-          helper={grossIncomeHelper}
-          error={incomeError}
-          required
-        />
-
-        {/* Expected share slider */}
-        <div style={{ marginBottom: 16 }}>
-          <label htmlFor="expectedShare" style={labelStyle}>
-            Your expected share (%) *
-          </label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <style>{`
-              #expectedShare {
-                -webkit-appearance: none;
-                appearance: none;
-                flex: 1;
-                height: 6px;
-                border-radius: 3px;
-                cursor: pointer;
-                outline: none;
-                background: linear-gradient(
-                  to right,
-                  ${GOLD} 0%,
-                  ${GOLD} ${expectedShare}%,
-                  ${NAVY}1A ${expectedShare}%,
-                  ${NAVY}1A 100%
-                );
-              }
-              #expectedShare::-webkit-slider-thumb {
-                -webkit-appearance: none;
-                width: 20px;
-                height: 20px;
-                border-radius: 50%;
-                background: ${WHITE};
-                border: 2px solid ${NAVY}44;
-                cursor: pointer;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-              }
-              #expectedShare::-moz-range-thumb {
-                width: 20px;
-                height: 20px;
-                border-radius: 50%;
-                background: ${WHITE};
-                border: 2px solid ${NAVY}44;
-                cursor: pointer;
-                box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-              }
-              #expectedShare::-moz-range-track {
-                height: 6px;
-                border-radius: 3px;
-                background: ${NAVY}1A;
-              }
-              #expectedShare::-moz-range-progress {
-                height: 6px;
-                border-radius: 3px;
-                background: ${GOLD};
-              }
-            `}</style>
-            <input
-              id="expectedShare"
-              type="range"
-              min={0}
-              max={100}
-              step={1}
-              value={expectedShare}
-              onChange={(e) => setField('expectedShare', Number(e.target.value))}
-              aria-label="Your expected share of household income"
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-valuenow={expectedShare}
-            />
-            <input
-              type="number"
-              min={0}
-              max={100}
-              value={expectedShare}
-              onChange={(e) => {
-                const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
-                setField('expectedShare', v);
-              }}
-              aria-label="Expected share percentage"
-              style={{
-                ...baseInput, width: 64, textAlign: 'center', padding: '8px 4px',
-              }}
-            />
-            <span style={{
-              fontFamily: '"Source Sans Pro", sans-serif', fontSize: 16,
-              color: NAVY, userSelect: 'none',
-            }}>%</span>
-          </div>
-          <p style={helperStyle}>
-            If you&rsquo;re not sure, 50% is a reasonable starting point. This isn&rsquo;t
-            a legal determination &mdash; it&rsquo;s a planning number.
-          </p>
-
-          {/* 0% share warning */}
-          {expectedShare === 0 && (
-            <p role="alert" style={{
-              fontFamily: '"Source Sans Pro", sans-serif', fontSize: 13,
-              color: '#B8860B', margin: '8px 0 0', lineHeight: 1.5,
-              padding: '8px 12px', backgroundColor: '#FFF8DC', borderRadius: 4,
-              border: '1px solid #DAA52033',
-            }}>
-              A 0% share means no income in this estimate. If you&rsquo;re unsure of
-              your share, 50% is a reasonable planning starting point.
-            </p>
-          )}
-        </div>
-
-        {/* Live income preview */}
-        <div style={{
-          fontFamily: '"Source Sans Pro", sans-serif', fontSize: 16,
-          color: NAVY, fontWeight: 600, padding: '12px 16px',
-          backgroundColor: `${GOLD}12`, borderRadius: 4, marginBottom: 32,
-          borderLeft: `4px solid ${GOLD}`,
-        }}>
-          Your estimated monthly income:{' '}
-          <strong>{fmt(displayIncome)}</strong>
-        </div>
-
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* SECTION B — Monthly Expenses                          */}
-        {/* ══════════════════════════════════════════════════════ */}
-        <h2 style={{
-          fontFamily: '"Playfair Display", serif', fontSize: 20,
-          color: NAVY, fontWeight: 700, margin: '0 0 20px',
-          borderBottom: `1px solid ${NAVY}15`, paddingBottom: 8,
-        }}>
-          Monthly Expenses
-        </h2>
-
-        {EXPENSE_FIELDS.map((f) => (
-          <CurrencyField
-            key={f.key}
-            id={`expense-${f.key}`}
-            label={f.label}
-            value={expenses[f.key]}
-            onChange={(v) => setField(f.key, v)}
-            onFieldBlur={f.key === 'housing' ? () => markTouched('housing') : undefined}
-            helper={f.helper}
-            error={f.key === 'housing' ? housingError : ''}
-            required={f.required}
-          />
-        ))}
-
-        {/* Live expense total */}
-        <div style={{
-          fontFamily: '"Source Sans Pro", sans-serif', fontSize: 16,
-          color: NAVY, fontWeight: 600, padding: '12px 16px',
-          backgroundColor: `${NAVY}08`, borderRadius: 4, marginBottom: 32,
-          borderLeft: `4px solid ${NAVY}`,
-        }}>
-          Your estimated monthly expenses:{' '}
-          <strong>{fmt(displayExpenses)}</strong>
-        </div>
-
-        {/* ── See my results button ── */}
-        <button
-          onClick={handleSeeResults}
-          disabled={!canSubmit}
-          style={{
-            display: 'block', width: '100%', maxWidth: 400,
-            margin: '0 auto 32px', padding: '16px 0',
-            fontFamily: '"Source Sans Pro", sans-serif', fontWeight: 700,
-            fontSize: 18, border: 'none', borderRadius: 4, cursor: canSubmit ? 'pointer' : 'default',
-            backgroundColor: canSubmit ? GOLD : `${NAVY}4D`,
-            color: canSubmit ? NAVY : `${PARCHMENT}AA`,
-            transition: 'background-color 0.2s, opacity 0.2s',
-          }}
-        >
-          See my results
-        </button>
-
-        {/* ── Form disclaimer ── */}
-        <p style={{
-          fontFamily: '"Source Sans Pro", sans-serif', fontSize: 12,
-          color: `${NAVY}99`, lineHeight: 1.6, textAlign: 'center',
-          maxWidth: 560, margin: '0 auto',
-        }}>
-          {DISCLAIMER}
-        </p>
-      </div>
-
-      {/* ══════════════════════════════════════════════════════ */}
-      {/* Email Gate Modal                                      */}
-      {/* ══════════════════════════════════════════════════════ */}
-      {showModal && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Enter your email to see results"
-          style={{
-            position: 'fixed', inset: 0, zIndex: 1000,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-          }}
-          onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
-        >
-          <div style={{
-            backgroundColor: WHITE, borderRadius: 8, padding: '32px 28px',
-            maxWidth: 440, width: '90%', position: 'relative',
-          }}>
-            {/* Close button */}
-            <button
-              onClick={() => setShowModal(false)}
-              aria-label="Close"
-              style={{
-                position: 'absolute', top: 12, right: 12,
-                background: 'none', border: 'none', fontSize: 22,
-                color: `${NAVY}66`, cursor: 'pointer', padding: '4px 8px',
-              }}
-            >
-              &times;
-            </button>
-
-            <h3 style={{
-              fontFamily: '"Playfair Display", serif', fontSize: 24,
-              color: NAVY, fontWeight: 700, margin: '0 0 8px',
-            }}>
-              Your results are ready.
-            </h3>
-            <p style={{
-              fontFamily: '"Source Sans Pro", sans-serif', fontSize: 16,
-              color: NAVY, lineHeight: 1.5, margin: '0 0 20px',
-            }}>
-              Enter your email and we&rsquo;ll show your results now &mdash;
-              and send you a copy you can refer back to.
-            </p>
-
-            {/* Email input */}
-            <div style={{ marginBottom: 16 }}>
-              <label htmlFor="emailGate" style={labelStyle}>Email address</label>
-              <input
-                id="emailGate"
-                type="email"
-                value={email}
-                onChange={(e) => { setEmail(e.target.value); setEmailError(''); }}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleEmailSubmit(); }}
-                placeholder="you@example.com"
-                style={{
-                  ...baseInput,
-                  border: emailError ? "1px solid " + RED : baseInput.border,
-                }}
-                aria-invalid={emailError ? 'true' : undefined}
-                aria-describedby={emailError ? 'emailGateError' : undefined}
-                autoFocus
-              />
-              {emailError && (
-                <p id="emailGateError" role="alert" style={errorStyle}>
-                  {emailError}
-                </p>
-              )}
-            </div>
-
-            {/* Newsletter checkbox */}
-            <label style={{
-              display: 'flex', alignItems: 'flex-start', gap: 8,
-              fontFamily: '"Source Sans Pro", sans-serif', fontSize: 14,
-              color: NAVY, cursor: 'pointer', marginBottom: 20,
-            }}>
-              <input
-                type="checkbox"
-                checked={newsletter}
-                onChange={(e) => setNewsletter(e.target.checked)}
-                style={{ marginTop: 3, accentColor: GOLD }}
-              />
-              Send me ClearPath&rsquo;s free weekly financial clarity tips.
-            </label>
-
-            {/* Submit */}
-            <button
+              className="cp-bgc-primary"
               onClick={handleEmailSubmit}
+              disabled={!emailOk}
               style={{
-                display: 'block', width: '100%', padding: '14px 0',
-                backgroundColor: NAVY, color: PARCHMENT,
-                fontFamily: '"Source Sans Pro", sans-serif', fontWeight: 600,
-                fontSize: 16, border: 'none', borderRadius: 4,
-                cursor: 'pointer',
+                width: '100%', padding: '14px 24px', borderRadius: 8, border: 'none',
+                background: emailOk ? T.NAVY : T.MUTED, color: '#FFFFFF', fontFamily: T.FONT_BODY,
+                fontSize: 15, fontWeight: 600, cursor: emailOk ? 'pointer' : 'not-allowed', opacity: emailOk ? 1 : 0.6,
               }}
             >
-              Show my results
+              Show me my results &rarr;
             </button>
 
-            {/* Privacy line */}
-            <p style={{
-              fontFamily: '"Source Sans Pro", sans-serif', fontSize: 12,
-              color: `${NAVY}99`, textAlign: 'center', margin: '12px 0 0',
-            }}>
-              We&rsquo;ll never share your email. Unsubscribe anytime.
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 16, justifyContent: 'center' }}>
+              <Shield size={13} color={T.MUTED} strokeWidth={2} aria-hidden="true" />
+              <span style={{ fontSize: 12, color: T.MUTED, textAlign: 'center' }}>Your figures stay private — we never store the numbers you entered.</span>
+            </div>
+            <div style={{ textAlign: 'center', marginTop: 14 }}>
+              <button type="button" className="cp-bgc-link" style={{ fontSize: 12.5 }} onClick={() => setScreen('input')}>&larr; Back to my numbers</button>
+            </div>
           </div>
         </div>
-      )}
+      </div>
+    );
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // STAGE 3 — Results ("Path to Clarity")
+  // ════════════════════════════════════════════════════════════
+  function renderResults() {
+    const showGapSeg = bar.gapPct > 0.01;
+    return (
+      <div style={{
+        maxWidth: 840, margin: '0 auto', background: T.PARCHMENT,
+        border: `1px solid ${D.CONTAINER_BORDER}`, borderRadius: 16, boxShadow: cardShadow,
+        padding: isMobile ? '36px 22px 32px' : '52px 56px 40px',
+      }}>
+        {/* Verdict */}
+        <div style={{ textAlign: 'center', marginBottom: 34 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.4px', color: T.MUTED, marginBottom: 14 }}>Your monthly picture</div>
+          <div style={{ fontFamily: PLAYFAIR, fontWeight: 700, fontSize: isMobile ? 52 : 76, lineHeight: 1, color: verdict.color, fontVariantNumeric: 'lining-nums tabular-nums' }}>
+            {bigNumber}<span style={{ fontSize: isMobile ? 22 : 30, fontWeight: 500, color: verdict.color }}>/month</span>
+          </div>
+          <div style={{ width: 96, height: 0, borderTop: `2px solid ${T.GOLD}`, margin: '18px auto' }} />
+          <p style={{ fontSize: 17, lineHeight: 1.55, color: T.INK_2, maxWidth: 470, margin: '0 auto' }}>{verdict.narrative}</p>
+        </div>
+
+        {/* Income vs. expense bars */}
+        <div style={{ padding: '24px 28px', borderRadius: 12, background: 'rgba(255,255,255,0.65)', backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', border: `1px solid ${T.GOLD_BORDER}`, marginBottom: 28 }}>
+          <BarRow label="Your estimated monthly income" value={money(adjustedMonthlyIncome)} />
+          <div style={{ height: 28, borderRadius: 6, background: D.TRACK_BG, overflow: 'hidden', display: 'flex' }}>
+            <div style={{ width: `${bar.coverPct}%`, background: T.GOLD }} />
+            {posGap && showGapSeg && (
+              <div style={{ width: `${bar.gapPct}%`, background: T.GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap' }}>{bigNumber}</span>
+              </div>
+            )}
+          </div>
+          <BarRow label="Your estimated monthly expenses" value={money(totalExpenses)} style={{ margin: '16px 0 6px' }} />
+          <div style={{ height: 28, borderRadius: 6, background: D.TRACK_BG, overflow: 'hidden', display: 'flex' }}>
+            <div style={{ width: `${bar.coverPct}%`, background: T.NAVY }} />
+            {!posGap && showGapSeg && (
+              <div style={{ width: `${bar.gapPct}%`, background: D.RED_WASH, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: D.SHORTFALL_RED, whiteSpace: 'nowrap' }}>{bigNumber}</span>
+              </div>
+            )}
+          </div>
+          <div style={{ fontSize: 12, color: T.MUTED, marginTop: 10 }}>{verdict.barCaption}</div>
+        </div>
+
+        {/* Donut + legend */}
+        {donut.segments.length > 0 && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 34, marginBottom: 8, flexDirection: isMobile ? 'column' : 'row' }}>
+            <div style={{ position: 'relative', width: 170, height: 170, flexShrink: 0 }}>
+              <div style={{ width: 170, height: 170, borderRadius: '50%', background: donut.gradient }} />
+              <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 96, height: 96, borderRadius: '50%', background: T.PARCHMENT, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px', color: T.MUTED }}>Expenses</span>
+                <span style={{ fontFamily: T.FONT_NUMERIC, fontSize: 18, fontWeight: 700, color: T.NAVY }}>{money(donut.total)}</span>
+              </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px 28px', flex: 1, width: isMobile ? '100%' : undefined, fontSize: 12.5, color: T.NAVY }}>
+              {donut.segments.map((seg) => (
+                <div key={seg.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ width: 10, height: 10, borderRadius: 3, background: seg.color, flexShrink: 0 }} />
+                  <span style={{ flex: 1 }}>{seg.label}</span>
+                  <span style={{ color: T.INK_2, fontVariantNumeric: 'tabular-nums' }}>{money(seg.value)}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* CTA */}
+        <div style={{ borderTop: `1px solid ${T.LINE}`, marginTop: 26, paddingTop: 26 }}>
+          <div style={{ fontFamily: T.FONT_NUMERIC, fontSize: 23, fontWeight: 600, color: T.NAVY, marginBottom: 8 }}>Want to go deeper?</div>
+          <p style={{ fontSize: 14.5, lineHeight: 1.6, color: T.INK_2, maxWidth: 520, margin: '0 0 16px' }}>{verdict.ctaBody}</p>
+          <a href="/modules/m2" className="cp-bgc-primary" style={{
+            display: 'inline-block', background: T.NAVY, color: '#FFFFFF', fontFamily: T.FONT_BODY,
+            fontWeight: 600, fontSize: 15, padding: '13px 26px', borderRadius: 8, textDecoration: 'none',
+          }}>
+            Explore Module 2 &rarr;
+          </a>
+          <div style={{ marginTop: 14 }}>
+            <a href="/modules/m1/readiness" style={{ fontSize: 13, color: T.INK_2, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+              Or start with the Life Transition Readiness Assessment
+            </a>
+          </div>
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: 30 }}>
+          <button type="button" className="cp-bgc-link" style={{ fontSize: 13.5 }} onClick={handleRecalculate}>Recalculate with new numbers</button>
+        </div>
+        <p style={{ fontSize: 12, lineHeight: 1.6, color: T.MUTED, textAlign: 'center', maxWidth: 560, margin: '18px auto 0' }}>{RESULTS_DISCLAIMER}</p>
+
+        {/* Screen-reader summary */}
+        <div style={srOnly}>
+          <table>
+            <caption>Your monthly budget summary</caption>
+            <tbody>
+              <tr><td>Estimated monthly income</td><td>{money(adjustedMonthlyIncome)}</td></tr>
+              <tr><td>Estimated monthly expenses</td><td>{money(totalExpenses)}</td></tr>
+              <tr><td>Monthly gap</td><td>{bigNumber}</td></tr>
+            </tbody>
+          </table>
+          {donut.segments.length > 0 && (
+            <table>
+              <caption>Expense breakdown</caption>
+              <tbody>
+                {donut.segments.map((seg) => (
+                  <tr key={seg.key}><td>{seg.label}</td><td>{money(seg.value)}</td></tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={pageWrap}>
+      <StyleBlock />
+      <Chrome screen={screen} />
+      {screen === 'input' && renderInput()}
+      {screen === 'gate' && renderGate()}
+      {screen === 'results' && renderResults()}
+      <p style={{ maxWidth: 1120, margin: '24px auto 0', fontSize: 11.5, color: T.MUTED, textAlign: 'center' }}>{LEGAL_LINE}</p>
     </div>
   );
 }
