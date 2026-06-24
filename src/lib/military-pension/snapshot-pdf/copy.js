@@ -91,6 +91,10 @@ export const COPY = Object.freeze({
     title: 'Your result',
     grossLabel: 'Gross monthly pension',
     grossSub: 'full member benefit (estimate)',
+    // When the FY2017 frozen benefit rule applies (post-Dec-23-2016 decree, member
+    // not yet retired), the gross figure is the divisible base fixed to divorce-date
+    // rank/service — not the full retirement-date benefit. Label it honestly.
+    grossSubFrozen: 'frozen to rank & service at divorce',
     shareLabel: 'Your estimated share',
     explainer: 'Your share is figured on the divisible (disposable) base — the gross pension minus the SBP premium and any VA-disability waiver — multiplied by your marital (coverture) fraction and your court-awarded percentage. The federal law that allows this division is the USFSPA, 10 U.S.C. § 1408; how it is applied is governed by the law of your state.',
     footer: 'Educational estimate only — not legal, tax, or financial advice, and not an actuarial valuation.',

@@ -48,6 +48,29 @@ describe('cover + result mapping (seed)', () => {
   });
 });
 
+describe('gross sublabel — frozen-conditional (honest divisible-base label)', () => {
+  // "full member benefit" is only correct when NOT frozen. When the freeze
+  // applies (post-Dec-23-2016 decree, member not yet retired) the gross figure
+  // is the divisible base fixed to divorce-date rank/service — label it honestly.
+  it('frozen case (seed: post-2016, not yet retired): sublabel says the gross is frozen to divorce-date rank/service', () => {
+    expect(getCalc(SEED).isFrozen).toBe(true); // guard: the seed really is a frozen case
+    const m = build();
+    expect(m.result.grossSub).toMatch(/frozen/i);
+    expect(m.result.grossSub).toMatch(/divorce/i);
+    expect(m.result.grossSub).not.toBe('full member benefit (estimate)');
+  });
+
+  it('not-frozen via already-receiving-pay: sublabel stays "full member benefit (estimate)"', () => {
+    expect(getCalc({ ...SEED, alreadyReceivingPay: true }).isFrozen).toBe(false); // guard
+    expect(build({ alreadyReceivingPay: true }).result.grossSub).toBe('full member benefit (estimate)');
+  });
+
+  it('not-frozen via pre-Dec-23-2016 divorce: sublabel stays "full member benefit (estimate)"', () => {
+    expect(getCalc({ ...SEED, separationDate: '2010-06' }).isFrozen).toBe(false); // guard
+    expect(build({ separationDate: '2010-06' }).result.grossSub).toBe('full member benefit (estimate)');
+  });
+});
+
 describe('recap tiles (derived from inputs)', () => {
   it('seed recap reflects assumed legacy system, active 20-yr service, $5,500, 16-yr overlap', () => {
     const m = build();

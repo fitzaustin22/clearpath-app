@@ -58,7 +58,7 @@ export function buildSnapshotModel({ inp, calc, preparedDate }) {
 
     result: {
       gross: usd(calc.grossMonthly),
-      grossSub: COPY.resultSection.grossSub,
+      grossSub: calc.isFrozen ? COPY.resultSection.grossSubFrozen : COPY.resultSection.grossSub,
       share: `${usd(calc.spouseMonthly)} / mo`,
       shareSub: `≈ ${pct(calc.shareFraction, 0)} of the pension / month`,
       explainer: COPY.resultSection.explainer,
