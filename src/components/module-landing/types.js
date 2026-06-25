@@ -13,21 +13,48 @@
  * @property {string} description
  * @property {string} route       worksheet href, e.g. '/modules/m2/checklist'
  * @property {string} ctaCopy     the not_started CTA verb, e.g. 'Start checklist'
+ * @property {boolean} [gated]    requires Full Access. When true and the user is
+ *        below config.tierGate, deriveModuleJourney resolves this worksheet to the
+ *        derived `locked` state (Option C — quiet inline unlock). Default false/absent
+ *        => never gated. Per-worksheet so a module can wholesale-gate (M4/M5 mark all)
+ *        or mix gated and free rows. The progress adapter stays tier-unaware and never
+ *        emits 'locked' — locking is resolved here from this flag + the user's tier.
  */
 
 /**
  * Normalized per-worksheet progress emitted by a module's adapter. The status enum
- * is 3-state for v1. A 4th 'locked' value is planned for the wholesale-locked
- * modules (M4/M5) but is deliberately NOT built here — and it is NOT a pure data
- * addition: wiring it up means new branches in deriveModuleJourney (the
- * firstNonComplete "recommended next" skip, plus the node + CTA mapping) and new
- * StatusPill/JourneyNode arms in ModuleJourney, so a locked worksheet never becomes
- * the gold next-step linking to a gated route. Phase 2 adds those branches; until
- * then no adapter emits 'locked'.
+ * stays 3-state — adapters report real progress and are tier-unaware. `locked` is
+ * NOT an adapter status: it is a derived presentation state resolved by
+ * deriveModuleJourney from a worksheet's `gated` flag + the user's tier (see
+ * DerivedJourneyStep.status). M4/M5 adapters report progress exactly like M2/M3.
  * @typedef {Object} ProgressEntry
  * @property {string} id
  * @property {'not_started'|'in_progress'|'complete'} status
  * @property {number} pct   0-100
+ */
+
+/**
+ * One rendered journey step produced by deriveModuleJourney. The derived `status`
+ * adds a 4th value, `locked` (gated worksheet + a user below the tier gate), to the
+ * three input statuses. A locked step renders the Option C "quiet inline unlock"
+ * treatment: a lock-glyph node, no pulse, no progress bar, and a single "Unlock"
+ * CTA whose href is the module's upgrade target (not the worksheet route). It is
+ * never the recommended-next gold step.
+ * @typedef {Object} DerivedJourneyStep
+ * @property {string} key
+ * @property {number} step                       1-based position.
+ * @property {string} eyebrow
+ * @property {string} title
+ * @property {string} description
+ * @property {string} href                       worksheet route, or the upgrade route when locked.
+ * @property {'not_started'|'in_progress'|'complete'|'locked'} status
+ * @property {number} progress                   0-100; always 0 when locked.
+ * @property {'next'|'active'|'complete'|'muted'|'locked'} node
+ * @property {boolean} pulse
+ * @property {'primary'|'secondary'|'locked'} ctaVariant
+ * @property {string} ctaLabel
+ * @property {boolean} [locked]                  true only for the locked state.
+ * @property {string} [subLine]                  locked sub-line, e.g. 'Included in Full Access'.
  */
 
 /**

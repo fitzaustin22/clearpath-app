@@ -277,6 +277,12 @@ export default function ModuleLanding({ config, progress, userTier = 'free' }) {
     worksheets: config.worksheets,
     progress,
     hydrated,
+    // Tier-aware locking for worksheets a config marks `gated`. userTier is the
+    // server-resolved tier (not localStorage-derived), so locked is stable across
+    // hydration. Configs with no gated worksheet are unaffected (M2/M3).
+    userTier,
+    tierGate: config.tierGate,
+    upgradeHref: config.links.upgrade,
   });
   const blueprintComplete = hydrated ? countBlueprintComplete(sections) : 0;
   const showUpgrade =
