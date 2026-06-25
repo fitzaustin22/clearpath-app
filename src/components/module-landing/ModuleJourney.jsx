@@ -10,7 +10,7 @@
 // ModuleLanding CSS (cp-ml-*); this only attaches the class names.
 
 import Link from 'next/link';
-import { ArrowRight, Check } from 'lucide-react';
+import { ArrowRight, Check, Lock } from 'lucide-react';
 import { T } from '@/src/lib/brand/tokens';
 import WizardCard from '@/src/components/wizard/WizardCard';
 
@@ -19,7 +19,7 @@ import WizardCard from '@/src/components/wizard/WizardCard';
 const SHADOW_ELEVATED = '0 8px 24px rgba(27, 42, 74, 0.07)';
 const PILL_INPROGRESS_BG = 'rgba(200, 169, 110, 0.14)';
 
-function JourneyNode({ node, step }) {
+function JourneyNode({ node, step, module }) {
   const base = {
     position: 'relative',
     zIndex: 2,
@@ -35,6 +35,19 @@ function JourneyNode({ node, step }) {
     fontSize: 18,
   };
 
+  if (node === 'locked') {
+    // Locked node: the lock glyph replaces the number on a parchment-deep fill, at
+    // the SAME 44px node size as every other node (no resize). No border — it reads
+    // quieter than the outlined not-started/next nodes. Gold-brown stroke (PILL_TEXT).
+    return (
+      <div
+        data-testid={`${module}-locked-node`}
+        style={{ ...base, background: T.PARCHMENT_DEEP, color: T.PILL_TEXT }}
+      >
+        <Lock size={20} strokeWidth={2.2} aria-hidden="true" />
+      </div>
+    );
+  }
   if (node === 'active') {
     return (
       <div
@@ -200,7 +213,92 @@ function WorksheetCTA({ href, label, variant }) {
   );
 }
 
+// Option C — quiet inline unlock. A locked worksheet is a soft gold-tint card (no
+// shadow) holding the tool name (clear navy, NOT greyed), a single "Included in Full
+// Access" sub-line, and one understated "Unlock →" link routing to the upgrade
+// target. No progress bar, no benefit bullets, no pricing, no button — the sidebar
+// Full Access card is the only place that sells. Spec: locked-worksheet handoff README.
+function LockedWorksheetCard({ step, module }) {
+  return (
+    <div
+      data-testid={`${module}-locked-card`}
+      style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 14,
+        background: T.GOLD_TINT,
+        border: `1px solid ${T.GOLD_BORDER}`,
+        borderRadius: 12,
+        padding: '15px 18px',
+        // Intentionally no boxShadow — quieter than the active/resting cards.
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontFamily: T.FONT_DISPLAY,
+            fontWeight: 600,
+            fontSize: 17,
+            color: T.NAVY,
+          }}
+        >
+          {step.title}
+        </div>
+        <div
+          style={{
+            fontFamily: T.FONT_BODY,
+            fontSize: 12.5,
+            color: T.PILL_TEXT,
+            marginTop: 2,
+          }}
+        >
+          {step.subLine}
+        </div>
+      </div>
+      <Link
+        href={step.href}
+        className="cp-ml-elink"
+        style={{
+          flex: 'none',
+          whiteSpace: 'nowrap',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+          fontFamily: T.FONT_BODY,
+          fontSize: 13,
+          fontWeight: 700,
+          color: T.PILL_TEXT,
+          textDecoration: 'none',
+        }}
+      >
+        {step.ctaLabel}
+        <ArrowRight size={14} aria-hidden="true" />
+      </Link>
+    </div>
+  );
+}
+
 function JourneyStep({ step, isLast, module }) {
+  // Locked: the Option C quiet treatment (lock node + gold-tint unlock card). This
+  // arm only fires for a worksheet the config marked `gated` for a user below the
+  // tier gate — no shipped module does, so M2/M3 never reach it (byte-identical).
+  if (step.status === 'locked') {
+    return (
+      <div
+        style={{
+          position: 'relative',
+          display: 'flex',
+          gap: 22,
+          marginBottom: isLast ? 0 : 18,
+        }}
+      >
+        <JourneyNode node="locked" step={step.step} module={module} />
+        <LockedWorksheetCard step={step} module={module} />
+      </div>
+    );
+  }
+
   const inProgress = step.status === 'in_progress';
   const eyebrowColor = inProgress ? T.PILL_TEXT : T.MUTED;
   const cardStyle = {
@@ -221,7 +319,7 @@ function JourneyStep({ step, isLast, module }) {
         marginBottom: isLast ? 0 : 18,
       }}
     >
-      <JourneyNode node={step.node} step={step.step} />
+      <JourneyNode node={step.node} step={step.step} module={module} />
       <WizardCard style={cardStyle} data-testid={`${module}-journey-card`}>
         <div
           style={{

@@ -352,3 +352,159 @@ describe('deriveModuleJourney — N=4 (four-worksheet module, e.g. M5)', () => {
     expect(spineGoldPct).toBe(100);
   });
 });
+
+// --- Phase 2: locked resolution (gated worksheets + tier). The derived `locked`
+// state is purely additive — it only fires for a worksheet a config marks
+// `gated: true` when the user lacks access to the module's tierGate. Everything
+// above (M2/M3 + the N=2/N=4 synthetics) has NO gated worksheets and passes no
+// userTier, so it is unaffected; these assert the new arm in isolation. ----------
+
+const gatedSheet = (id) => ({ ...sheet(id), gated: true });
+
+describe('deriveModuleJourney — locked resolution (gated + no access)', () => {
+  const worksheets = [sheet('open'), gatedSheet('gatedA'), gatedSheet('gatedB')];
+  const progress = [
+    { id: 'open', status: 'not_started', pct: 0 },
+    { id: 'gatedA', status: 'in_progress', pct: 60 }, // real progress…
+    { id: 'gatedB', status: 'not_started', pct: 0 },
+  ];
+
+  it('locks a gated worksheet for a user below the tier gate', () => {
+    const { steps } = deriveModuleJourney({
+      worksheets,
+      progress,
+      userTier: 'free',
+      tierGate: 'navigator',
+      upgradeHref: '/upgrade',
+    });
+    expect(steps.map((s) => s.status)).toEqual([
+      'not_started',
+      'locked',
+      'locked',
+    ]);
+    expect(steps.map((s) => s.node)).toEqual(['next', 'locked', 'locked']);
+  });
+
+  it('a locked step has no pulse, no progress, and its CTA points at the upgrade route', () => {
+    const { steps } = deriveModuleJourney({
+      worksheets,
+      progress,
+      userTier: 'essentials',
+      tierGate: 'navigator',
+      upgradeHref: '/upgrade',
+    });
+    const locked = steps[1]; // gatedA — its real 60% must be suppressed
+    expect(locked.status).toBe('locked');
+    expect(locked.pulse).toBe(false);
+    expect(locked.progress).toBe(0);
+    expect(locked.href).toBe('/upgrade');
+    expect(locked.ctaLabel).toBe('Unlock');
+    expect(locked.subLine).toBe('Included in Full Access');
+  });
+
+  it('a locked worksheet is never the recommended-next gold step (skips it)', () => {
+    // open complete, both gated locked -> no actionable step -> nothing gold.
+    const { steps, spineGoldPct } = deriveModuleJourney({
+      worksheets,
+      progress: [
+        { id: 'open', status: 'complete', pct: 100 },
+        { id: 'gatedA', status: 'not_started', pct: 0 },
+        { id: 'gatedB', status: 'not_started', pct: 0 },
+      ],
+      userTier: 'free',
+      tierGate: 'navigator',
+      upgradeHref: '/upgrade',
+    });
+    expect(steps.map((s) => s.status)).toEqual(['complete', 'locked', 'locked']);
+    expect(steps.filter((s) => s.ctaVariant === 'primary')).toHaveLength(0);
+    expect(steps[1].node).toBe('locked');
+    // spine ignores locked: only the one complete step (1/3) fills it.
+    expect(spineGoldPct).toBe(33);
+  });
+});
+
+describe('deriveModuleJourney — gated worksheet resolves to REAL status with access', () => {
+  const worksheets = [sheet('open'), gatedSheet('gatedA'), gatedSheet('gatedB')];
+  const progress = [
+    { id: 'open', status: 'not_started', pct: 0 },
+    { id: 'gatedA', status: 'in_progress', pct: 60 },
+    { id: 'gatedB', status: 'not_started', pct: 0 },
+  ];
+
+  it('navigator (Full Access) sees the gated worksheet at its real in_progress status', () => {
+    const { steps } = deriveModuleJourney({
+      worksheets,
+      progress,
+      userTier: 'navigator',
+      tierGate: 'navigator',
+      upgradeHref: '/upgrade',
+    });
+    expect(steps.some((s) => s.status === 'locked')).toBe(false);
+    expect(steps[1].status).toBe('in_progress');
+    expect(steps[1].progress).toBe(60);
+    expect(steps[1].node).toBe('active');
+    expect(steps[1].href).toBe('/x/gatedA'); // real worksheet route, not /upgrade
+  });
+
+  it('legacy signature tier (Full Access equivalent) also unlocks gated worksheets', () => {
+    const { steps } = deriveModuleJourney({
+      worksheets,
+      progress,
+      userTier: 'signature',
+      tierGate: 'navigator',
+      upgradeHref: '/upgrade',
+    });
+    expect(steps.some((s) => s.status === 'locked')).toBe(false);
+    expect(steps[1].status).toBe('in_progress');
+  });
+});
+
+describe('deriveModuleJourney — locked is purely additive', () => {
+  const worksheets = [sheet('a'), sheet('b'), sheet('c')];
+  const progress = [
+    { id: 'a', status: 'complete', pct: 100 },
+    { id: 'b', status: 'in_progress', pct: 50 },
+    { id: 'c', status: 'not_started', pct: 0 },
+  ];
+
+  it('with no gated worksheets, output is identical with and without userTier/tierGate', () => {
+    const base = deriveModuleJourney({ worksheets, progress });
+    const withTier = deriveModuleJourney({
+      worksheets,
+      progress,
+      userTier: 'free',
+      tierGate: 'navigator',
+      upgradeHref: '/upgrade',
+    });
+    expect(withTier).toEqual(base);
+  });
+
+  it('a gated worksheet for a Full Access user equals the same config with no gated flag', () => {
+    const gatedWorksheets = [sheet('a'), gatedSheet('b'), sheet('c')];
+    const ungated = deriveModuleJourney({
+      worksheets,
+      progress,
+      userTier: 'navigator',
+      tierGate: 'navigator',
+      upgradeHref: '/upgrade',
+    });
+    const gated = deriveModuleJourney({
+      worksheets: gatedWorksheets,
+      progress,
+      userTier: 'navigator',
+      tierGate: 'navigator',
+      upgradeHref: '/upgrade',
+    });
+    expect(gated).toEqual(ungated);
+  });
+
+  it('a gated worksheet with userTier absent is NOT locked (insufficient info → derive from progress)', () => {
+    const gatedWorksheets = [sheet('a'), gatedSheet('b'), sheet('c')];
+    const { steps } = deriveModuleJourney({
+      worksheets: gatedWorksheets,
+      progress,
+    });
+    expect(steps.some((s) => s.status === 'locked')).toBe(false);
+    expect(steps[1].status).toBe('in_progress');
+  });
+});
