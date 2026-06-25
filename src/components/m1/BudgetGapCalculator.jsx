@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Lock, Shield } from 'lucide-react';
 import { useM1Store } from '@/src/stores/m1Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';
@@ -41,16 +41,9 @@ const D = {
 const money = (n) => '$' + Math.round(Number(n) || 0).toLocaleString('en-US');
 const fmtInt = (n) => Math.round(Number(n) || 0).toLocaleString('en-US');
 
-// Measure the container before paint on the client (no flash of the squeezed
-// wide layout), falling back to useEffect on the server to avoid the SSR warning.
-const useIsoLayoutEffect = typeof window !== 'undefined' ? useLayoutEffect : useEffect;
-
-// Below this RENDERED-CONTAINER width the two-column layout (340px rail + worksheet)
-// can't fit, so the tool stacks to a single column. The worksheet's min-content is
-// ~612px; + the 340px rail + page padding ≈ 1008px, so 1024 leaves a small margin.
-// Keyed off the component's own width (ResizeObserver), not window.innerWidth, so
-// the calculator lays out correctly whether full-width or embedded in a narrow card.
-const STACK_BELOW_PX = 1024;
+// Responsive layout is pure CSS: a container query on the outer wrapper (see
+// StyleBlock — `@container bgc (min-width: 1024px)`). No JS measurement, so the
+// correct stack-first layout renders at first paint (no cold-load flash).
 
 // Existing gate email validation — reused verbatim (not the README regex).
 function isValidEmail(email) {
@@ -118,6 +111,33 @@ function StyleBlock() {
       .cp-bgc-pill { transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease; }
       .cp-bgc-link { color: ${T.INK_2}; text-decoration: underline; text-underline-offset: 3px;
         cursor: pointer; background: none; border: none; padding: 0; font: inherit; }
+
+      /* Responsive layout via a CONTAINER QUERY on the outer wrapper (.cp-bgc-page,
+         container-name: bgc). STACK-FIRST: the base rules are the narrow / 1-column
+         layout, so first paint, JS-disabled, and @container-unsupported all render
+         UNCLIPPED; the query only UPGRADES to two columns + roomier spacing at
+         >= 1024px. Replaces the old JS width measurement, which only corrected
+         the layout after hydration (flashing the clipped 2-column on cold loads). */
+      .cp-bgc-grid { grid-template-columns: 1fr; }
+      .cp-bgc-rail { padding: 30px 24px; }
+      .cp-bgc-worksheet { padding: 28px 22px 30px; }
+      .cp-bgc-gatepad { padding: 20px; }
+      .cp-bgc-results { padding: 36px 22px 32px; }
+      .cp-bgc-verdict { font-size: 52px; }
+      .cp-bgc-permonth { font-size: 22px; }
+      .cp-bgc-donutrow { flex-direction: column; }
+      .cp-bgc-legend { width: 100%; }
+      @container bgc (min-width: 1024px) {
+        .cp-bgc-grid { grid-template-columns: 340px 1fr; }
+        .cp-bgc-rail { padding: 38px 30px; }
+        .cp-bgc-worksheet { padding: 40px 44px 36px; }
+        .cp-bgc-gatepad { padding: 48px; }
+        .cp-bgc-results { padding: 52px 56px 40px; }
+        .cp-bgc-verdict { font-size: 76px; }
+        .cp-bgc-permonth { font-size: 30px; }
+        .cp-bgc-donutrow { flex-direction: row; }
+        .cp-bgc-legend { width: auto; }
+      }
     `}</style>
   );
 }
@@ -257,8 +277,6 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
   // Newsletter opt-in retained for the existing gate payload; the hi-fi gate
   // omits the checkbox, so it stays false. (Reported to Fitz.)
   const [newsletter] = useState(false);
-  const [isNarrow, setIsNarrow] = useState(false);
-  const rootRef = useRef(null);
 
   // ── Frozen-store inputs (read exactly as the existing tool wrote them) ──
   const inputs = budgetGap.inputs || {};
@@ -269,21 +287,6 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
     o[f.key] = inputs[f.key] ?? '';
     return o;
   }, {});
-
-  // ── Responsive: stack to 1-column when the calculator's OWN container is too
-  // narrow for the 340px rail + worksheet — NOT when the viewport is narrow. The
-  // tool renders both full-width (/modules/m1/budget-gap) and embedded in a ~720px
-  // card (/modules/m1); keying off window.innerWidth left the embedded copy stuck
-  // in a squeezed two-column layout that overflowed and clipped section 02.
-  useIsoLayoutEffect(() => {
-    const el = rootRef.current;
-    if (!el) return undefined;
-    const measure = () => setIsNarrow(el.offsetWidth > 0 && el.offsetWidth < STACK_BELOW_PX);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   // ── Hydrate: jump straight to results if already completed. Runs post-mount
   // (not a lazy initializer) so server + first client render both start at
@@ -421,10 +424,14 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
     ? 'per month'
     : `per ${FREQUENCIES.find((f) => f.value === payFrequency)?.noun ?? payFrequency} paycheck`;
 
+  // Outer wrapper = the container-query context (container-name: bgc). Its OWN
+  // padding can't be container-queried (an element can't query its own size), so
+  // it's static; every responsive style below sits on a descendant that queries it.
   const pageWrap = {
     backgroundColor: T.PARCHMENT, minHeight: '100vh', boxSizing: 'border-box',
-    padding: isNarrow ? '20px 14px 48px' : '28px 28px 60px',
+    padding: '28px 28px 60px',
     fontFamily: T.FONT_BODY, color: T.NAVY,
+    containerType: 'inline-size', containerName: 'bgc',
   };
   const cardShadow = '0 20px 40px rgba(28,28,25,0.06)';
 
@@ -433,14 +440,13 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
   // ════════════════════════════════════════════════════════════
   function renderInput() {
     return (
-      <div style={{
+      <div className="cp-bgc-grid" style={{
         maxWidth: 1120, margin: '0 auto', background: T.PARCHMENT,
         border: `1px solid ${D.CONTAINER_BORDER}`, borderRadius: 16, boxShadow: cardShadow,
         overflow: 'hidden', display: 'grid',
-        gridTemplateColumns: isNarrow ? '1fr' : '340px 1fr',
       }}>
         {/* ── Navy rail ── */}
-        <div style={{ background: T.NAVY, padding: isNarrow ? '30px 24px' : '38px 30px', display: 'flex', flexDirection: 'column' }}>
+        <div className="cp-bgc-rail" style={{ background: T.NAVY, display: 'flex', flexDirection: 'column' }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.9px', color: D.RAIL_EYEBROW, marginBottom: 10 }}>
             Module 1 · Budget Gap
           </div>
@@ -475,7 +481,7 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
         </div>
 
         {/* ── Worksheet ── */}
-        <div style={{ padding: isNarrow ? '28px 22px 30px' : '40px 44px 36px' }}>
+        <div className="cp-bgc-worksheet">
           {isRA && (
             <div style={{ marginBottom: 22, padding: '10px 16px', borderRadius: 8, background: T.GOLD_TINT, border: `1px solid ${T.GOLD_BORDER}`, fontSize: 13.5, color: T.NAVY }}>
               <strong>You&rsquo;ve taken the first step.</strong> Now let&rsquo;s look at the numbers.
@@ -631,7 +637,7 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(250,248,242,0.55)' }} />
 
         {/* Glass modal */}
-        <div style={{ position: 'relative', zIndex: 2, minHeight: 620, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: isNarrow ? 20 : 48 }}>
+        <div className="cp-bgc-gatepad" style={{ position: 'relative', zIndex: 2, minHeight: 620, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div style={{
             width: 440, maxWidth: '100%', background: 'rgba(255,255,255,0.82)',
             backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
@@ -700,16 +706,15 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
   function renderResults() {
     const showGapSeg = bar.gapPct > 0.01;
     return (
-      <div style={{
+      <div className="cp-bgc-results" style={{
         maxWidth: 840, margin: '0 auto', background: T.PARCHMENT,
         border: `1px solid ${D.CONTAINER_BORDER}`, borderRadius: 16, boxShadow: cardShadow,
-        padding: isNarrow ? '36px 22px 32px' : '52px 56px 40px',
       }}>
         {/* Verdict */}
         <div style={{ textAlign: 'center', marginBottom: 34 }}>
           <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '1.4px', color: T.MUTED, marginBottom: 14 }}>Your monthly picture</div>
-          <div style={{ fontFamily: PLAYFAIR, fontWeight: 700, fontSize: isNarrow ? 52 : 76, lineHeight: 1, color: verdict.color, fontVariantNumeric: 'lining-nums tabular-nums' }}>
-            {bigNumber}<span style={{ fontSize: isNarrow ? 22 : 30, fontWeight: 500, color: verdict.color }}>/month</span>
+          <div className="cp-bgc-verdict" style={{ fontFamily: PLAYFAIR, fontWeight: 700, lineHeight: 1, color: verdict.color, fontVariantNumeric: 'lining-nums tabular-nums' }}>
+            {bigNumber}<span className="cp-bgc-permonth" style={{ fontWeight: 500, color: verdict.color }}>/month</span>
           </div>
           <div style={{ width: 96, height: 0, borderTop: `2px solid ${T.GOLD}`, margin: '18px auto' }} />
           <p style={{ fontSize: 17, lineHeight: 1.55, color: T.INK_2, maxWidth: 470, margin: '0 auto' }}>{verdict.narrative}</p>
@@ -740,7 +745,7 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
 
         {/* Donut + legend */}
         {donut.segments.length > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 34, marginBottom: 8, flexDirection: isNarrow ? 'column' : 'row' }}>
+          <div className="cp-bgc-donutrow" style={{ display: 'flex', alignItems: 'center', gap: 34, marginBottom: 8 }}>
             <div style={{ position: 'relative', width: 170, height: 170, flexShrink: 0 }}>
               <div style={{ width: 170, height: 170, borderRadius: '50%', background: donut.gradient }} />
               <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 96, height: 96, borderRadius: '50%', background: T.PARCHMENT, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -748,7 +753,7 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
                 <span style={{ fontFamily: T.FONT_NUMERIC, fontSize: 18, fontWeight: 700, color: T.NAVY }}>{money(donut.total)}</span>
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px 28px', flex: 1, width: isNarrow ? '100%' : undefined, fontSize: 12.5, color: T.NAVY }}>
+            <div className="cp-bgc-legend" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '7px 28px', flex: 1, fontSize: 12.5, color: T.NAVY }}>
               {donut.segments.map((seg) => (
                 <div key={seg.key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                   <span style={{ width: 10, height: 10, borderRadius: 3, background: seg.color, flexShrink: 0 }} />
@@ -808,7 +813,7 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
   }
 
   return (
-    <div ref={rootRef} style={pageWrap}>
+    <div className="cp-bgc-page" style={pageWrap}>
       <StyleBlock />
       <Chrome screen={screen} />
       {screen === 'input' && renderInput()}
