@@ -1,11 +1,13 @@
 'use client';
 
-// ModuleJourney — the vertical "journey spine" for the Module 2 landing page
-// (Primary design). A 2px spine runs behind three steps; each step is a 44px
-// numbered node beside a worksheet card. There is no existing primitive for the
-// spine/nodes/pulse, so this is co-located. The card surface reuses WizardCard;
-// the step view-model (status, node style, pulse, CTA variant) is computed by
-// deriveModule2Journey and passed in via `steps`.
+// ModuleJourney — the vertical "journey spine" for a module landing page (Primary
+// design). A 2px spine runs behind the steps; each step is a 44px numbered node
+// beside a worksheet card. There is no existing primitive for the spine/nodes/
+// pulse, so this is co-located in the shared module-landing system. The card
+// surface reuses WizardCard; the step view-model (status, node style, pulse, CTA
+// variant) is computed by deriveModuleJourney and passed in via `steps`. Renders
+// N steps (not hardcoded to three). The pulse/grow @keyframes live in the parent
+// ModuleLanding CSS (cp-ml-*); this only attaches the class names.
 
 import Link from 'next/link';
 import { ArrowRight, Check } from 'lucide-react';
@@ -36,7 +38,7 @@ function JourneyNode({ node, step }) {
   if (node === 'active') {
     return (
       <div
-        className="cp-m2-pulse"
+        className="cp-ml-pulse"
         style={{ ...base, background: T.GOLD, border: `2px solid ${T.GOLD}`, color: T.NAVY }}
       >
         {step}
@@ -157,7 +159,7 @@ function WorksheetProgress({ pct }) {
       </div>
       <div style={{ height: 8, borderRadius: 999, background: T.PARCHMENT_DEEP, overflow: 'hidden' }}>
         <div
-          className="cp-m2-grow"
+          className="cp-ml-grow"
           style={{
             height: '100%',
             width: `${value}%`,
@@ -189,7 +191,7 @@ function WorksheetCTA({ href, label, variant }) {
   return (
     <Link
       href={href}
-      className={variant === 'primary' ? 'cp-m2-cta-primary' : 'cp-m2-cta-secondary'}
+      className={variant === 'primary' ? 'cp-ml-cta-primary' : 'cp-ml-cta-secondary'}
       style={{ ...base, ...variantStyle }}
     >
       {label}
@@ -198,7 +200,7 @@ function WorksheetCTA({ href, label, variant }) {
   );
 }
 
-function JourneyStep({ step, isLast }) {
+function JourneyStep({ step, isLast, module }) {
   const inProgress = step.status === 'in_progress';
   const eyebrowColor = inProgress ? T.PILL_TEXT : T.MUTED;
   const cardStyle = {
@@ -220,7 +222,7 @@ function JourneyStep({ step, isLast }) {
       }}
     >
       <JourneyNode node={step.node} step={step.step} />
-      <WizardCard style={cardStyle} data-testid="m2-journey-card">
+      <WizardCard style={cardStyle} data-testid={`${module}-journey-card`}>
         <div
           style={{
             display: 'flex',
@@ -274,10 +276,10 @@ function JourneyStep({ step, isLast }) {
   );
 }
 
-export default function ModuleJourney({ steps, spineGoldPct = 0 }) {
+export default function ModuleJourney({ steps, spineGoldPct = 0, module = 'module' }) {
   const stop = Math.max(0, Math.min(100, spineGoldPct));
   return (
-    <div style={{ position: 'relative' }} data-testid="m2-journey">
+    <div style={{ position: 'relative' }} data-testid={`${module}-journey`}>
       {/* The spine: gold from the top down to the journey-progress mark, then hairline. */}
       <div
         aria-hidden="true"
@@ -291,7 +293,12 @@ export default function ModuleJourney({ steps, spineGoldPct = 0 }) {
         }}
       />
       {steps.map((step, i) => (
-        <JourneyStep key={step.key} step={step} isLast={i === steps.length - 1} />
+        <JourneyStep
+          key={step.key}
+          step={step}
+          isLast={i === steps.length - 1}
+          module={module}
+        />
       ))}
     </div>
   );
