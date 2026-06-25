@@ -1,265 +1,330 @@
 /**
- * M5ModulePage — module landing page tests.
+ * M5ModulePage — module landing tests, REWRITTEN for the shared ModuleLanding
+ * "Primary" layout (sidebar + journey spine). Replaces the prior card-grid suite
+ * (m5-tool-card grid / Open|Locked buttons / M2+M4 footer / hero "View Your
+ * Blueprint" CTA / EDU-paragraph section) — none of those DOM elements survive the
+ * migration. Mirrors M4ModulePage.test.jsx (the wholesale-gated sibling): hero copy,
+ * readiness callout, journey (locked for free/essentials, resolved for navigator),
+ * Blueprint sidebar, upgrade promo, Ask Theo.
  *
- * Spec authority: M5-Tool-Specs.md §3 Tier Gating + §4 Module Landing Page.
- * PR1 scope: core landing page in Full + Locked render states. Cross-module
- * callouts and per-tool prerequisite notes deferred to PR2. PR1 reads only
- * the user's access tier — no tool-store reads.
+ * M5 is wholesale-gated (all four worksheets `gated`), so free/essentials see four
+ * Option-C locked cards; navigator/signature see real per-worksheet status from the
+ * heterogeneous adapter. The two novel completion mappings — Pension Valuation
+ * (multi-instance `assets{}`) and QDRO (the dormant `metadata.qdroPacketGeneratedAt`)
+ * — are exercised here end-to-end by seeding the store.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import { render, screen, within } from '@testing-library/react';
 import M5ModulePage from '../M5ModulePage.jsx';
+import { useM5Store } from '@/src/stores/m5Store';
+import useBlueprintStore from '@/src/stores/blueprintStore';
 
-// ─── §1.5 verbatim educational paragraph ────────────────────────────────────
-const EDU_PARAGRAPH =
-  "Some of the most consequential assets in a divorce can't be valued at face — a pension, the marital home, a support obligation, the mechanics of dividing a retirement account without triggering tax or penalty. Each takes real analysis to understand what it's actually worth and how a given choice plays out over time. The four tools in this module give you CDFA-grade valuations and decision frameworks for exactly these assets, so you negotiate from clarity rather than guesswork.";
+// next/link reaches for the App Router; stub it so jsdom renders don't throw.
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn(), prefetch: vi.fn() }),
+}));
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-const m5Links = () =>
-  screen
-    .getAllByRole('link')
-    .filter((a) => (a.getAttribute('href') || '').includes('m5'));
-
-const footerLinks = () => {
-  const footer = screen.getByRole('contentinfo');
-  return within(footer).getAllByRole('link');
-};
-
-// ─── Shell (header + educational paragraph + footer) — both states ──────────
-describe('M5ModulePage — shell (Full state)', () => {
-  it('renders the module header', () => {
-    render(<M5ModulePage userTier="navigator" />);
-    expect(
-      screen.getByRole('heading', { name: /M5 — Value What Matters/ }),
-    ).toBeInTheDocument();
-  });
-
-  it('renders the §1.5 educational paragraph verbatim', () => {
-    render(<M5ModulePage userTier="navigator" />);
-    expect(screen.getByText(EDU_PARAGRAPH)).toBeInTheDocument();
-  });
-
-  it('renders the footer with links to M2 (Know What You Own) and M4 (Tax Landscape)', () => {
-    render(<M5ModulePage userTier="navigator" />);
-    const links = footerLinks();
-    const m2 = links.find((a) => a.getAttribute('href') === '/modules/m2');
-    const m4 = links.find((a) => a.getAttribute('href') === '/modules/m4');
-    expect(m2).toBeTruthy();
-    expect(m2).toHaveTextContent(/Know What You Own/i);
-    expect(m4).toBeTruthy();
-    expect(m4).toHaveTextContent(/Tax Landscape/i);
+beforeAll(() => {
+  Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: vi.fn().mockImplementation((query) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+    })),
   });
 });
 
-describe('M5ModulePage — shell (Locked state)', () => {
-  it('renders the module header in Locked state', () => {
-    render(<M5ModulePage userTier="essentials" />);
-    expect(
-      screen.getByRole('heading', { name: /M5 — Value What Matters/ }),
-    ).toBeInTheDocument();
-  });
+// m5Store has no resetM5 helper — clear the four tool slices directly (+ blueprint).
+function resetStores() {
+  useM5Store.setState((s) => ({
+    supportEstimator: { ...s.supportEstimator, results: null },
+    homeDecision: { ...s.homeDecision, results: null },
+    pensionValuation: { ...s.pensionValuation, assets: {} },
+    qdroDecision: { ...s.qdroDecision, assets: {} },
+  }));
+  useBlueprintStore.getState().resetBlueprint();
+}
+beforeEach(resetStores);
 
-  it('renders the §1.5 educational paragraph verbatim in Locked state', () => {
-    render(<M5ModulePage userTier="essentials" />);
-    expect(screen.getByText(EDU_PARAGRAPH)).toBeInTheDocument();
-  });
-
-  it('renders the footer in Locked state', () => {
-    render(<M5ModulePage userTier="free" />);
-    const links = footerLinks();
-    expect(links.find((a) => a.getAttribute('href') === '/modules/m2')).toBeTruthy();
-    expect(links.find((a) => a.getAttribute('href') === '/modules/m4')).toBeTruthy();
-  });
-});
-
-// ─── Tier-state selection (hasAccess wiring, four-tier matrix) ─────────────
-//
-// Spec §3 designs the gate as `hasAccess(userTier, 'full_access')` with the
-// utility handling alias mapping. Code reality (`src/lib/plans.ts`): no
-// `'full_access'` UserTier value exists — `hasAccess` is rank-based on
-// TIER_LEVEL, where both `navigator` and `signature` map to level 2. The
-// component calls `hasAccess(userTier, 'navigator')`, which grants Full
-// Access to BOTH navigator (canonical) and signature (legacy alias) users
-// via rank comparison. These four tests pin that contract.
-//
-// The `signature → Full` case is the bug-catch: if `hasAccess` ever
-// regressed to equality-on-tier-string, this test would fail (signature !==
-// navigator) and surface the lockout immediately.
-describe('M5ModulePage — tier state selection (four-tier matrix)', () => {
-  it.each(['navigator', 'signature'])(
-    '%s tier renders Full state — live Open buttons + no lock icons + no upsell',
-    (tier) => {
-      render(<M5ModulePage userTier={tier} />);
-      // Full state: 4 cards each with a live Open link.
-      const cards = screen.getAllByTestId('m5-tool-card');
-      expect(cards).toHaveLength(4);
-      for (const card of cards) {
-        expect(within(card).getByRole('link', { name: /Open/i })).toBeInTheDocument();
-        expect(within(card).queryByTestId('m5-tool-card-lock')).toBeNull();
-      }
-      // Full state: no upsell CTA.
-      expect(screen.queryByText(/Unlock with Full Access/i)).not.toBeInTheDocument();
+// ── Seed helpers — one per completion semantic ───────────────────────────────
+const seedSupportComplete = () =>
+  useM5Store.setState((s) => ({
+    supportEstimator: { ...s.supportEstimator, results: { childSupport: { monthly: 500 } } },
+  }));
+const seedPensionComplete = () =>
+  useM5Store.setState((s) => ({
+    pensionValuation: {
+      ...s.pensionValuation,
+      assets: { a1: { inputs: {}, results: { pv: { best: 100000 } } } },
     },
-  );
-
-  it.each(['free', 'essentials'])(
-    '%s tier renders Locked state — lock icons + no Open buttons + upsell to /upgrade',
-    (tier) => {
-      render(<M5ModulePage userTier={tier} />);
-      // Locked state: 4 cards each with a lock icon and no Open link.
-      const cards = screen.getAllByTestId('m5-tool-card');
-      expect(cards).toHaveLength(4);
-      for (const card of cards) {
-        expect(within(card).getByTestId('m5-tool-card-lock')).toBeInTheDocument();
-        expect(within(card).queryByRole('link', { name: /Open/i })).toBeNull();
-      }
-      // Locked state: upsell button to /upgrade.
-      const upsell = screen.getByRole('link', { name: /Unlock with Full Access/i });
-      expect(upsell).toHaveAttribute('href', '/upgrade');
+  }));
+const seedPensionStarted = () =>
+  useM5Store.setState((s) => ({
+    pensionValuation: { ...s.pensionValuation, assets: { a1: { inputs: {}, results: null } } },
+  }));
+const seedQdroPacketComplete = () =>
+  useM5Store.setState((s) => ({
+    qdroDecision: {
+      ...s.qdroDecision,
+      assets: {
+        a1: {
+          userRole: null,
+          planType: 'private_db',
+          decisions: {},
+          metadata: { formulaId: 'x', citations: [], qdroPacketGeneratedAt: '2026-06-25T00:00:00.000Z' },
+        },
+      },
     },
-  );
-});
+  }));
+const seedBlueprintComplete = (n) =>
+  useBlueprintStore.setState((s) => {
+    const keys = Object.keys(s.sections).slice(0, n);
+    const sections = { ...s.sections };
+    for (const k of keys) sections[k] = { ...sections[k], status: 'complete' };
+    return { sections };
+  });
 
-// ─── §1.6 verbatim tool copy (used in both states) ──────────────────────────
-const TOOL_COPY = [
+// Verbatim §1.6 descriptions (carried from the old page) + net-new step labels / CTAs.
+const WORKSHEETS = [
   {
     title: 'Support Estimator',
-    line: 'Estimate state-specific child and spousal support — pendente lite or post-divorce.',
-    fullHref: '/modules/m5/support-estimator',
+    step: 'Step 1 · Estimate support',
+    descMatch: /child and spousal support/i,
+    route: '/modules/m5/support-estimator',
+    cta: /Start estimator/i,
   },
   {
     title: 'Pension Valuation Analyzer',
-    line: 'Value a defined-benefit pension at present value, with marital-portion and sensitivity ranges.',
-    fullHref: '/modules/m5/pva',
+    step: 'Step 2 · Value the pension',
+    descMatch: /defined-benefit pension at present value/i,
+    route: '/modules/m5/pva',
+    cta: /Start analyzer/i,
   },
   {
     title: 'QDRO Decision Guide',
-    line: 'Map how each retirement account divides, and produce an attorney handoff packet.',
-    fullHref: '/modules/m5/qdro',
+    step: 'Step 3 · Plan the retirement split',
+    descMatch: /attorney handoff packet/i,
+    route: '/modules/m5/qdro',
+    cta: /Start guide/i,
   },
   {
     title: 'Home Decision Analyzer',
-    line: 'Compare keep, sell, and deferred-sale outcomes for the marital home across 3-, 6-, and 10-year horizons.',
-    fullHref: '/modules/m5/home-decision',
+    step: 'Step 4 · Decide on the home',
+    descMatch: /keep, sell, and deferred-sale outcomes/i,
+    route: '/modules/m5/home-decision',
+    cta: /Compare scenarios/i,
   },
 ];
 
-// ─── Full-state tool card grid (§1.4 / §4) ──────────────────────────────────
-describe('M5ModulePage — Full-state tool grid', () => {
-  it('renders all four tool cards in §2 inventory order (SE, PVA, QDRO, HDA)', () => {
-    render(<M5ModulePage userTier="navigator" />);
-    const titles = screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent);
-    expect(titles).toEqual(TOOL_COPY.map((t) => t.title));
-  });
-
-  it.each(TOOL_COPY)(
-    'renders the verbatim §1.6 description for $title',
-    ({ line }) => {
-      render(<M5ModulePage userTier="navigator" />);
-      expect(screen.getByText(line)).toBeInTheDocument();
+// ── Chrome / nav ─────────────────────────────────────────────────────────────
+describe('M5ModulePage — chrome / nav', () => {
+  it.each(['navigator', 'signature', 'essentials', 'free'])(
+    'renders a "Back to Dashboard" link to /dashboard for %s tier',
+    (tier) => {
+      render(<M5ModulePage userTier={tier} />);
+      expect(
+        screen.getByRole('link', { name: /Back to Dashboard/i }),
+      ).toHaveAttribute('href', '/dashboard');
     },
   );
 
-  it.each(TOOL_COPY)(
-    'wires the "Open" button on $title to $fullHref',
-    ({ title, fullHref }) => {
-      render(<M5ModulePage userTier="navigator" />);
-      const heading = screen.getByRole('heading', { level: 2, name: title });
-      const card = heading.closest('[data-testid="m5-tool-card"]');
-      expect(card).toBeTruthy();
-      const link = within(card).getByRole('link', { name: /Open/i });
-      expect(link).toHaveAttribute('href', fullHref);
-    },
-  );
-
-  it('renders exactly four tool cards', () => {
+  it('does NOT duplicate the "not a law firm" disclaimer (the app footer provides it)', () => {
     render(<M5ModulePage userTier="navigator" />);
-    expect(screen.getAllByTestId('m5-tool-card')).toHaveLength(4);
+    expect(screen.queryByText(/is not a law firm/i)).toBeNull();
   });
 });
 
-// ─── Restored nav affordances (mirror M4: all-tier, static <Link>s) ─────────
-//
-// "Back to Dashboard" and "View Your Blueprint" were shipped on the
-// pre-PR1 M5ModulePage and on M4ModulePage. PR1 dropped them; the original
-// strict-M2∧M4 app-wide-convention rule excluded them (M2 omits both).
-// Override per regression-recovery rationale: anything shipped on the
-// old M5 page that is still present on a sibling module page (M4) and has
-// no behavioral conflict should not be silently dropped — restore.
-//
-// Both are static <Link>s — no store reads, no tier dependency.
-describe('M5ModulePage — restored nav affordances', () => {
-  it.each(['navigator', 'signature', 'essentials', 'free'])(
-    'renders "← Back to Dashboard" link → /dashboard for %s tier',
-    (tier) => {
-      render(<M5ModulePage userTier={tier} />);
-      const link = screen.getByRole('link', { name: /Back to Dashboard/i });
-      expect(link).toHaveAttribute('href', '/dashboard');
-    },
-  );
-
-  it.each(['navigator', 'signature', 'essentials', 'free'])(
-    'renders "View Your Blueprint" CTA → /blueprint for %s tier',
-    (tier) => {
-      render(<M5ModulePage userTier={tier} />);
-      const link = screen.getByRole('link', { name: /View Your Blueprint/i });
-      expect(link).toHaveAttribute('href', '/blueprint');
-    },
-  );
+// ── Hero ─────────────────────────────────────────────────────────────────────
+describe('M5ModulePage — hero', () => {
+  it('renders the module eyebrow, gold-accented headline, and trimmed lead', () => {
+    render(<M5ModulePage userTier="navigator" />);
+    expect(screen.getByText(/Module 05 · Your Tools/i)).toBeInTheDocument();
+    const h1 = screen.getByRole('heading', { level: 1 });
+    expect(h1).toHaveTextContent(/Value What\s*Matters/i);
+    expect(
+      screen.getByText(/CDFA-grade valuations and decision frameworks/i),
+    ).toBeInTheDocument();
+  });
 });
 
-// ─── Locked-state tool card grid (§1.4 / §4) ────────────────────────────────
-describe('M5ModulePage — Locked-state tool grid', () => {
-  it.each(['free', 'essentials'])(
-    'renders all four tool cards (greyed) for %s',
+// ── Readiness callout ────────────────────────────────────────────────────────
+describe('M5ModulePage — readiness callout', () => {
+  it('renders the readiness callout and the two M1-domain gap pills', () => {
+    render(<M5ModulePage userTier="navigator" />);
+    expect(screen.getByText(/From your readiness assessment/i)).toBeInTheDocument();
+    expect(screen.getByText('Asset Awareness')).toBeInTheDocument();
+    expect(screen.getByText('Income Awareness')).toBeInTheDocument();
+  });
+
+  it('renders the "path through this module" section label', () => {
+    render(<M5ModulePage userTier="navigator" />);
+    expect(screen.getByText(/The path through this module/i)).toBeInTheDocument();
+  });
+});
+
+// ── Worksheet journey — Full Access (navigator / signature) ──────────────────
+describe('M5ModulePage — worksheet journey for Full Access', () => {
+  it.each(['navigator', 'signature'])(
+    'renders all four worksheet cards with step eyebrows + titles for %s',
     (tier) => {
       render(<M5ModulePage userTier={tier} />);
-      expect(screen.getAllByTestId('m5-tool-card')).toHaveLength(4);
-      for (const { title } of TOOL_COPY) {
-        expect(screen.getByRole('heading', { level: 2, name: title })).toBeInTheDocument();
+      for (const w of WORKSHEETS) {
+        expect(screen.getByText(w.title)).toBeInTheDocument();
+        expect(screen.getByText(w.step)).toBeInTheDocument();
+        expect(screen.getByText(w.descMatch)).toBeInTheDocument();
       }
     },
   );
 
-  it.each(TOOL_COPY)(
-    'renders the same verbatim line for $title in Locked state',
-    ({ line }) => {
-      render(<M5ModulePage userTier="essentials" />);
-      expect(screen.getByText(line)).toBeInTheDocument();
+  it('the first not-started worksheet CTA links to its worksheet route (id ≠ slug)', () => {
+    render(<M5ModulePage userTier="navigator" />);
+    // SE is the first actionable (primary) step; its CTA is the not-started verb.
+    expect(screen.getByRole('link', { name: /Start estimator/i })).toHaveAttribute(
+      'href',
+      '/modules/m5/support-estimator',
+    );
+  });
+
+  it('shows NO locked treatment for Full Access users', () => {
+    render(<M5ModulePage userTier="navigator" />);
+    expect(screen.queryByTestId('m5-locked-node')).toBeNull();
+    expect(screen.queryByTestId('m5-locked-card')).toBeNull();
+    expect(screen.queryByText('Included in Full Access')).toBeNull();
+    expect(screen.queryByRole('link', { name: /Unlock/i })).toBeNull();
+  });
+});
+
+// ── Completion mappings exercised end-to-end (navigator) ─────────────────────
+describe('M5ModulePage — completion treatment (navigator)', () => {
+  it('a completed singleton (Support Estimator results) shows Complete + a Review CTA to its route', () => {
+    seedSupportComplete();
+    render(<M5ModulePage userTier="navigator" />);
+    expect(screen.getAllByText(/Complete/i).length).toBeGreaterThan(0);
+    const review = screen.getByRole('link', { name: /Review/i });
+    expect(review).toHaveAttribute('href', '/modules/m5/support-estimator');
+  });
+
+  it('Pension Valuation: an asset WITH results renders the complete treatment (multi-instance rule)', () => {
+    seedPensionComplete();
+    render(<M5ModulePage userTier="navigator" />);
+    const review = screen.getByRole('link', { name: /Review/i });
+    expect(review).toHaveAttribute('href', '/modules/m5/pva');
+  });
+
+  it('Pension Valuation: a bare asset (no results) renders in_progress with a Continue CTA', () => {
+    seedPensionStarted();
+    render(<M5ModulePage userTier="navigator" />);
+    expect(screen.getByText(/In progress/i)).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /Continue/i })).toHaveAttribute(
+      'href',
+      '/modules/m5/pva',
+    );
+  });
+
+  it('QDRO: seeding metadata.qdroPacketGeneratedAt renders the complete treatment (dormant-flag rule)', () => {
+    seedQdroPacketComplete();
+    render(<M5ModulePage userTier="navigator" />);
+    const review = screen.getByRole('link', { name: /Review/i });
+    expect(review).toHaveAttribute('href', '/modules/m5/qdro');
+  });
+});
+
+// ── Wholesale-gated locked treatment (free / essentials) ─────────────────────
+describe('M5ModulePage — wholesale-gated locked treatment (free/essentials)', () => {
+  it.each(['free', 'essentials'])(
+    'renders ALL FOUR worksheets LOCKED (Option C) for %s tier',
+    (tier) => {
+      render(<M5ModulePage userTier={tier} />);
+
+      const lockedNodes = screen.getAllByTestId('m5-locked-node');
+      expect(lockedNodes).toHaveLength(4);
+      for (const node of lockedNodes) {
+        expect(node.querySelector('svg')).toBeTruthy(); // lock glyph
+        expect(node.textContent).not.toMatch(/\d/); // not a step number
+      }
+
+      const lockedCards = screen.getAllByTestId('m5-locked-card');
+      expect(lockedCards).toHaveLength(4);
+      WORKSHEETS.forEach((w, i) => {
+        const scope = within(lockedCards[i]);
+        expect(scope.getByText(w.title)).toBeInTheDocument();
+        expect(scope.getByText('Included in Full Access')).toBeInTheDocument();
+        const links = scope.getAllByRole('link');
+        expect(links).toHaveLength(1); // only the Unlock link
+        expect(links[0]).toHaveAccessibleName(/Unlock/i);
+        expect(links[0]).toHaveAttribute('href', '/upgrade');
+        expect(scope.queryByText(/Worksheet progress/i)).toBeNull();
+        expect(scope.queryByText(/% complete/i)).toBeNull();
+      });
+
+      // No per-worksheet route CTA leaks through for a locked user.
+      for (const w of WORKSHEETS) {
+        expect(screen.queryByRole('link', { name: w.cta })).toBeNull();
+      }
     },
   );
 
-  it('Locked cards are not clickable — no Open links inside the cards', () => {
+  it('locking overrides real progress — a seeded-complete worksheet still renders locked', () => {
+    seedSupportComplete();
+    seedQdroPacketComplete();
     render(<M5ModulePage userTier="essentials" />);
-    for (const card of screen.getAllByTestId('m5-tool-card')) {
-      expect(within(card).queryByRole('link', { name: /Open/i })).toBeNull();
-    }
+    expect(screen.getAllByTestId('m5-locked-card')).toHaveLength(4);
+    expect(screen.queryByText(/Complete/i)).toBeNull();
+    expect(screen.queryByRole('link', { name: /Review/i })).toBeNull();
   });
+});
 
-  it('Locked cards render a lock icon', () => {
-    render(<M5ModulePage userTier="essentials" />);
-    const cards = screen.getAllByTestId('m5-tool-card');
-    expect(cards).toHaveLength(4);
-    for (const card of cards) {
-      expect(within(card).getByTestId('m5-tool-card-lock')).toBeInTheDocument();
-    }
-  });
-
-  it('Full state has no lock icons', () => {
+// ── Blueprint sidebar ────────────────────────────────────────────────────────
+describe('M5ModulePage — Blueprint sidebar', () => {
+  it('renders the Blueprint count, "of 12 sections", 12 ticks, and a link to /blueprint', () => {
+    seedBlueprintComplete(5);
     render(<M5ModulePage userTier="navigator" />);
-    expect(screen.queryAllByTestId('m5-tool-card-lock')).toHaveLength(0);
+    expect(screen.getByText(/of 12 sections/i)).toBeInTheDocument();
+    expect(screen.getByTestId('m5-blueprint-count')).toHaveTextContent('5');
+    expect(screen.getAllByTestId('m5-blueprint-tick')).toHaveLength(12);
+    expect(
+      screen.getByRole('link', { name: /View your Blueprint/i }),
+    ).toHaveAttribute('href', '/blueprint');
   });
+});
 
-  it('Locked grid surfaces a single "Unlock with Full Access" button linking to /upgrade', () => {
-    render(<M5ModulePage userTier="essentials" />);
-    const upsell = screen.getByRole('link', { name: /Unlock with Full Access/i });
-    expect(upsell).toHaveAttribute('href', '/upgrade');
-  });
+// ── Full Access upgrade promo (wholesale-gated) ──────────────────────────────
+describe('M5ModulePage — Full Access upgrade promo', () => {
+  it.each(['free', 'essentials'])(
+    'shows the promo (link to /upgrade) for %s tier',
+    (tier) => {
+      render(<M5ModulePage userTier={tier} />);
+      expect(
+        screen.getByRole('link', { name: /Learn about Full Access/i }),
+      ).toHaveAttribute('href', '/upgrade');
+    },
+  );
 
-  it('Locked cards do not link to any tool route', () => {
-    render(<M5ModulePage userTier="essentials" />);
-    const links = m5Links();
-    expect(links).toHaveLength(0);
+  it.each(['navigator', 'signature'])(
+    'hides the promo for Full Access tier %s',
+    (tier) => {
+      render(<M5ModulePage userTier={tier} />);
+      expect(
+        screen.queryByRole('link', { name: /Learn about Full Access/i }),
+      ).toBeNull();
+    },
+  );
+});
+
+// ── Ask Theo (coming soon, non-interactive) ──────────────────────────────────
+describe('M5ModulePage — Ask Theo', () => {
+  it('renders Ask Theo with a "Coming soon" pill and no actionable control', () => {
+    render(<M5ModulePage userTier="navigator" />);
+    const theo = screen.getByTestId('m5-theo-card');
+    expect(within(theo).getByText(/Ask Theo/i)).toBeInTheDocument();
+    expect(within(theo).getByText(/Coming soon/i)).toBeInTheDocument();
+    expect(within(theo).queryByRole('link')).toBeNull();
+    expect(within(theo).queryByRole('button')).toBeNull();
   });
 });
