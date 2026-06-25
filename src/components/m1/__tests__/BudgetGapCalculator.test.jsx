@@ -3,18 +3,17 @@ import { render, screen } from '@testing-library/react';
 import BudgetGapCalculator from '@/src/components/m1/BudgetGapCalculator';
 import { useM1Store } from '@/src/stores/m1Store';
 
-// The component measures its OWN width via ResizeObserver (not the viewport);
-// jsdom implements neither ResizeObserver nor scrollTo, so stub them. Reset the
-// persisted M1 store each test so the tool opens on Stage 1 (input).
-let roInstances;
+// Reset the persisted M1 store each test so the tool opens on Stage 1 (input).
+// jsdom doesn't implement scrollTo (the component calls it on screen change).
+//
+// NOTE: the 1-/2-column responsive switch is now a pure CSS *container query*
+// (`@container bgc (min-width: 1024px)`). jsdom does NOT evaluate @container, so
+// the actual stacking / no-cold-flash behavior is proven by the JS-DISABLED
+// in-browser cold load documented on the PR — NOT by a unit test. These tests
+// guard (a) all rows render, and (b) the layout stays class-driven (no inline
+// grid-template-columns that would defeat the container query).
 beforeEach(() => {
   window.scrollTo = vi.fn();
-  roInstances = [];
-  globalThis.ResizeObserver = vi.fn(function ResizeObserverMock(cb) {
-    const inst = { cb, observe: vi.fn(), unobserve: vi.fn(), disconnect: vi.fn() };
-    roInstances.push(inst);
-    return inst;
-  });
   useM1Store.setState({
     budgetGap: { inputs: {}, completed: false, results: null, emailCaptured: false },
     readinessAssessment: { answers: [], completed: false, results: null },
@@ -51,14 +50,17 @@ describe('BudgetGapCalculator — Stage 1 worksheet', () => {
     expect(screen.getByRole('button', { name: 'See My Results' })).toBeInTheDocument();
   });
 
-  it('sizes its layout from its OWN container (ResizeObserver), not the viewport', () => {
-    // Root cause of the section-02 clip on /modules/m1: the calculator is embedded
-    // in a ~720px card there, but switched 2-column/1-column off window.innerWidth,
-    // so a wide viewport forced the squeezed 2-column layout that clipped/overflowed
-    // section 02. It must observe its own rendered width instead.
-    render(<BudgetGapCalculator entry="direct" />);
-    expect(globalThis.ResizeObserver).toHaveBeenCalled();
-    expect(roInstances.length).toBeGreaterThan(0);
-    expect(roInstances[0].observe).toHaveBeenCalled();
+  it('drives the column layout via CSS class (container query), not inline styles', () => {
+    // grid-template-columns is switched by `@container bgc (min-width:1024px)` on
+    // .cp-bgc-grid; it must stay class-driven and NOT be hardcoded inline (that
+    // would defeat the container query and bring back the cold-load flash). jsdom
+    // can't evaluate @container, so this only guards the wiring — the visual
+    // stacking is verified in-browser with JS disabled (see PR notes).
+    const { container } = render(<BudgetGapCalculator entry="direct" />);
+    const grid = container.querySelector('.cp-bgc-grid');
+    expect(grid).toBeTruthy();
+    expect(grid.style.gridTemplateColumns).toBe(''); // not hardcoded inline
+    // The container-query context wrapper is present (its width is what @container reads).
+    expect(container.querySelector('.cp-bgc-page')).toBeTruthy();
   });
 });
