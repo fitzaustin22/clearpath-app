@@ -1,23 +1,14 @@
 'use client';
 
 /**
- * InputsPanel — path-conditional form for PVA inputs per spec §7.2 / §7.3.
- *
- * Reads inputs from `m5Store.pensionValuation.assets[assetId].inputs`; writes
- * back via the `setPVAAssetInputs` whole-object replace setter (with a
- * component-level partial-merge in `updateField`). Path resolution is done
- * upstream in PVA.jsx (consumer of the §7.10.3 discriminated union); this
- * component takes a resolved `path` prop and renders the matching subpanel.
- *
- * Pre-pop integration is orchestrator-owned (PVA.jsx); InputsPanel does NOT
- * call `prePopulatePVAInputs`. The orchestrator persists the pre-pop result
- * into m5Store before this component mounts.
- *
- * Brand-token discipline (LL-7): inline styles via `T.*` only; no Tailwind
- * utility chains. Selector discipline (LL-9): primitive selectors; partial
- * merge happens in `updateField` outside any selector.
+ * InputsPanel — v3 reskin. Visual wrapper only; all engine and store logic
+ * unchanged. Adds intro callout, form-card wrapper, Assumptions collapsible
+ * (CommonFields via display:none — NOT conditional rendering, so
+ * TC-PVA-InputsPanel-1 testids remain in DOM regardless of toggle state),
+ * and a "Calculate present value" CTA that calls onCalculate?.().
  */
 
+import { useState } from 'react';
 import { useM5Store } from '@/src/stores/m5Store';
 import { T } from '@/src/lib/brand/tokens';
 import CommonFields from './CommonFields.jsx';
@@ -35,25 +26,18 @@ import ReceiptFormDropdown from './ReceiptFormDropdown.jsx';
  * @param {object} props
  * @param {string} props.assetId
  * @param {'tier_1' | 'tier_2' | 'tier_3' | 'in_pay_status' | 'cash_balance' | 'flag_only' | null} props.path
- * @param {boolean} [props.frozenRoutingApplied]  Derived in the orchestrator
- *   from `inputs.accrualStatus === 'frozen'` (§7.2 v2) and threaded here so
- *   TierOverride can hide the tier_3 option on the same render the user
- *   toggles the Pension-status control.
+ * @param {boolean} [props.frozenRoutingApplied]
+ * @param {() => void} [props.onCalculate]  Switches orchestrator view to 'results'
  */
-export default function InputsPanel({ assetId, path, frozenRoutingApplied = false }) {
+export default function InputsPanel({ assetId, path, frozenRoutingApplied = false, onCalculate }) {
+  const [assumptionsOpen, setAssumptionsOpen] = useState(false);
+
   // LL-9: primitive selectors only.
   const inputs = useM5Store((s) => s.pensionValuation?.assets?.[assetId]?.inputs);
   const setPVAAssetInputs = useM5Store((s) => s.setPVAAssetInputs);
 
   const safeInputs = inputs ?? {};
 
-  // Partial-merge via the freshest store snapshot. Reading from
-  // `useM5Store.getState()` at call time (rather than closing over
-  // `safeInputs`) is the defensive fix for an effect-ordering hazard:
-  // sibling effects (e.g. ReceiptFormDropdown's path-default commit) and
-  // the PVA orchestrator's one-shot pre-pop both run after the first
-  // render commits, depth-first — so a closure over render-1 `safeInputs`
-  // would clobber data the parent effect has just written.
   const updateField = (field, value) => {
     const current = useM5Store.getState().pensionValuation?.assets?.[assetId]?.inputs ?? {};
     setPVAAssetInputs(assetId, { ...current, [field]: value });
@@ -62,34 +46,112 @@ export default function InputsPanel({ assetId, path, frozenRoutingApplied = fals
   return (
     <div
       data-testid="pva-inputs-panel"
-      style={{
-        fontFamily: T.FONT_BODY,
-        color: T.NAVY,
-      }}
+      style={{ fontFamily: T.FONT_BODY, color: T.NAVY }}
     >
-      <PlanTypeSelector inputs={safeInputs} onChange={updateField} />
-      <PensionStatusSelector inputs={safeInputs} onChange={updateField} />
-      <CommonFields inputs={safeInputs} onChange={updateField} />
+      {/* Intro callout */}
+      <div
+        style={{
+          background: T.GOLD_TINT,
+          border: `1px solid ${T.GOLD_BORDER}`,
+          borderRadius: 8,
+          padding: '14px 18px',
+          marginBottom: 20,
+          fontFamily: T.FONT_BODY,
+          fontSize: 15,
+          lineHeight: 1.6,
+          color: T.INK_2,
+        }}
+      >
+        Enter a few details about the pension. We&apos;ll estimate its present-day value — and, if
+        part of it was earned during the marriage, the marital share. Takes about 5 minutes.
+      </div>
 
-      <TierOverride
-        inputs={safeInputs}
-        path={path}
-        frozenRoutingApplied={frozenRoutingApplied}
-        onChange={updateField}
-      />
+      {/* Form card */}
+      <div
+        style={{
+          background: T.CARD,
+          border: `1px solid ${T.LINE}`,
+          borderRadius: 12,
+          boxShadow: T.SHADOW_CARD,
+          padding: '28px 26px 24px',
+        }}
+      >
+        <PlanTypeSelector inputs={safeInputs} onChange={updateField} />
+        <PensionStatusSelector inputs={safeInputs} onChange={updateField} />
 
-      {path === 'tier_1' && (
-        <Tier1And2Fields tier="tier_1" inputs={safeInputs} onChange={updateField} />
-      )}
-      {path === 'tier_2' && (
-        <Tier1And2Fields tier="tier_2" inputs={safeInputs} onChange={updateField} />
-      )}
-      {path === 'tier_3' && <Tier3Fields inputs={safeInputs} onChange={updateField} />}
-      {path === 'in_pay_status' && <InPayFields inputs={safeInputs} onChange={updateField} />}
-      {path === 'cash_balance' && <CashBalanceFields inputs={safeInputs} onChange={updateField} />}
-      {path === 'flag_only' && <FlagOnlyFields planType={safeInputs.planType} />}
+        {/* Assumptions collapsible — display:none preserves testids in DOM */}
+        <div style={{ marginTop: 16 }}>
+          <button
+            type="button"
+            onClick={() => setAssumptionsOpen((o) => !o)}
+            aria-expanded={assumptionsOpen}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              fontFamily: T.FONT_BODY,
+              fontSize: 14,
+              fontWeight: 600,
+              color: T.NAVY_70,
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              padding: '8px 0',
+            }}
+          >
+            <span style={{ color: T.GOLD, fontSize: 12 }}>{assumptionsOpen ? '▾' : '▸'}</span>
+            <span>Assumptions (discount rate, mortality table)</span>
+          </button>
+          <div style={{ display: assumptionsOpen ? 'block' : 'none' }}>
+            <CommonFields inputs={safeInputs} onChange={updateField} />
+          </div>
+        </div>
 
-      <ReceiptFormDropdown inputs={safeInputs} path={path} onChange={updateField} />
+        <TierOverride
+          inputs={safeInputs}
+          path={path}
+          frozenRoutingApplied={frozenRoutingApplied}
+          onChange={updateField}
+        />
+
+        {path === 'tier_1' && (
+          <Tier1And2Fields tier="tier_1" inputs={safeInputs} onChange={updateField} />
+        )}
+        {path === 'tier_2' && (
+          <Tier1And2Fields tier="tier_2" inputs={safeInputs} onChange={updateField} />
+        )}
+        {path === 'tier_3' && <Tier3Fields inputs={safeInputs} onChange={updateField} />}
+        {path === 'in_pay_status' && <InPayFields inputs={safeInputs} onChange={updateField} />}
+        {path === 'cash_balance' && <CashBalanceFields inputs={safeInputs} onChange={updateField} />}
+        {path === 'flag_only' && <FlagOnlyFields planType={safeInputs.planType} />}
+
+        <ReceiptFormDropdown inputs={safeInputs} path={path} onChange={updateField} />
+
+        {/* CTA */}
+        {path !== 'flag_only' && (
+          <div style={{ marginTop: 24 }}>
+            <button
+              type="button"
+              onClick={() => onCalculate?.()}
+              style={{
+                width: '100%',
+                padding: '14px 24px',
+                fontFamily: T.FONT_BODY,
+                fontSize: 16,
+                fontWeight: 700,
+                color: '#FFFFFF',
+                background: T.NAVY,
+                border: 'none',
+                borderRadius: 8,
+                cursor: 'pointer',
+                letterSpacing: '.01em',
+              }}
+            >
+              Calculate present value
+            </button>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

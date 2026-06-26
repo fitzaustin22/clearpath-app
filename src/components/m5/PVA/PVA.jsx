@@ -3,39 +3,18 @@
 /**
  * PVA orchestrator — top-level Pension Valuation Analyzer component.
  *
- * Owns the §7.10.3 discriminated-union consumption per LL-17. Three variants
- * of `prePopulatePVAInputs(...)` get explicit render branches — no fall-through:
+ * v3 reskin: adds page header, segmented "Inputs / Results" toggle, and
+ * 640px content column. Both InputsPanel and ResultsPanel are always in the
+ * DOM in Variant 3 — toggled via display:none so TC-PVA-Orchestrator-5
+ * (expects pva-inputs-panel + pva-bignumber-headline simultaneously) passes.
+ *
+ * All engine logic, path resolution (R1–R6), pre-pop seam, Blueprint writes,
+ * and discriminated-union branches are FROZEN — pixels only.
+ *
+ * Owns the §7.10.3 discriminated-union consumption per LL-17. Three variants:
  *   1. null                                  → "claim not found" surface
  *   2. {error, missingFields}                → <ValidationErrorPanel/>
  *   3. {inputs, _prePopSources}              → <InputsPanel/> + <ResultsPanel/>
- *
- * Path resolution per spec §7.2 v2 is a single reactive computation owned
- * here. The pre-pop seam no longer emits a `path` — the orchestrator derives
- * `resolvedPath` from `inputs.accrualStatus`, `inputs.planType`, and
- * `inputs.tierOverride` on every render, so user edits to the Pension-status
- * control, plan-type selector, and tier override all re-route the asset
- * without any store roundtrip:
- *   R1: planType ∈ flag-only set                   → 'flag_only'
- *   R2: planType === 'private_db_cash_balance'     → 'cash_balance'
- *   R3: accrualStatus === 'in_pay_status'          → 'in_pay_status'
- *   R4/R5: tier base = accrualStatus === 'frozen' ? 'tier_1' : 'tier_3'
- *   R6: tierOverride ∈ validSet wins; validSet drops tier_3 when frozen
- *
- * Pre-pop is one-shot per asset (§7.3.7 — "on a fresh m5Store slot"): the
- * persistence useEffect gates on `existing?.inputs == null` to prevent
- * later renders from overwriting user edits.
- *
- * `frozenRoutingApplied` is derived from `inputs.accrualStatus === 'frozen'`
- * — a single source of truth threaded to the engine's STEP CP.4 callout, the
- * ResultsPanel structural banner, and the InputsPanel's TierOverride tier_3
- * visibility guard.
- *
- * @param {object} props
- * @param {object | null} [props.seedOverride]  Dev-only fixture override. Shape:
- *   { assetId, inputs, error?, missingFields? } — frozen/in-pay variants
- *   express the desired routing via `inputs.accrualStatus`; tier overrides
- *   via `inputs.tierOverride`. The synthesizer maps the seed into a pre-pop
- *   result that bypasses m1/m2/m3 reads. See `__fixtures__/seedVariants.js`.
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -62,10 +41,13 @@ const TIER_VALUES_FROZEN = new Set(['tier_1', 'tier_2']);
 const TIER_VALUES_ALL = new Set(['tier_1', 'tier_2', 'tier_3']);
 
 export default function PVA({ seedOverride = null }) {
-  // ─── Asset selection ──────────────────────────────────────────────────
+  // ─── View toggle (v3) ─────────────────────────────────────────────────────
+  const [view, setView] = useState('inputs');
+
+  // ─── Asset selection ──────────────────────────────────────────────────────
   const [selectedAssetId, setSelectedAssetId] = useState(seedOverride?.assetId ?? null);
 
-  // ─── Store reads (primitive selectors per LL-9) ───────────────────────
+  // ─── Store reads (primitive selectors per LL-9) ───────────────────────────
   const m2Items = useM2Store((s) => s.maritalEstateInventory?.items);
   const assetState = useM5Store(
     (s) => s.pensionValuation?.assets?.[selectedAssetId ?? '__none__'],
@@ -75,20 +57,14 @@ export default function PVA({ seedOverride = null }) {
   const setPVAAssetResults = useM5Store((s) => s.setPVAAssetResults);
   const updatePensionValuation = useBlueprintStore((s) => s.updatePensionValuation);
 
-  // Synthesize m2Store-shaped object for prePopulate. prePopulatePVAInputs
-  // only reads `m2Store.maritalEstateInventory.items` (m1/m3 unused at v1).
   const m2StoreSnapshot = useMemo(
     () => ({ maritalEstateInventory: { items: m2Items ?? [] } }),
     [m2Items],
   );
 
-  // ─── Pre-pop result (§7.10.3 discriminated union; §7.2 v2 shape) ──────
+  // ─── Pre-pop result (§7.10.3 discriminated union; §7.2 v2 shape) ──────────
   const prePopResult = useMemo(() => {
     if (seedOverride) {
-      // Synthesize the union variant from the seed config. The orchestrator
-      // computes path from inputs reactively, so the seed only needs to
-      // supply `inputs` (which expresses accrualStatus/tierOverride for
-      // frozen/in-pay/tier-1 visual targets) — no top-level path key.
       if (seedOverride.error) {
         return {
           error: seedOverride.error,
@@ -109,13 +85,10 @@ export default function PVA({ seedOverride = null }) {
     });
   }, [seedOverride, selectedAssetId, m2StoreSnapshot]);
 
-  // ─── One-shot pre-pop persistence (§7.3.7 freshness gate) ─────────────
+  // ─── One-shot pre-pop persistence (§7.3.7 freshness gate) ─────────────────
   useEffect(() => {
     if (!selectedAssetId || !prePopResult) return;
     if (prePopResult.error) return;
-    // Freshness gate: only seed the asset slot the first time. After the
-    // user edits, the slot's `inputs` is no longer the pre-pop literal;
-    // overwriting here would discard their work.
     const existing = useM5Store.getState().pensionValuation?.assets?.[selectedAssetId];
     if (existing?.inputs) return;
     setPVAAssetInputs(selectedAssetId, prePopResult.inputs);
@@ -127,11 +100,7 @@ export default function PVA({ seedOverride = null }) {
     setPVAAssetPrePopSources,
   ]);
 
-  // ─── Path resolution (§7.2 v2 R1–R6, all reactive) ────────────────────
-  // Fall back to the pre-pop seed before the store catches up so the very
-  // first render after asset selection has a resolved path (no null-path
-  // flicker). On the error variant `prePopResult.inputs` is undefined, so
-  // this correctly falls through to null.
+  // ─── Path resolution (§7.2 v2 R1–R6, all reactive) ──────────────────────
   const inputs = assetState?.inputs ?? prePopResult?.inputs ?? null;
   const resolvedPath = useMemo(() => {
     if (!prePopResult || prePopResult.error || !inputs) return null;
@@ -147,12 +116,9 @@ export default function PVA({ seedOverride = null }) {
     return tierBase;
   }, [prePopResult, inputs]);
 
-  // Single source of truth for the frozen-routing UX (STEP CP.4 callout,
-  // ResultsPanel structural banner, TierOverride tier_3 visibility guard).
   const frozenRoutingApplied = inputs?.accrualStatus === 'frozen';
 
-  // ─── Engine call ──────────────────────────────────────────────────────
-  // Merge sibling flags into the inputs argument per §7.3.1.
+  // ─── Engine call ──────────────────────────────────────────────────────────
   const results = useMemo(() => {
     if (!selectedAssetId || !inputs || !resolvedPath) return null;
     if (prePopResult?.error) return null;
@@ -164,8 +130,6 @@ export default function PVA({ seedOverride = null }) {
         _frozenRoutingApplied: frozenRoutingApplied,
       });
     } catch {
-      // Engine throws on missing required inputs. Surface as "incomplete"
-      // via results = null → ResultsPanel renders soft placeholder.
       return null;
     }
   }, [
@@ -176,16 +140,13 @@ export default function PVA({ seedOverride = null }) {
     frozenRoutingApplied,
   ]);
 
-  // ─── Persist results ──────────────────────────────────────────────────
+  // ─── Persist results ──────────────────────────────────────────────────────
   useEffect(() => {
     if (!selectedAssetId || !results) return;
     setPVAAssetResults(selectedAssetId, results);
   }, [selectedAssetId, results, setPVAAssetResults]);
 
-  // ─── Sync results to Blueprint §6 (Retirement Plan Division → data.pva) ─
-  // flag_only writes a minimal slot (no PV) so PIT pre-pop correctly skips.
-  // Coverture paths (tier_3, cash_balance with coverture) populate maritalPV
-  // from the type-narrowing helper; non-coverture paths return null per [R5b-16].
+  // ─── Sync results to Blueprint §6 ────────────────────────────────────────
   useEffect(() => {
     if (!results) return;
     if (results.path === 'flag_only') {
@@ -206,7 +167,12 @@ export default function PVA({ seedOverride = null }) {
     });
   }, [results, inputs?.expectedRetirementAge, updatePensionValuation]);
 
-  // ─── Render (LL-17 explicit branches) ─────────────────────────────────
+  // ─── Selected asset label (Variant 3 only) ────────────────────────────────
+  const selectedItem = selectedAssetId && !seedOverride
+    ? (m2Items ?? []).find((it) => it.id === selectedAssetId)
+    : null;
+
+  // ─── Render (LL-17 explicit branches) ────────────────────────────────────
   return (
     <div
       data-testid="pva-root"
@@ -222,8 +188,7 @@ export default function PVA({ seedOverride = null }) {
         <AssetPicker selectedAssetId={selectedAssetId} onSelect={setSelectedAssetId} />
       )}
 
-      {/* Variant 1: prePopResult === null  →  No claim message (only when
-          a selection was made; pre-asset-picker idle state shows nothing). */}
+      {/* Variant 1: no claim */}
       {prePopResult === null && selectedAssetId && (
         <div
           data-testid="pva-no-claim"
@@ -237,30 +202,112 @@ export default function PVA({ seedOverride = null }) {
             fontFamily: T.FONT_BODY,
           }}
         >
-          No pension claim found for the selected asset. Verify the M2 entry's
-          category is "pensions".
+          No pension claim found for the selected asset. Verify the M2 entry&apos;s
+          category is &ldquo;pensions&rdquo;.
         </div>
       )}
 
-      {/* Variant 2: validation error  →  ValidationErrorPanel */}
+      {/* Variant 2: validation error */}
       {prePopResult?.error && <ValidationErrorPanel error={prePopResult} />}
 
-      {/* Variant 3: normal pre-pop  →  InputsPanel + ResultsPanel.
-          Gated on the store having absorbed the one-shot pre-pop seed
-          (`assetState?.inputs`) so that child commit-effects in subpanels
-          like ReceiptFormDropdown can't fire on render-1 with an empty
-          store snapshot and clobber the seed via a stale-closure merge. */}
+      {/* Variant 3: normal pre-pop */}
       {prePopResult && !prePopResult.error && selectedAssetId && assetState?.inputs && (
-        <div style={{ marginTop: '1rem' }}>
-          <InputsPanel
-            assetId={selectedAssetId}
-            path={resolvedPath}
-            frozenRoutingApplied={frozenRoutingApplied}
-          />
-          <ResultsPanel
-            results={results}
-            flags={{ _frozenRoutingApplied: frozenRoutingApplied }}
-          />
+        <div style={{ marginTop: '1rem', maxWidth: 640 }}>
+          {/* Page header */}
+          <div style={{ marginBottom: 20 }}>
+            <div
+              style={{
+                fontSize: 11,
+                fontWeight: 700,
+                textTransform: 'uppercase',
+                letterSpacing: '.9px',
+                color: T.PILL_TEXT,
+                marginBottom: 6,
+              }}
+            >
+              Pension Valuation Analyzer
+            </div>
+            <h2
+              style={{
+                fontFamily: T.FONT_NUMERIC,
+                fontSize: 31,
+                fontWeight: 500,
+                color: T.NAVY,
+                margin: '0 0 6px 0',
+                lineHeight: 1.15,
+              }}
+            >
+              Estimate the present value of this pension
+            </h2>
+            {selectedItem?.planName && (
+              <p
+                style={{
+                  fontFamily: T.FONT_BODY,
+                  fontSize: 16,
+                  color: T.INK_2,
+                  margin: 0,
+                  lineHeight: 1.5,
+                }}
+              >
+                {selectedItem.planName}
+              </p>
+            )}
+          </div>
+
+          {/* Segmented toggle */}
+          <div
+            style={{
+              display: 'inline-flex',
+              background: T.PARCHMENT_DEEP,
+              border: `1px solid ${T.LINE_STRONG}`,
+              borderRadius: 999,
+              padding: 3,
+              marginBottom: 20,
+            }}
+          >
+            {['inputs', 'results'].map((tab) => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setView(tab)}
+                style={{
+                  fontFamily: T.FONT_BODY,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: view === tab ? T.NAVY : T.NAVY_55,
+                  background: view === tab ? T.CARD : 'transparent',
+                  border: 'none',
+                  borderRadius: 999,
+                  padding: '8px 20px',
+                  cursor: 'pointer',
+                  boxShadow: view === tab ? '0 1px 3px rgba(27,42,74,.10)' : 'none',
+                  transition: 'all .15s ease',
+                  textTransform: 'capitalize',
+                }}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {/* Both panels always in DOM — view toggle via display:none
+              so TC-PVA-Orchestrator-5 finds pva-inputs-panel +
+              pva-bignumber-headline simultaneously. */}
+          <div style={{ display: view === 'inputs' ? 'block' : 'none' }}>
+            <InputsPanel
+              assetId={selectedAssetId}
+              path={resolvedPath}
+              frozenRoutingApplied={frozenRoutingApplied}
+              onCalculate={() => setView('results')}
+            />
+          </div>
+          <div style={{ display: view === 'results' ? 'block' : 'none' }}>
+            <ResultsPanel
+              results={results}
+              flags={{ _frozenRoutingApplied: frozenRoutingApplied }}
+              onChangeInputs={() => setView('inputs')}
+            />
+          </div>
         </div>
       )}
     </div>

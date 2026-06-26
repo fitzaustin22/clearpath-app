@@ -38,12 +38,17 @@ export default function PerStepNarrative({ steps = [] }) {
           color: T.PARCHMENT,
           border: 'none',
           fontFamily: T.FONT_BODY,
+          fontSize: 14,
           fontWeight: 600,
           cursor: 'pointer',
-          borderRadius: 6,
+          borderRadius: '6px 6px 0 0',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
         }}
       >
-        {expanded ? '▼ Hide' : '▶ Show'} the math ({steps.length} step{steps.length === 1 ? '' : 's'})
+        <span style={{ fontSize: 12 }}>{expanded ? '▾' : '▸'}</span>
+        <span>Show the math</span>
       </button>
       {expanded && (
         <div style={{ padding: '0.5rem 1rem 0.75rem' }} data-testid="per-step-narrative-body">
