@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Lock, Shield } from 'lucide-react';
 import { useM1Store } from '@/src/stores/m1Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';
@@ -62,6 +62,12 @@ const RESULTS_DISCLAIMER =
   'For educational and planning purposes only. For guidance specific to your situation, consult a Certified Divorce Financial Analyst®.';
 const LEGAL_LINE =
   'ClearPath Divorce Financial LLC is not a law firm and does not provide legal advice.';
+
+// The M1 landing renders this tool inside Card 2, whose section id is set in
+// src/app/(app)/modules/m1/page.tsx. When embedded, screen transitions scroll to
+// THIS section (not the document top) so the user stays anchored in the tool
+// instead of being dumped back at the landing hero. Kept in sync with that id.
+const EMBEDDED_SECTION_ID = 'm1-budget-gap-section';
 
 // Pay-frequency pills.
 const FREQUENCIES = [
@@ -260,7 +266,7 @@ function Chrome({ screen }) {
 // ════════════════════════════════════════════════════════════════
 // Main component
 // ════════════════════════════════════════════════════════════════
-export default function BudgetGapCalculator({ entry = 'direct' }) {
+export default function BudgetGapCalculator({ embedded = false, inPageTargetId = 'm1-readiness-section' }) {
   const {
     budgetGap,
     setBudgetGapInputs,
@@ -297,8 +303,25 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
     if (s.completed && s.results) setScreen('results');
   }, []);
 
-  // ── Scroll to top on screen change ──
-  useEffect(() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }, [screen]);
+  // ── Scroll on screen change. Standalone: document top (== top of the tool).
+  // Embedded: the landing's Budget Gap section (Card 2) so each new screen's
+  // headline frames at the viewport top instead of dumping the user at the landing
+  // hero. The initial mount is skipped so embedded doesn't yank the landing down to
+  // Card 2 on load (standalone's mount scroll-to-top was already a no-op). ──
+  const didScreenMountRef = useRef(false);
+  useEffect(() => {
+    if (!didScreenMountRef.current) {
+      didScreenMountRef.current = true;
+      return;
+    }
+    if (embedded) {
+      document.getElementById(EMBEDDED_SECTION_ID)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    // `embedded` is set once by the parent and never changes; including it only
+    // satisfies exhaustive-deps and does not add extra runs.
+  }, [screen, embedded]);
 
   // ── Live model (display verdict via tightBand; see budgetGapMath) ──
   const model = computeBudgetGap({
@@ -407,11 +430,24 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
     setScreen('input');
   }, [resetBudgetGap, setBudgetGapInputs, setEmailCaptured]);
 
-  // ── Entry context: 'ra' treatment if the route passed entry="ra" OR she has
-  // completed the Readiness Assessment. TODO: the RA route links here with
-  // ?from=ra (page.tsx) so the rail/banner flip without relying on store state.
-  const isRA = entry === 'ra' || !!readinessAssessment?.completed;
+  // ── "First step" treatment rides solely on store state. The inline Readiness
+  // Assessment writes readinessAssessment.completed, so the rail headline + gold
+  // banner flip for anyone who has finished it — standalone or embedded — with no
+  // ?from=ra entry param needed (that producer was never built; see PR notes). ──
+  const isRA = !!readinessAssessment?.completed;
   const railHead = isRA ? 'You’ve taken the first step.' : 'Can you afford to live on your own?';
+
+  // ── Back-link target (D1 split): embedded scrolls up to the Readiness section
+  // the landing owns (id passed in); standalone (cold lead-magnet traffic) goes
+  // to the canonical landing — NOT the /modules/m1/readiness sub-route, which now
+  // redirects. ──
+  const backToReadinessHref = embedded ? `#${inPageTargetId}` : '/modules/m1';
+  const handleBackToReadiness = embedded
+    ? (e) => {
+        e.preventDefault();
+        document.getElementById(inPageTargetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    : undefined;
 
   // ── Derived presentation ──
   const verdict = getVerdictPresentation(model.kind, monthlyGap);
@@ -427,13 +463,30 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
   // Outer wrapper = the container-query context (container-name: bgc). Its OWN
   // padding can't be container-queried (an element can't query its own size), so
   // it's static; every responsive style below sits on a descendant that queries it.
+  // When embedded in the M1 landing's Card 2, drop the page-level frame (full-
+  // bleed parchment fill, min-height, page padding) so the tool doesn't re-wrap a
+  // page inside the card. The container-query context (containerType/Name) MUST
+  // stay — it's what the responsive layout reads.
   const pageWrap = {
-    backgroundColor: T.PARCHMENT, minHeight: '100vh', boxSizing: 'border-box',
-    padding: '28px 28px 60px',
+    boxSizing: 'border-box',
     fontFamily: T.FONT_BODY, color: T.NAVY,
     containerType: 'inline-size', containerName: 'bgc',
+    ...(embedded ? {} : { backgroundColor: T.PARCHMENT, minHeight: '100vh', padding: '28px 28px 60px' }),
   };
   const cardShadow = '0 20px 40px rgba(28,28,25,0.06)';
+
+  // When embedded, drop each stage card's own skin (parchment fill, border,
+  // radius, shadow) so it doesn't card-in-card inside Card 2's white card. The
+  // layout roles (display:grid on input, position:relative on gate) live on the
+  // wrappers themselves and are preserved — only the visual skin is conditional.
+  const stageCardSkin = embedded
+    ? {}
+    : {
+        background: T.PARCHMENT,
+        border: `1px solid ${D.CONTAINER_BORDER}`,
+        borderRadius: 16,
+        boxShadow: cardShadow,
+      };
 
   // ════════════════════════════════════════════════════════════
   // STAGE 1 — Inputs ("The Quiet Ledger")
@@ -441,15 +494,16 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
   function renderInput() {
     return (
       <div className="cp-bgc-grid" style={{
-        maxWidth: 1120, margin: '0 auto', background: T.PARCHMENT,
-        border: `1px solid ${D.CONTAINER_BORDER}`, borderRadius: 16, boxShadow: cardShadow,
+        maxWidth: 1120, margin: '0 auto', ...stageCardSkin,
         overflow: 'hidden', display: 'grid',
       }}>
         {/* ── Navy rail ── */}
         <div className="cp-bgc-rail" style={{ background: T.NAVY, display: 'flex', flexDirection: 'column' }}>
-          <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.9px', color: D.RAIL_EYEBROW, marginBottom: 10 }}>
-            Module 1 · Budget Gap
-          </div>
+          {!embedded && (
+            <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.9px', color: D.RAIL_EYEBROW, marginBottom: 10 }}>
+              Module 1 · Budget Gap
+            </div>
+          )}
           <div style={{ fontFamily: T.FONT_NUMERIC, fontSize: 26, fontWeight: 500, lineHeight: 1.25, color: '#FFFFFF', marginBottom: 12 }}>
             {railHead}
           </div>
@@ -621,8 +675,7 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
     const emailOk = isValidEmail(email);
     return (
       <div style={{
-        maxWidth: 1120, margin: '0 auto', background: T.PARCHMENT,
-        border: `1px solid ${D.CONTAINER_BORDER}`, borderRadius: 16, boxShadow: cardShadow,
+        maxWidth: 1120, margin: '0 auto', ...stageCardSkin,
         position: 'relative', overflow: 'hidden', minHeight: 620,
       }}>
         {/* Blurred results preview */}
@@ -707,8 +760,7 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
     const showGapSeg = bar.gapPct > 0.01;
     return (
       <div className="cp-bgc-results" style={{
-        maxWidth: 840, margin: '0 auto', background: T.PARCHMENT,
-        border: `1px solid ${D.CONTAINER_BORDER}`, borderRadius: 16, boxShadow: cardShadow,
+        maxWidth: 840, margin: '0 auto', ...stageCardSkin,
       }}>
         {/* Verdict */}
         <div style={{ textAlign: 'center', marginBottom: 34 }}>
@@ -776,7 +828,7 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
             Explore Module 2 &rarr;
           </a>
           <div style={{ marginTop: 14 }}>
-            <a href="/modules/m1/readiness" style={{ fontSize: 13, color: T.INK_2, textDecoration: 'underline', textUnderlineOffset: 3 }}>
+            <a href={backToReadinessHref} onClick={handleBackToReadiness} style={{ fontSize: 13, color: T.INK_2, textDecoration: 'underline', textUnderlineOffset: 3 }}>
               Or start with the Life Transition Readiness Assessment
             </a>
           </div>
@@ -815,11 +867,16 @@ export default function BudgetGapCalculator({ entry = 'direct' }) {
   return (
     <div className="cp-bgc-page" style={pageWrap}>
       <StyleBlock />
-      <Chrome screen={screen} />
+      {/* embedded: the M1 landing supplies the page wordmark + module framing, so
+          the tool's own page chrome (wordmark + step tracker) is suppressed. */}
+      {!embedded && <Chrome screen={screen} />}
       {screen === 'input' && renderInput()}
       {screen === 'gate' && renderGate()}
       {screen === 'results' && renderResults()}
-      <p style={{ maxWidth: 1120, margin: '24px auto 0', fontSize: 11.5, color: T.MUTED, textAlign: 'center' }}>{LEGAL_LINE}</p>
+      {/* embedded: the (app) shell footer already carries the compliance line. */}
+      {!embedded && (
+        <p style={{ maxWidth: 1120, margin: '24px auto 0', fontSize: 11.5, color: T.MUTED, textAlign: 'center' }}>{LEGAL_LINE}</p>
+      )}
     </div>
   );
 }

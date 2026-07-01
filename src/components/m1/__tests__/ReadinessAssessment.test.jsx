@@ -460,3 +460,39 @@ describe('ReadinessAssessment — recharts removed', () => {
     expect(src).not.toMatch(/\bRadarChart\b/);
   });
 });
+
+// ═════════════════════════════════════════════════════════════════
+// EMBEDDED mode — in-page Budget-Gap CTA (D1 split)
+// The standalone CTA→/modules/m1/budget-gap guards (exploring/preparing tiers
+// above) intentionally STAY green: non-embedded keeps native route navigation.
+// These cover the NEW embedded contract: an in-page hash link that smooth-scrolls
+// to the landing's Budget Gap section instead of routing.
+// ═════════════════════════════════════════════════════════════════
+describe('ReadinessAssessment — embedded in-page CTA', () => {
+  const exploringScores = {
+    incomeAwareness: 0, debtAwareness: 0, assetAwareness: 0, documentAccess: 0, professionalReadiness: 0,
+  };
+
+  it('embedded: the Budget-Gap CTA is an in-page hash link, not the /budget-gap route', () => {
+    seedCompleted({ totalScore: 0, domainScores: exploringScores, tier: 'exploring' });
+    render(<ReadinessAssessment embedded inPageTargetId="m1-budget-gap-section" />);
+    const cta = screen.getByRole('link', { name: /Budget Gap Calculator/i });
+    expect(cta).toHaveAttribute('href', '#m1-budget-gap-section');
+    expect(cta).not.toHaveAttribute('href', '/modules/m1/budget-gap');
+  });
+
+  it('embedded: clicking the CTA smooth-scrolls to the landing section (no navigation)', () => {
+    const target = document.createElement('div');
+    target.id = 'm1-budget-gap-section';
+    const scrollSpy = vi.fn();
+    target.scrollIntoView = scrollSpy;
+    document.body.appendChild(target);
+
+    seedCompleted({ totalScore: 0, domainScores: exploringScores, tier: 'exploring' });
+    render(<ReadinessAssessment embedded inPageTargetId="m1-budget-gap-section" />);
+    fireEvent.click(screen.getByRole('link', { name: /Budget Gap Calculator/i }));
+    expect(scrollSpy).toHaveBeenCalled();
+
+    document.body.removeChild(target);
+  });
+});
