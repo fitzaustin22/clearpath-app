@@ -51,6 +51,7 @@ export function FooterCTA({ title, sub, showBack, onBack, onNext, nextLabel }) {
       </div>
       <div style={{ display: 'flex', gap: 10 }}>
         {showBack && <SecondaryButton onClick={onBack} data-testid="se-back">Back</SecondaryButton>}
+        {/* TODO(design): disabled styling for Continue on blank income — pending spec. */}
         <PrimaryButton onClick={onNext} data-testid="se-next">{nextLabel}</PrimaryButton>
       </div>
     </div>

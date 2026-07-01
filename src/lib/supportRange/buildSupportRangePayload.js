@@ -30,6 +30,13 @@ export function buildSupportRangePayload(estimate, inputs) {
   const region = inputs?.region ?? null;
   const spousalLikely = estimate.spousal?.likely ?? 0;
   const childLikely = estimate.child?.likely ?? 0;
+  // Raw-string check (not the coerced-to-0 combined income): computeSupportRange's
+  // num() coerces a blank field to a FINITE 0, so a never-touched income step
+  // would otherwise read as a legitimate $0 result. At least one party's income
+  // must actually be entered for this to count as a real analysis.
+  const incomeEntered =
+    (inputs?.incomeYou != null && inputs.incomeYou !== '') ||
+    (inputs?.incomeSpouse != null && inputs.incomeSpouse !== '');
 
   return {
     totalMonthlySupport: estimate.combined?.headline ?? 0,
@@ -43,6 +50,9 @@ export function buildSupportRangePayload(estimate, inputs) {
         : null,
     metadata: {
       formulaId: 'aaml_uniform_estimate',
+      // Gates blueprintStore.updateSupportAnalysis' completion status — see
+      // that writer for why this can't be inferred from totalMonthlySupport.
+      incomeEntered,
       // Region is DISPLAY-ONLY: persisted for the saved record + the
       // "not [State]'s binding worksheet" framing; it does NOT affect any figure.
       region,

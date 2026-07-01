@@ -57,6 +57,58 @@ describe('Support Estimator wizard flow', () => {
     expect(s8.data.metadata.payorMonthly).toBe(12000);
   });
 
+  it('editing an income after save clears §8 and re-exposes Save', () => {
+    render(<SupportEstimator disablePrePop />);
+    enterIncomesAndAdvanceToResults();
+    fireEvent.click(screen.getByTestId('se-save'));
+    expect(screen.getByTestId('se-saved-pill')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('se-edit')); // back to step 1
+    const inputs = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-input');
+    fireEvent.change(inputs[0], { target: { value: '2500' } }); // edit incomeYou
+
+    const s8AfterEdit = useBlueprintStore.getState().sections.s8;
+    expect(s8AfterEdit.status).toBe('empty');
+    expect(s8AfterEdit.data).toBeNull();
+
+    fireEvent.click(screen.getByTestId('se-next')); // 1 -> 2
+    fireEvent.click(screen.getByTestId('se-next')); // 2 -> 3
+    fireEvent.click(screen.getByTestId('se-next')); // 3 -> 4
+    expect(screen.getByTestId('se-save')).toBeInTheDocument();
+    expect(screen.queryByTestId('se-saved-pill')).not.toBeInTheDocument();
+  });
+
+  it('re-saving after an edit persists the new figure', () => {
+    render(<SupportEstimator disablePrePop />);
+    enterIncomesAndAdvanceToResults();
+    fireEvent.click(screen.getByTestId('se-save'));
+    expect(useBlueprintStore.getState().sections.s8.data.totalMonthlySupport).toBe(4975);
+
+    fireEvent.click(screen.getByTestId('se-edit'));
+    const inputs = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-input');
+    fireEvent.change(inputs[1], { target: { value: '20000' } }); // bump spouse income
+    fireEvent.click(screen.getByTestId('se-next'));
+    fireEvent.click(screen.getByTestId('se-next'));
+    fireEvent.click(screen.getByTestId('se-next'));
+    fireEvent.click(screen.getByTestId('se-save'));
+
+    const s8 = useBlueprintStore.getState().sections.s8;
+    expect(s8.status).toBe('complete');
+    expect(s8.data.totalMonthlySupport).toBe(8675);
+  });
+
+  it('advancing to results with blank income does not mark §8 complete', () => {
+    render(<SupportEstimator disablePrePop />);
+    fireEvent.click(screen.getByTestId('se-next')); // 1 -> 2, incomes left blank
+    fireEvent.click(screen.getByTestId('se-next')); // 2 -> 3
+    fireEvent.click(screen.getByTestId('se-next')); // 3 -> 4
+    fireEvent.click(screen.getByTestId('se-save'));
+
+    const s8 = useBlueprintStore.getState().sections.s8;
+    expect(s8.status).not.toBe('complete');
+    expect(s8.data).toBeNull();
+  });
+
   it('Edit my answers returns to step 1', () => {
     render(<SupportEstimator disablePrePop />);
     fireEvent.click(screen.getByTestId('se-next'));
