@@ -84,29 +84,32 @@ export default function StepRow({ step }) {
     <div
       data-testid={`step-${step.stepId}`}
       style={{
-        padding: '0.5rem 0',
+        padding: '0.625rem 0',
         borderBottom: `1px dotted ${T.NAVY_12}`,
         fontFamily: T.FONT_BODY,
         color: T.NAVY,
+        fontSize: 14,
       }}
     >
-      <div style={{ fontWeight: 600 }}>
+      <div style={{ fontWeight: 600, lineHeight: 1.4 }}>
         Step {step.step}: {step.label}
       </div>
       {step.computation && (
         <div
           style={{
-            fontFamily: T.FONT_NUMERIC,
-            fontSize: '0.875rem',
+            fontFamily: T.FONT_BODY,
+            fontSize: 13,
             marginTop: '0.25rem',
             color: T.NAVY_70,
+            lineHeight: 1.5,
           }}
         >
           {step.computation}
         </div>
       )}
-      <div style={{ marginTop: '0.25rem', fontSize: '0.9rem' }}>
-        Result: {resultNode}
+      <div style={{ marginTop: '0.25rem', fontSize: 13, color: T.NAVY_55 }}>
+        Result:{' '}
+        <span style={{ color: T.NAVY }}>{resultNode}</span>
       </div>
     </div>
   );

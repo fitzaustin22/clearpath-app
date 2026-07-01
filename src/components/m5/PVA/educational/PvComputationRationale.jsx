@@ -6,8 +6,11 @@ import { T } from '@/src/lib/brand/tokens';
 /**
  * §7.9.3 — "PV computation rationale" expandable (general, all paths).
  *
- * Spec-pinned copy verbatim per LL-25. Toggle phrase "Want to learn more?"
- * is the spec-required anchor; the sub-label is a design degree of freedom.
+ * v3 reskin: plain-language lead first; all spec-pinned technical detail
+ * (§417(e), simplifications, ±100bp sensitivity) retained below it. The
+ * v1-simplifications list from the old LiabilityDisclaimer is merged in here
+ * per copy decision #2. Toggle phrase "Want to learn more?" is spec-pinned
+ * (LL-25).
  */
 export default function PvComputationRationale() {
   const [expanded, setExpanded] = useState(false);
@@ -20,6 +23,7 @@ export default function PvComputationRationale() {
         border: `1px solid ${T.NAVY_12}`,
         borderRadius: 6,
         background: T.CARD,
+        overflow: 'hidden',
       }}
     >
       <button
@@ -30,17 +34,21 @@ export default function PvComputationRationale() {
         style={{
           width: '100%',
           textAlign: 'left',
-          padding: '0.5rem 1rem',
+          padding: '0.75rem 1rem',
           background: T.PARCHMENT,
           color: T.NAVY,
           border: 'none',
           borderBottom: expanded ? `1px solid ${T.NAVY_12}` : 'none',
           fontFamily: T.FONT_BODY,
+          fontSize: 14,
           cursor: 'pointer',
-          borderRadius: 6,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
         }}
       >
-        {expanded ? '▼' : '▶'} Want to learn more? How present value works
+        <span style={{ color: T.GOLD, fontSize: 12 }}>{expanded ? '▾' : '▸'}</span>
+        <span>Want to learn more? How present value works</span>
       </button>
       {expanded && (
         <div
@@ -50,9 +58,19 @@ export default function PvComputationRationale() {
             fontFamily: T.FONT_BODY,
             color: T.NAVY,
             fontSize: 14,
-            lineHeight: 1.55,
+            lineHeight: 1.6,
           }}
         >
+          {/* Plain-language lead */}
+          <p style={{ marginTop: 0 }}>
+            A pension promises to pay a set amount each month starting at retirement. <strong>Present value</strong> is what that future income stream is worth in today&apos;s dollars — calculated in three steps: (1) project the future monthly benefit, (2) convert it to a lump-sum equivalent (the &quot;annuity factor&quot;), and (3) discount it back to today using a rate that reflects how much a dollar in the future is worth now.
+          </p>
+          <p>
+            The discount rate is set automatically from current long-term rates (§417(e) segment-2 yield). You can override it under <em>Assumptions</em> if you need a specific rate. The range shown reflects how PV changes as the discount rate varies by ±1 percentage point. A lower rate means each future dollar is worth more today; a higher rate means less.
+          </p>
+
+          <hr style={{ border: 'none', borderTop: `1px solid ${T.NAVY_12}`, margin: '14px 0' }} />
+          <p style={{ marginTop: 0, fontWeight: 600 }}>How the estimate is calculated</p>
           <p style={{ marginTop: 0 }}>
             Present value of a future pension benefit is computed by: (1) projecting the monthly benefit, (2) computing an annuity factor — the actuarial equivalent of the future benefit stream, accounting for survival probability and time value of money — and (3) discounting back to the valuation date using a discount rate that reflects the time value of the deferral period.
           </p>
@@ -72,6 +90,12 @@ export default function PvComputationRationale() {
             </li>
             <li style={{ marginBottom: '0.5rem' }}>
               <strong>§417(e) segment-2 single-rate approximation</strong>: §417(e) publishes a 3-segment yield curve (segments 1/2/3 covering years 1–5, 6–20, 21+). PVA at v1 uses segment 2 because it covers the bulk of typical pension cash flows; full 3-segment term-structure (per CFR §1.430(h)(2)-1) is on the v1.1 roadmap.
+            </li>
+            <li style={{ marginBottom: '0.5rem' }}>
+              <strong>Single-life J&amp;S in-pay calculation</strong>: In-pay annuities are modeled as single-life; survivor-continuation (J&amp;S factor reduction) is not applied at v1.
+            </li>
+            <li style={{ marginBottom: 0 }}>
+              <strong>No vesting / QPSA / J&amp;S actuarial reductions</strong>: Vesting schedules, QPSA reductions, and joint-and-survivor actuarial adjustments are not modeled at v1. Actual PV may differ materially based on plan-specific assumptions and your state&apos;s pension valuation case law.
             </li>
           </ul>
           <p style={{ marginBottom: 0 }}>

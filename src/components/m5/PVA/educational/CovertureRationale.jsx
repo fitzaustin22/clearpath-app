@@ -6,10 +6,9 @@ import { T } from '@/src/lib/brand/tokens';
 /**
  * §7.9.3 — "Coverture rationale" expandable (Tier 3 only).
  *
- * Spec-pinned copy per LL-25 — including the case-law citations
- * (Barbour, Mosley, Deering, Lehman) which are required by spec. The DC
- * frozen-coverture seat was re-cited Bender → Barbour v. Barbour in citation
- * batch #2 (2026-06-18); the prior Bender v. Bender reporter cite does not exist.
+ * v3 reskin: plain-language lead first; all spec-pinned copy retained below
+ * including the four case-law citations (Barbour, Mosley, Deering, Lehman —
+ * spec-pinned LL-25, re-cited Bender → Barbour in batch #2 2026-06-18).
  */
 export default function CovertureRationale() {
   const [expanded, setExpanded] = useState(false);
@@ -22,6 +21,7 @@ export default function CovertureRationale() {
         border: `1px solid ${T.NAVY_12}`,
         borderRadius: 6,
         background: T.CARD,
+        overflow: 'hidden',
       }}
     >
       <button
@@ -32,17 +32,21 @@ export default function CovertureRationale() {
         style={{
           width: '100%',
           textAlign: 'left',
-          padding: '0.5rem 1rem',
+          padding: '0.75rem 1rem',
           background: T.PARCHMENT,
           color: T.NAVY,
           border: 'none',
           borderBottom: expanded ? `1px solid ${T.NAVY_12}` : 'none',
           fontFamily: T.FONT_BODY,
+          fontSize: 14,
           cursor: 'pointer',
-          borderRadius: 6,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
         }}
       >
-        {expanded ? '▼' : '▶'} Want to learn more? How coverture works
+        <span style={{ color: T.GOLD, fontSize: 12 }}>{expanded ? '▾' : '▸'}</span>
+        <span>Want to learn more? How coverture works</span>
       </button>
       {expanded && (
         <div
@@ -52,13 +56,23 @@ export default function CovertureRationale() {
             fontFamily: T.FONT_BODY,
             color: T.NAVY,
             fontSize: 14,
-            lineHeight: 1.55,
+            lineHeight: 1.6,
           }}
         >
+          {/* Plain-language lead */}
           <p style={{ marginTop: 0 }}>
-            Coverture (also called the 'time rule') is the fraction of the pension that's marital property. The numerator is the period of the marriage that overlapped with employment at the plan; the denominator is the total projected employment period at the plan (from hire to expected retirement).
+            The marital share of a pension is the portion that was earned during the marriage. It&apos;s calculated as the overlap of your marriage years and the pension-earning years (the time rule), divided by the total years of pension service expected by retirement. The three dates you enter — when the marriage started, when it ended (separation or decree, depending on your state), and when the pension participant started earning this pension — determine that fraction.
           </p>
-          <p>Marital portion = total PV × coverture fraction.</p>
+          <p>
+            The cutoff date (when the marital share stops accruing) varies by state. In Virginia it&apos;s typically the date of separation; other states use the date of filing or final decree. Ask your attorney which date applies to your case — the right date can meaningfully change the marital share.
+          </p>
+
+          <hr style={{ border: 'none', borderTop: `1px solid ${T.NAVY_12}`, margin: '14px 0' }} />
+          <p style={{ marginTop: 0, fontWeight: 600 }}>Technical detail</p>
+          <p style={{ marginTop: 0 }}>
+            Coverture (also called the &apos;time rule&apos;) is the fraction of the pension that&apos;s marital property. The numerator is the period of the marriage that overlapped with employment at the plan; the denominator is the total projected employment period at the plan (from hire to expected retirement).
+          </p>
+          <p>Marital portion = total PV × coverture fraction (the time rule).</p>
           <p>Two flavors of coverture exist in CDFA practice:</p>
           <ol style={{ paddingLeft: '1.25rem' }}>
             <li style={{ marginBottom: '0.5rem' }}>

@@ -13,6 +13,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import InputsPanel from '../InputsPanel/index.jsx';
 import { useM5Store } from '@/src/stores/m5Store';
+import { calculatePensionValue, getHeadlinePV } from '@/src/lib/pensionValuation';
 
 const ASSET_ID = 'pension-test-1';
 
@@ -247,5 +248,88 @@ describe('InputsPanel — path-conditional rendering (§7.2 / §7.3)', () => {
     seedInputs({});
     render(<InputsPanel assetId={ASSET_ID} path="in_pay_status" />);
     expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.receiptForm).toBe('monthly_db_stream');
+  });
+});
+
+// ─── #97 reskin regression: required compute inputs must stay surfaced ──────
+// The v3 reskin moved CommonFields (which holds the REQUIRED participantDOB —
+// "drives age-based annuity-factor lookup" — plus cola) into a collapsed-by-
+// default "Assumptions" disclosure (display:none). pre-pop does not seed those
+// numeric fields, so with them hidden a user fills only the visible tier panel,
+// the engine receives no participantDOB, calculatePensionValue throws, and the
+// orchestrator's try/catch yields a null PV. Required inputs must render
+// outside the collapsed section; only genuinely-optional assumptions
+// (mortality table, legacy discount-rate bps) may start collapsed.
+
+/** True if `el` or any ancestor is hidden via an inline `display:none`. */
+function hiddenByCollapsedAncestor(el) {
+  let node = el;
+  while (node) {
+    if (node.style && node.style.display === 'none') return true;
+    node = node.parentElement;
+  }
+  return false;
+}
+
+describe('InputsPanel — required inputs surfaced by default (§7.3.1; #97 reskin)', () => {
+  it('TC-PVA-InputsPanel-17: participantDOB, caseEffectiveDate, and cola are visible by default (not behind the collapsed Assumptions section)', () => {
+    seedInputs({});
+    render(<InputsPanel assetId={ASSET_ID} path="tier_3" />);
+    for (const field of ['participantDOB', 'caseEffectiveDate', 'cola']) {
+      expect(
+        hiddenByCollapsedAncestor(screen.getByTestId(`pva-input-${field}`)),
+        `${field} is required for the PV calculation and must be visible by default`
+      ).toBe(false);
+    }
+  });
+
+  it('TC-PVA-InputsPanel-18: optional assumptions (mortalityTable, discountRateBps) remain collapsed by default', () => {
+    seedInputs({});
+    render(<InputsPanel assetId={ASSET_ID} path="tier_3" />);
+    for (const field of ['mortalityTable', 'discountRateBps']) {
+      expect(hiddenByCollapsedAncestor(screen.getByTestId(`pva-input-${field}`))).toBe(true);
+    }
+  });
+
+  // COLA is surfaced (TC-17) but is its own trap: skipped → inputs.cola
+  // undefined → engine cola/100 = NaN. It has a documented 0% default, so —
+  // mirroring ReceiptFormDropdown's Defect-#2 commit — the component must seed
+  // 0 into the store so a user who never touches COLA still gets a real PV.
+  it('TC-PVA-InputsPanel-19: COLA defaults to 0 in the store on mount (skipping it must not break the PV)', () => {
+    seedInputs({});
+    render(<InputsPanel assetId={ASSET_ID} path="tier_1" />);
+    expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.cola).toBe(0);
+  });
+
+  it('TC-PVA-InputsPanel-19b: an explicit user-clear of COLA writes null and is NOT re-seeded to 0', () => {
+    // The seed is mount-once for the never-set case; clearing a populated field
+    // (TC-12) must stay null, not get clobbered back to 0 by the default commit.
+    seedInputs({ cola: 2.5 });
+    render(<InputsPanel assetId={ASSET_ID} path="tier_1" />);
+    const input = screen.getByTestId('pva-input-cola').querySelector('input');
+    fireEvent.change(input, { target: { value: '' } });
+    expect(useM5Store.getState().pensionValuation.assets[ASSET_ID].inputs.cola).toBeNull();
+  });
+
+  it('TC-PVA-InputsPanel-20: engine returns a finite PV at the COLA 0-default, NaN when COLA is omitted (justifies the default)', () => {
+    // Characterizes the FROZEN engine contract the COLA default protects.
+    const COMPLETE_TIER1_NO_COLA = {
+      path: 'tier_1',
+      participantDOB: '1981-05-01',
+      caseEffectiveDate: '2026-05-01',
+      planNRA: 65,
+      accruedMonthlyBenefitAtNRA: 3000,
+      mortalityTable: 'irs_417e',
+    };
+    expect(Number.isFinite(getHeadlinePV(calculatePensionValue({ ...COMPLETE_TIER1_NO_COLA, cola: 0 })))).toBe(true);
+    expect(Number.isNaN(getHeadlinePV(calculatePensionValue(COMPLETE_TIER1_NO_COLA)))).toBe(true);
+  });
+
+  it('TC-PVA-InputsPanel-21: optional-assumptions toggle names the mortality table and does not advertise the inert discount-rate knob', () => {
+    seedInputs({});
+    render(<InputsPanel assetId={ASSET_ID} path="tier_3" />);
+    const toggle = screen.getByRole('button', { name: /optional assumptions/i });
+    expect(toggle).toHaveTextContent(/mortality table/i);
+    expect(toggle).not.toHaveTextContent(/discount rate/i);
   });
 });

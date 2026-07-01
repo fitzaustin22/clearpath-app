@@ -148,16 +148,20 @@ describe('LumpSumOfferDivergence', () => {
 });
 
 describe('QdroHandoffRecommended', () => {
-  it('renders QDRO handoff copy', () => {
+  it('renders QDRO handoff copy (v3: NEXT STEP eyebrow + QDRO Decision Guide link)', () => {
     render(<QdroHandoffRecommended runtimeData={{ path: 'tier_1', planType: 'private_db' }} />);
-    expect(screen.getByText(/Qualified Domestic Relations Order/)).toBeInTheDocument();
+    const el = screen.getByTestId('callout-qdro_handoff_recommended');
+    expect(el).toHaveTextContent(/NEXT STEP/i);
+    expect(el).toHaveTextContent(/QDRO Decision Guide/i);
   });
 });
 
 describe('LiabilityDisclaimer', () => {
-  it('renders the planning-grade-estimate phrase', () => {
+  it('renders the NOT LEGAL ADVICE label and planning estimate copy (v3)', () => {
     render(<LiabilityDisclaimer runtimeData={{}} />);
-    expect(screen.getByText(/Planning-grade estimate/i)).toBeInTheDocument();
-    expect(screen.getByText(/not a legal opinion/i)).toBeInTheDocument();
+    const el = screen.getByTestId('callout-liability_disclaimer');
+    expect(el).toHaveTextContent(/NOT LEGAL ADVICE/i);
+    expect(el).toHaveTextContent(/estimate for planning and negotiation/i);
+    expect(el).toHaveTextContent(/not legal or financial advice/i);
   });
 });
