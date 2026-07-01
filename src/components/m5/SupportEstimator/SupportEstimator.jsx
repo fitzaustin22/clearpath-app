@@ -84,6 +84,19 @@ export function SupportEstimator({ userTier, disablePrePop = false }) {
     // CLEARED, not gated: an un-re-saved edit must never leave a stale figure
     // sitting in the Blueprint.
     if (useBlueprintStore.getState().sections.s8.status === 'complete') {
+      // TEMP(diagnostic — REMOVE BEFORE MERGE; PR #100 browser-pass aid): proves the
+      // SERVED bundle actually contains this fix. The prior Cowork passes reported a
+      // stuck "Saved" pill + §8 frozen at the old figure — the exact pre-fix signature,
+      // which appears if the browser is running a stale bundle without this closure.
+      // Open the console, save §8, then edit any field: if this line does NOT print,
+      // the browser is on a stale/pre-fix bundle (that, not the code, is the defect);
+      // clearFnType:'function' confirms the clearSupportAnalysis action shipped.
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[m5-support-invalidation] edit-after-save → clearSupportAnalysis()', {
+          field,
+          clearFnType: typeof useBlueprintStore.getState().clearSupportAnalysis,
+        });
+      }
       useBlueprintStore.getState().clearSupportAnalysis();
     }
   };
