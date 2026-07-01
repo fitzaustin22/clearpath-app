@@ -19,6 +19,12 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import { getHeadlinePV } from '@/src/lib/pensionValuation';
+import { makeInitialSupportRangeInputs } from '@/src/lib/supportRange/prefill';
+
+const makeInitialSupportRange = () => ({
+  inputs: makeInitialSupportRangeInputs(),
+  _prePopSources: null,
+});
 
 // ─── §6.5.1 Support Estimator inputs (locked literal) ──────────────────────
 const initialPartyInputs = {
@@ -124,6 +130,7 @@ export const useM5Store = create(
       qdroDecision: makeInitialQDRODecision(),
       pensionValuation: makeInitialPensionValuation(),
       supportEstimator: makeInitialSupportEstimator(),
+      supportRange: makeInitialSupportRange(),
 
       // ─── Support Estimator setters (§6.5.1 / §6.5.2 / §6.5.7) ──────────
       // Partial-merge pattern mirrors m4Store (setFilingStatusInputs).
@@ -158,6 +165,20 @@ export const useM5Store = create(
             ...state.supportEstimator,
             results,
           },
+        })),
+
+      // ─── Support Range slice setters ─────────────────────────────────────
+      setSupportRangeInputs: (partial) =>
+        set((state) => ({
+          supportRange: { ...state.supportRange, inputs: { ...state.supportRange.inputs, ...partial } },
+        })),
+      replaceSupportRangeInputs: (nextInputs) =>
+        set((state) => ({
+          supportRange: { ...state.supportRange, inputs: nextInputs },
+        })),
+      setSupportRangePrePopSources: (sources) =>
+        set((state) => ({
+          supportRange: { ...state.supportRange, _prePopSources: sources },
         })),
 
       // ─── Home Decision Analyzer setters (§9.3 / §9.10 / §14.1) ─────────
@@ -482,6 +503,9 @@ export const useM5Store = create(
           inputs: state.supportEstimator.inputs,
           results: state.supportEstimator.results,
         },
+        supportRange: {
+          inputs: state.supportRange.inputs,
+        },
         pensionValuation: {
           assets: stripAssetPrePopSources(state.pensionValuation.assets),
         },
@@ -502,6 +526,11 @@ export const useM5Store = create(
           supportEstimator: {
             ...currentState.supportEstimator,
             ...(persisted.supportEstimator || {}),
+            _prePopSources: null,
+          },
+          supportRange: {
+            ...currentState.supportRange,
+            ...(persisted.supportRange || {}),
             _prePopSources: null,
           },
           pensionValuation: {
