@@ -8,8 +8,27 @@
  * DOM in Variant 3 — toggled via display:none so TC-PVA-Orchestrator-5
  * (expects pva-inputs-panel + pva-bignumber-headline simultaneously) passes.
  *
- * All engine logic, path resolution (R1–R6), pre-pop seam, Blueprint writes,
- * and discriminated-union branches are FROZEN — pixels only.
+ * All engine logic, path resolution (R1–R6), pre-pop seam, and
+ * discriminated-union branches are FROZEN — pixels only.
+ *
+ * §7.10.4 — compute/persist gating (post-reskin hardening). `results` still
+ * computes reactively (cheap/pure), but for non-flag_only paths it is neither
+ * shown, written to m5Store, nor synced to Blueprint §6 until the user
+ * explicitly clicks "Calculate present value" in InputsPanel — that write is
+ * imperative (in the click handler), never a reactive effect, so there's no
+ * race with the invalidation effect below. The PERSISTED `assetState.results`
+ * is the single source of truth for what's displayed: no separate local
+ * "calculated" flag, so a pension calculated in a prior session shows
+ * immediately on reopen (needs recalculating once per edit, not once per
+ * session) with no bootstrapping logic required. An edit-invalidation effect
+ * clears both the m5Store result and the Blueprint §6 slot the moment any
+ * input changes while a result is persisted — there's no way to distinguish a
+ * cosmetic edit from a compute-affecting one without engine-side field
+ * classification (the engine is frozen), so any edit invalidates. flag_only
+ * is exempt from all of the above: it has no PV to compute (and no Calculate
+ * button — InputsPanel hides the CTA for that path), only a routing banner
+ * recording "specialist required," so it stays fully reactive/immediate,
+ * matching pre-gating behavior.
  *
  * Owns the §7.10.3 discriminated-union consumption per LL-17. Three variants:
  *   1. null                                  → "claim not found" surface
@@ -17,13 +36,14 @@
  *   3. {inputs, _prePopSources}              → <InputsPanel/> + <ResultsPanel/>
  */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useM2Store } from '@/src/stores/m2Store';
 import { useM5Store } from '@/src/stores/m5Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';
 import { prePopulatePVAInputs } from '@/src/stores/prePopulate';
 import { calculatePensionValue } from '@/src/lib/pensionValuation';
 import { getHeadlinePV, getMaritalPV } from '@/src/lib/pensionValuation';
+import { hasGenuinePV } from './resultValidity.js';
 import { T } from '@/src/lib/brand/tokens';
 import AssetPicker from './AssetPicker.jsx';
 import InputsPanel from './InputsPanel/index.jsx';
@@ -140,37 +160,95 @@ export default function PVA({ seedOverride = null }) {
     frozenRoutingApplied,
   ]);
 
-  // ─── Persist results ──────────────────────────────────────────────────────
-  useEffect(() => {
-    if (!selectedAssetId || !results) return;
-    setPVAAssetResults(selectedAssetId, results);
-  }, [selectedAssetId, results, setPVAAssetResults]);
+  // ─── §7.10.4 — Calculate gating ─────────────────────────────────────────
+  // Non-flag_only paths: the PERSISTED `assetState.results` is the single
+  // source of truth for what's displayed — no separate local flag. It is
+  // written ONLY imperatively, by the Calculate click handler below (never by
+  // a reactive effect), so there is no race between "persist the newly-typed
+  // value" and "clear the invalidated value" within the same render commit.
+  // A pension calculated in a prior session already has `assetState.results`
+  // populated at mount, so it displays immediately — no re-click needed.
+  const isFlagOnlyResult = results?.path === 'flag_only';
+  const displayedResults = isFlagOnlyResult ? results : (assetState?.results ?? null);
 
-  // ─── Sync results to Blueprint §6 ────────────────────────────────────────
+  const buildBlueprintPayload = (r) => {
+    if (r.path === 'flag_only') {
+      return { path: 'flag_only', headlinePV: null, maritalPV: null };
+    }
+    return {
+      path: r.path,
+      headlinePV: getHeadlinePV(r),
+      maritalPV: getMaritalPV(r),
+      expectedRetirementAge: inputs?.expectedRetirementAge ?? null,
+      coverturePercent: r.coverture?.fraction ?? null,
+      citations: r.metadata?.citations ?? null,
+    };
+  };
+
+  // flag_only has no PV to compute and no Calculate button (InputsPanel hides
+  // the CTA for this path) — it stays fully reactive, matching pre-gating
+  // behavior, since there's no "financial estimate" here to gate at all.
   useEffect(() => {
-    if (!results) return;
-    if (results.path === 'flag_only') {
-      updatePensionValuation({
-        path: 'flag_only',
-        headlinePV: null,
-        maritalPV: null,
-      });
+    if (!selectedAssetId || !results || !isFlagOnlyResult) return;
+    setPVAAssetResults(selectedAssetId, results);
+    updatePensionValuation(buildBlueprintPayload(results));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedAssetId, results, isFlagOnlyResult, setPVAAssetResults, updatePensionValuation]);
+
+  // Invalidate a previously-persisted result the moment its inputs change —
+  // there's no way to tell a cosmetic edit from a compute-affecting one
+  // without engine-side field classification (the engine is frozen), so any
+  // edit invalidates. Guarded against firing on an asset SWITCH (inputs
+  // naturally change reference then too, but that's not an edit).
+  const prevSelectedAssetIdRef = useRef(selectedAssetId);
+  const prevInputsRef = useRef(inputs);
+  useEffect(() => {
+    // flag_only is exempt — it's rewritten reactively by the effect above on
+    // every inputs change, so it's never "stale" and never needs clearing.
+    // (CommonFields' required section renders for every path, including
+    // flag_only, so its cola-default-commit effect can shift `inputs`
+    // shortly after the flag_only write above; without this guard that
+    // shift would misread as a user edit and clear the just-written value.)
+    if (isFlagOnlyResult) {
+      prevSelectedAssetIdRef.current = selectedAssetId;
+      prevInputsRef.current = inputs;
       return;
     }
-    updatePensionValuation({
-      path: results.path,
-      headlinePV: getHeadlinePV(results),
-      maritalPV: getMaritalPV(results),
-      expectedRetirementAge: inputs?.expectedRetirementAge ?? null,
-      coverturePercent: results.coverture?.fraction ?? null,
-      citations: results.metadata?.citations ?? null,
-    });
-  }, [results, inputs?.expectedRetirementAge, updatePensionValuation]);
+    const assetSwitched = prevSelectedAssetIdRef.current !== selectedAssetId;
+    const hadPersistedResults =
+      useM5Store.getState().pensionValuation?.assets?.[selectedAssetId ?? '__none__']?.results != null;
+    if (!assetSwitched && prevInputsRef.current !== inputs && hadPersistedResults) {
+      setPVAAssetResults(selectedAssetId, null);
+      updatePensionValuation(null);
+    }
+    prevSelectedAssetIdRef.current = selectedAssetId;
+    prevInputsRef.current = inputs;
+  }, [selectedAssetId, inputs, isFlagOnlyResult, setPVAAssetResults, updatePensionValuation]);
 
   // ─── Selected asset label (Variant 3 only) ────────────────────────────────
   const selectedItem = selectedAssetId && !seedOverride
     ? (m2Items ?? []).find((it) => it.id === selectedAssetId)
     : null;
+
+  // ─── Scroll-to-result on Calculate ──────────────────────────────────────
+  // Both panels are always mounted (display:none toggle), so a ref set here
+  // is scrollIntoView-able the moment `view` flips to 'results'. Only fires
+  // on the transition FROM an explicit Calculate click that produced a
+  // genuine result — not on plain mount, not on manually clicking the
+  // "results" segmented-toggle tab, and not on reselecting an
+  // already-calculated pension (none of those set `justCalculatedRef`).
+  const resultsSectionRef = useRef(null);
+  const justCalculatedRef = useRef(false);
+  useEffect(() => {
+    if (view === 'results' && justCalculatedRef.current) {
+      justCalculatedRef.current = false;
+      // jsdom (test env) has no scrollIntoView implementation; guard rather
+      // than assume, same defensive style as HomeDecisionScenarioCarousel.
+      if (typeof resultsSectionRef.current?.scrollIntoView === 'function') {
+        resultsSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }, [view]);
 
   // ─── Render (LL-17 explicit branches) ────────────────────────────────────
   return (
@@ -212,7 +290,7 @@ export default function PVA({ seedOverride = null }) {
 
       {/* Variant 3: normal pre-pop */}
       {prePopResult && !prePopResult.error && selectedAssetId && assetState?.inputs && (
-        <div style={{ marginTop: '1rem', maxWidth: 640 }}>
+        <div style={{ marginTop: '1rem', maxWidth: 640, marginLeft: 'auto', marginRight: 'auto' }}>
           {/* Page header */}
           <div style={{ marginBottom: 20 }}>
             <div
@@ -298,12 +376,24 @@ export default function PVA({ seedOverride = null }) {
               assetId={selectedAssetId}
               path={resolvedPath}
               frozenRoutingApplied={frozenRoutingApplied}
-              onCalculate={() => setView('results')}
+              onCalculate={() => {
+                // Only persist a GENUINE result (§7.10.5) — a blank required
+                // numeric reaches the frozen engine as a finite 0, not NaN, so
+                // "the engine didn't throw" alone isn't enough to trust. This
+                // keeps "a stored result exists" (what AssetPicker's "valued"
+                // tag checks) and "a valid result exists" the same thing.
+                if (results && !isFlagOnlyResult && hasGenuinePV(results)) {
+                  setPVAAssetResults(selectedAssetId, results);
+                  updatePensionValuation(buildBlueprintPayload(results));
+                  justCalculatedRef.current = true;
+                }
+                setView('results');
+              }}
             />
           </div>
-          <div style={{ display: view === 'results' ? 'block' : 'none' }}>
+          <div ref={resultsSectionRef} style={{ display: view === 'results' ? 'block' : 'none' }}>
             <ResultsPanel
-              results={results}
+              results={displayedResults}
               flags={{ _frozenRoutingApplied: frozenRoutingApplied }}
               onChangeInputs={() => setView('inputs')}
             />

@@ -103,6 +103,66 @@ describe('ResultsPanel (§7.6.1 / §7.6.3)', () => {
     expect(screen.queryByTestId('pva-results-panel')).not.toBeInTheDocument();
   });
 
+  // Residual-risk guard: a required numeric input left blank (e.g.
+  // accruedMonthlyBenefitAtNRA) makes the FROZEN engine emit a non-finite PV.
+  // Rather than render a bare "—" hero, the result area falls back to the same
+  // "complete the inputs" placeholder shown for the missing-date (null) case.
+  it('TC-PVA-Results-1b: non-finite headline PV (required numeric left blank) shows the placeholder, not a broken hero', () => {
+    const broken = { ...TIER_1_RESULTS, pv: { best: NaN, low: NaN, high: NaN } };
+    render(<ResultsPanel results={broken} flags={{}} />);
+    expect(screen.getByTestId('pva-results-placeholder')).toBeInTheDocument();
+    expect(screen.queryByTestId('pva-bignumber-headline')).not.toBeInTheDocument();
+  });
+
+  it('TC-PVA-Results-1c: non-finite marital PV (coverture) shows the placeholder', () => {
+    const broken = {
+      ...TIER_3_RESULTS,
+      pv: { total: { best: NaN, low: NaN, high: NaN }, marital: { best: NaN, low: NaN, high: NaN } },
+    };
+    render(<ResultsPanel results={broken} flags={{}} />);
+    expect(screen.getByTestId('pva-results-placeholder')).toBeInTheDocument();
+    expect(screen.queryByTestId('pva-bignumber-marital')).not.toBeInTheDocument();
+  });
+
+  it('TC-PVA-Results-1d: flag_only (PV legitimately null) is unaffected by the non-finite guard', () => {
+    render(<ResultsPanel results={FLAG_ONLY_RESULTS} flags={{}} />);
+    expect(screen.getByTestId('pva-banner-flagonly')).toBeInTheDocument();
+    expect(screen.queryByTestId('pva-results-placeholder')).not.toBeInTheDocument();
+  });
+
+  // Root cause: a cleared required numeric (e.g. accruedMonthlyBenefitAtNRA)
+  // reaches the frozen engine as `null`, and `null * 12 * af * deferralFactor`
+  // is a FINITE 0 in JS — not NaN. The TC-1b/1c non-finite guard doesn't catch
+  // this; a confident "$0" renders instead of the placeholder.
+  it('TC-PVA-Results-1e: exactly-zero headline PV (blank required numeric) shows the placeholder, not a confident $0', () => {
+    const broken = { ...TIER_1_RESULTS, pv: { best: 0, low: 0, high: 0 } };
+    render(<ResultsPanel results={broken} flags={{}} />);
+    expect(screen.getByTestId('pva-results-placeholder')).toBeInTheDocument();
+    expect(screen.queryByTestId('pva-bignumber-headline')).not.toBeInTheDocument();
+  });
+
+  // Coverture path, same root cause: a blank required numeric zeroes the TOTAL
+  // pension value (not just the marital share). Total PV is never legitimately
+  // $0 for a real pension — unlike the marital share, which legitimately IS $0
+  // when coverture.fraction === 0 (see TC-PVA-Results-4). The guard must key
+  // off the headline/total figure, not the marital figure, so it catches this
+  // case without misfiring on TC-4's valid zero-marital scenario.
+  it('TC-PVA-Results-1f: exactly-zero TOTAL PV (coverture path, blank required numeric) shows the placeholder', () => {
+    const broken = {
+      ...TIER_3_RESULTS,
+      pv: { total: { best: 0, low: 0, high: 0 }, marital: { best: 0, low: 0, high: 0 } },
+    };
+    render(<ResultsPanel results={broken} flags={{}} />);
+    expect(screen.getByTestId('pva-results-placeholder')).toBeInTheDocument();
+    expect(screen.queryByTestId('pva-bignumber-marital')).not.toBeInTheDocument();
+  });
+
+  it('TC-PVA-Results-1g: zero MARITAL PV with a valid nonzero TOTAL (real coverture.fraction === 0, per TC-4) is NOT treated as broken', () => {
+    render(<ResultsPanel results={TIER_3_ZERO_RESULTS} flags={{}} />);
+    expect(screen.queryByTestId('pva-results-placeholder')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pva-bignumber-marital')).toBeInTheDocument();
+  });
+
   it('TC-PVA-Results-2: tier_1 renders 1 BigNumber + sensitivity', () => {
     render(<ResultsPanel results={TIER_1_RESULTS} flags={{}} />);
     expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();

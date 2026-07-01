@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { T } from '@/src/lib/brand/tokens';
 import { formatUSD } from '@/src/lib/format/currency';
 import { getHeadlinePV, getMaritalPV } from '@/src/lib/pensionValuation';
+import { hasGenuinePV } from './resultValidity.js';
 import CalloutStack from './callouts/CalloutStack';
 import PerStepNarrative from './show-the-math/PerStepNarrative';
 import PvComputationRationale from './educational/PvComputationRationale';
@@ -187,6 +188,27 @@ function DownloadIcon() {
   );
 }
 
+function ResultsPlaceholder() {
+  return (
+    <div
+      data-testid="pva-results-placeholder"
+      style={{
+        marginTop: 16,
+        padding: '20px 24px',
+        fontFamily: T.FONT_BODY,
+        fontSize: 14,
+        color: T.NAVY_55,
+        background: T.CARD,
+        border: `1px dashed ${T.NAVY_12}`,
+        borderRadius: 12,
+        lineHeight: 1.6,
+      }}
+    >
+      Complete the required inputs above to see present value.
+    </div>
+  );
+}
+
 // ─── Main component ──────────────────────────────────────────────────────────
 
 /**
@@ -196,26 +218,8 @@ function DownloadIcon() {
  * @param {() => void} [props.onChangeInputs]  Called when user clicks "← Change inputs"
  */
 export default function ResultsPanel({ results, flags, onChangeInputs }) {
-  if (!results) {
-    return (
-      <div
-        data-testid="pva-results-placeholder"
-        style={{
-          marginTop: 16,
-          padding: '20px 24px',
-          fontFamily: T.FONT_BODY,
-          fontSize: 14,
-          color: T.NAVY_55,
-          background: T.CARD,
-          border: `1px dashed ${T.NAVY_12}`,
-          borderRadius: 12,
-          lineHeight: 1.6,
-        }}
-      >
-        Complete the required inputs above to see present value.
-      </div>
-    );
-  }
+  // Missing-date inputs make the frozen engine throw → PVA.jsx yields null here.
+  if (!results) return <ResultsPlaceholder />;
 
   const isFlagOnly = results.path === 'flag_only';
   const isCoverturePath = results.coverture !== null && results.coverture !== undefined;
@@ -224,6 +228,17 @@ export default function ResultsPanel({ results, flags, onChangeInputs }) {
 
   const headlinePV = isFlagOnly ? null : getHeadlinePV(results);
   const maritalPV = isCoverturePath ? getMaritalPV(results) : null;
+
+  // Residual-risk guard: a required NUMERIC input left blank reaches the
+  // frozen engine as `null`, which arithmetic silently coerces to a FINITE 0
+  // (`null * 12 * af * deferralFactor === 0`) rather than NaN — a confident
+  // "$0" would render instead of a broken hero. `hasGenuinePV` is the shared
+  // predicate (also used by PVA.jsx to gate what gets persisted, and thus what
+  // AssetPicker's "valued" tag reflects) — keep both in sync via one function
+  // rather than re-deriving this check in more than one place.
+  if (!isFlagOnly && !hasGenuinePV(results)) {
+    return <ResultsPlaceholder />;
+  }
   const coverturePct =
     results.coverture?.fraction != null
       ? `${(results.coverture.fraction * 100).toFixed(2)}%`

@@ -11,18 +11,27 @@
  * the engine call is gated against the error variant.
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import PVA from '../PVA.jsx';
 import { useM2Store } from '@/src/stores/m2Store';
 import { useM5Store } from '@/src/stores/m5Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';
+import { calculatePensionValue } from '@/src/lib/pensionValuation';
 import { SEED_VARIANTS } from '../__fixtures__/seedVariants.js';
 
 function seedM2(items) {
   useM2Store.setState((state) => ({
     maritalEstateInventory: { ...state.maritalEstateInventory, items },
   }));
+}
+
+// Failure-A gating (§7.10.4): compute/persist no longer happen reactively on
+// mount — the user must click "Calculate present value" in InputsPanel. Tests
+// that assert a rendered result (BigNumber, banner, callout, Blueprint §6
+// write) now click through first.
+function clickCalculate() {
+  fireEvent.click(screen.getByRole('button', { name: /calculate present value/i }));
 }
 
 beforeEach(() => {
@@ -35,6 +44,11 @@ beforeEach(() => {
   useM5Store.setState((state) => ({
     pensionValuation: { ...state.pensionValuation, assets: {} },
   }));
+});
+
+afterEach(() => {
+  // Scroll-to-result tests stub this on Element.prototype; don't leak it.
+  delete Element.prototype.scrollIntoView;
 });
 
 describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
@@ -96,6 +110,7 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
     render(<PVA seedOverride={SEED_VARIANTS.tier1_canonical} />);
     expect(screen.queryByTestId('pva-asset-picker')).not.toBeInTheDocument();
     expect(screen.getByTestId('pva-inputs-panel')).toBeInTheDocument();
+    clickCalculate();
     // Real engine call should produce headline PV ≈ $165,783 per fixture pin.
     expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
   });
@@ -117,6 +132,7 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
 
   it('TC-PVA-Orchestrator-8: seedOverride for frozen_routing_banner surfaces frozen banner over Tier 1 numbers', () => {
     render(<PVA seedOverride={SEED_VARIANTS.frozen_routing_banner} />);
+    clickCalculate();
     expect(screen.getByTestId('pva-banner-frozen')).toBeInTheDocument();
     expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
   });
@@ -181,6 +197,7 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
 
     it('TC-PVA-Resolver-R4: accrualStatus=frozen routes to tier_1 (tierBase)', () => {
       render(<PVA seedOverride={SEED_VARIANTS.frozen_routing_banner} />);
+      clickCalculate();
       expect(screen.getByTestId('pva-banner-frozen')).toBeInTheDocument();
       expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
       // Tier 3 marital/coverture BigNumber should NOT render.
@@ -189,12 +206,14 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
 
     it('TC-PVA-Resolver-R5: accrualStatus=accruing routes to tier_3 default (no override)', () => {
       render(<PVA seedOverride={SEED_VARIANTS.tier3_canonical} />);
+      clickCalculate();
       // Tier 3 marital BigNumber renders for a coverture path.
       expect(screen.getByTestId('pva-bignumber-marital')).toBeInTheDocument();
     });
 
     it('TC-PVA-Resolver-R6: tierOverride within validSet wins (accruing + tier_1 override → tier_1)', () => {
       render(<PVA seedOverride={SEED_VARIANTS.tier1_canonical} />);
+      clickCalculate();
       // tier1_canonical has accrualStatus:'accruing' + tierOverride:'tier_1'.
       // R5 base would be tier_3; R6 swaps to tier_1.
       expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
@@ -217,6 +236,7 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
           }}
         />,
       );
+      clickCalculate();
       expect(screen.getByTestId('pva-banner-frozen')).toBeInTheDocument();
       expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
       expect(screen.queryByTestId('pva-bignumber-marital')).not.toBeInTheDocument();
@@ -225,7 +245,11 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
     it('TC-PVA-Resolver-FrozenDerived: non-frozen accruing+tier_1 override does NOT surface the frozen banner', () => {
       // Validates that frozenRoutingApplied is derived from
       // inputs.accrualStatus alone — not from the resolved path being tier_1.
+      // Click through so this exercises the same post-calculate state as its
+      // sibling assertions (Failure-A gating), not just the pre-calculate
+      // placeholder where the banner is trivially absent either way.
       render(<PVA seedOverride={SEED_VARIANTS.tier1_canonical} />);
+      clickCalculate();
       expect(screen.queryByTestId('pva-banner-frozen')).not.toBeInTheDocument();
     });
   });
@@ -233,16 +257,19 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
   // ─── PR 3 / Phase 2 — new callout-surfacing seeds end-to-end ──────────
   it('TC-PVA-Orchestrator-12: vesting_partial seed surfaces vesting_status_callout via CalloutStack', () => {
     render(<PVA seedOverride={SEED_VARIANTS.vesting_partial} />);
+    clickCalculate();
     expect(screen.getByTestId('callout-vesting_status_callout')).toBeInTheDocument();
   });
 
   it('TC-PVA-Orchestrator-13: lump_sum_divergent seed surfaces lump_sum_offer_divergence via CalloutStack', () => {
     render(<PVA seedOverride={SEED_VARIANTS.lump_sum_divergent} />);
+    clickCalculate();
     expect(screen.getByTestId('callout-lump_sum_offer_divergence')).toBeInTheDocument();
   });
 
   it('TC-PVA-Orchestrator-14: coverture_zero_combo seed surfaces precedence-sorted multi-callout stack', () => {
     render(<PVA seedOverride={SEED_VARIANTS.coverture_zero_combo} />);
+    clickCalculate();
     // Expect at minimum: coverture_zero_fraction (5), vesting_status_callout (6),
     // form_of_benefit_callout (7), qpsa (8), qdro_handoff (11), liability (12).
     expect(screen.getByTestId('callout-coverture_zero_fraction')).toBeInTheDocument();
@@ -255,6 +282,7 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
   describe('PVA → Blueprint §6 write (Session 22 PR 2)', () => {
     it('TC-PVA-Blueprint-1: tier_1 result triggers updatePensionValuation with headlinePV (no marital narrowing)', () => {
       render(<PVA seedOverride={SEED_VARIANTS.tier1_canonical} />);
+      clickCalculate();
       const s6 = useBlueprintStore.getState().sections.s6;
       expect(s6.data.pva).not.toBeNull();
       expect(s6.data.pva.path).toBe('tier_1');
@@ -267,6 +295,7 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
 
     it('TC-PVA-Blueprint-2: tier_3 result includes both headlinePV + maritalPV + coverturePercent', () => {
       render(<PVA seedOverride={SEED_VARIANTS.tier3_canonical} />);
+      clickCalculate();
       const s6 = useBlueprintStore.getState().sections.s6;
       expect(s6.data.pva).not.toBeNull();
       expect(s6.data.pva.path).toBe('tier_3');
@@ -313,12 +342,252 @@ describe('PVA orchestrator (§7.10.3 / LL-17)', () => {
       });
 
       render(<PVA seedOverride={SEED_VARIANTS.tier3_canonical} />);
+      clickCalculate();
       const s6 = useBlueprintStore.getState().sections.s6;
       expect(s6.data.pit).not.toBeNull();
       expect(s6.data.pit.planBalance).toBe(200000);
       expect(s6.data.pva).not.toBeNull();
       expect(s6.data.pva.path).toBe('tier_3');
       expect(s6.sourceModule).toBe('m4+m5');
+    });
+  });
+
+  // ─── Failure A — compute/persist gated behind explicit Calculate click ────
+  // A financial estimate must never be silently computed and saved before the
+  // user has reviewed it. `results` still computes reactively (cheap/pure),
+  // but it is neither displayed, written to m5Store, nor synced to Blueprint
+  // §6 until the user clicks "Calculate present value" in InputsPanel — with
+  // one exception: flag_only has no PV to compute at all (it's a routing
+  // banner recording "specialist required"), so it stays reactive/immediate.
+  describe('Compute/persist gating (§7.10.4 — no result without explicit Calculate)', () => {
+    it('TC-PVA-Gate-1: fresh seed shows the placeholder — NOT a bignumber — before Calculate is clicked, even though inputs are complete', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.tier1_canonical} />);
+      expect(screen.getByTestId('pva-results-placeholder')).toBeInTheDocument();
+      expect(screen.queryByTestId('pva-bignumber-headline')).not.toBeInTheDocument();
+    });
+
+    it('TC-PVA-Gate-2: fresh seed does NOT persist results to m5Store before Calculate is clicked', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.tier1_canonical} />);
+      const stored = useM5Store.getState().pensionValuation.assets[SEED_VARIANTS.tier1_canonical.assetId];
+      expect(stored?.results).toBeUndefined();
+    });
+
+    it('TC-PVA-Gate-3: fresh seed does NOT sync to Blueprint §6 before Calculate is clicked', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.tier1_canonical} />);
+      expect(useBlueprintStore.getState().sections.s6.data.pva).toBeNull();
+    });
+
+    it('TC-PVA-Gate-4: clicking Calculate reveals the bignumber, persists to m5Store, and syncs to Blueprint §6', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.tier1_canonical} />);
+      clickCalculate();
+      expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
+      const stored = useM5Store.getState().pensionValuation.assets[SEED_VARIANTS.tier1_canonical.assetId];
+      expect(stored?.results).not.toBeNull();
+      expect(useBlueprintStore.getState().sections.s6.data.pva).not.toBeNull();
+    });
+
+    it('TC-PVA-Gate-5: flag_only is unaffected by gating — banner shows immediately, no click required', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.flag_only_multiemployer} />);
+      expect(screen.getByTestId('pva-banner-flagonly')).toBeInTheDocument();
+      expect(useBlueprintStore.getState().sections.s6.data.pva).toEqual({
+        path: 'flag_only',
+        headlinePV: null,
+        maritalPV: null,
+      });
+    });
+
+    it('TC-PVA-Gate-6: editing an input after Calculate immediately invalidates the display, clears the persisted m5Store result, and clears Blueprint §6', () => {
+      render(<PVA seedOverride={SEED_VARIANTS.tier1_canonical} />);
+      clickCalculate();
+      expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
+
+      const nraInput = screen.getByTestId('pva-input-planNRA').querySelector('input');
+      fireEvent.change(nraInput, { target: { value: '66' } });
+
+      expect(screen.queryByTestId('pva-bignumber-headline')).not.toBeInTheDocument();
+      expect(screen.getByTestId('pva-results-placeholder')).toBeInTheDocument();
+      const stored = useM5Store.getState().pensionValuation.assets[SEED_VARIANTS.tier1_canonical.assetId];
+      expect(stored?.results).toBeNull();
+      expect(useBlueprintStore.getState().sections.s6.data.pva).toBeNull();
+    });
+
+    it('TC-PVA-Gate-7: a pension already calculated in a PRIOR session (persisted m5Store results present at mount) shows its result immediately — no re-click needed', () => {
+      const assetId = SEED_VARIANTS.tier1_canonical.assetId;
+      // Seed inputs as they'd genuinely look for an already-calculated pension
+      // — receiptForm included. In real usage ReceiptFormDropdown's own
+      // default-commit effect fires the moment InputsPanel first mounts,
+      // long before Calculate can be clicked, so a truly-prior-session asset
+      // never has it unset; a bare fixture (missing receiptForm) would still
+      // trigger that default-commit on THIS mount, which is a real edit and
+      // would correctly (if confusingly, for a test) invalidate the seed.
+      const priorInputs = { ...SEED_VARIANTS.tier1_canonical.inputs, receiptForm: 'monthly_db_stream' };
+      useM5Store.getState().setPVAAssetInputs(assetId, priorInputs);
+      const priorResults = calculatePensionValue({ ...priorInputs, path: 'tier_1' });
+      useM5Store.getState().setPVAAssetResults(assetId, priorResults);
+
+      render(<PVA seedOverride={SEED_VARIANTS.tier1_canonical} />);
+      expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
+      expect(screen.queryByTestId('pva-results-placeholder')).not.toBeInTheDocument();
+    });
+
+    it('TC-PVA-Gate-8: switching to a different (never-calculated) pension and back to a calculated one — the calculated one still shows its result, the never-touched one shows the placeholder', () => {
+      seedM2([
+        // 'frozen' routes to tier_1 (Tier1And2Fields) regardless of tierOverride,
+        // avoiding the coverture-specific fields tier_3's default would require.
+        { id: 'pen-calc', category: 'pensions', planName: 'Calculated', whoseplan: 'Client', accrualStatus: 'frozen' },
+        { id: 'pen-fresh', category: 'pensions', planName: 'Fresh', whoseplan: 'Client', accrualStatus: 'frozen' },
+      ]);
+      render(<PVA />);
+
+      fireEvent.click(screen.getByTestId('pva-asset-picker-item-pen-calc'));
+      const nraInput = screen.getByTestId('pva-input-planNRA').querySelector('input');
+      fireEvent.change(nraInput, { target: { value: '65' } });
+      const accruedInput = screen
+        .getByTestId('pva-input-accruedMonthlyBenefitAtNRA')
+        .querySelector('input');
+      fireEvent.change(accruedInput, { target: { value: '3000' } });
+      const dobInput = screen.getByTestId('pva-input-participantDOB');
+      fireEvent.change(dobInput, { target: { value: '1980-01-01' } });
+      clickCalculate();
+      expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('pva-asset-picker-item-pen-fresh'));
+      expect(screen.getByTestId('pva-results-placeholder')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByTestId('pva-asset-picker-item-pen-calc'));
+      expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
+    });
+
+    // ─── "valued" tag must track GENUINE validity, not mere presence ────────
+    // Same bug class as Failure B's false-$0: `setPVAAssetResults` must not
+    // persist a result whose headline PV is non-finite/exactly-zero (a blank
+    // required numeric), or the pension-picker's "(valued)" tag — which only
+    // checks `assets[id].results != null` — lights up on a broken calculation
+    // even though ResultsPanel correctly shows the placeholder.
+    it('TC-PVA-Gate-9: clicking Calculate with a blank required numeric does NOT set the "valued" tag in the picker', () => {
+      seedM2([
+        { id: 'pen-broken', category: 'pensions', planName: 'Broken', whoseplan: 'Client', accrualStatus: 'frozen' },
+      ]);
+      render(<PVA />);
+      fireEvent.click(screen.getByTestId('pva-asset-picker-item-pen-broken'));
+
+      fireEvent.change(screen.getByTestId('pva-input-planNRA').querySelector('input'), {
+        target: { value: '65' },
+      });
+      fireEvent.change(screen.getByTestId('pva-input-participantDOB'), {
+        target: { value: '1980-01-01' },
+      });
+      fireEvent.change(screen.getByTestId('pva-input-caseEffectiveDate'), {
+        target: { value: '2026-05-01' },
+      });
+      // accruedMonthlyBenefitAtNRA intentionally left blank — the reported bug.
+      clickCalculate();
+
+      expect(screen.getByTestId('pva-results-placeholder')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('pva-asset-picker-item-pen-broken-valued'),
+      ).not.toBeInTheDocument();
+      expect(
+        useM5Store.getState().pensionValuation.assets['pen-broken']?.results,
+      ).toBeUndefined();
+    });
+
+    it('TC-PVA-Gate-10: clicking Calculate with all required fields filled DOES set the "valued" tag (guards against overcorrecting)', () => {
+      seedM2([
+        { id: 'pen-good', category: 'pensions', planName: 'Good', whoseplan: 'Client', accrualStatus: 'frozen' },
+      ]);
+      render(<PVA />);
+      fireEvent.click(screen.getByTestId('pva-asset-picker-item-pen-good'));
+
+      fireEvent.change(screen.getByTestId('pva-input-planNRA').querySelector('input'), {
+        target: { value: '65' },
+      });
+      fireEvent.change(
+        screen.getByTestId('pva-input-accruedMonthlyBenefitAtNRA').querySelector('input'),
+        { target: { value: '3000' } },
+      );
+      fireEvent.change(screen.getByTestId('pva-input-participantDOB'), {
+        target: { value: '1980-01-01' },
+      });
+      fireEvent.change(screen.getByTestId('pva-input-caseEffectiveDate'), {
+        target: { value: '2026-05-01' },
+      });
+      clickCalculate();
+
+      expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('pva-asset-picker-item-pen-good-valued'),
+      ).toBeInTheDocument();
+    });
+  });
+
+  // ─── Scroll-to-result on Calculate ───────────────────────────────────────
+  // jsdom has no real scrollIntoView implementation, so it's stubbed per-test
+  // to assert the call happened — not to verify actual scroll positioning.
+  describe('Scroll-to-result on Calculate', () => {
+    it('TC-PVA-Scroll-1: a genuine Calculate click scrolls the results section into view', () => {
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      render(<PVA seedOverride={SEED_VARIANTS.tier1_canonical} />);
+      clickCalculate();
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'start' });
+    });
+
+    it('TC-PVA-Scroll-2: a blank-required-field Calculate (placeholder shown, no genuine result) does NOT scroll', () => {
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      seedM2([
+        { id: 'pen-broken-scroll', category: 'pensions', planName: 'Broken', whoseplan: 'Client', accrualStatus: 'frozen' },
+      ]);
+      render(<PVA />);
+      fireEvent.click(screen.getByTestId('pva-asset-picker-item-pen-broken-scroll'));
+      fireEvent.change(screen.getByTestId('pva-input-planNRA').querySelector('input'), {
+        target: { value: '65' },
+      });
+      fireEvent.change(screen.getByTestId('pva-input-participantDOB'), {
+        target: { value: '1980-01-01' },
+      });
+      fireEvent.change(screen.getByTestId('pva-input-caseEffectiveDate'), {
+        target: { value: '2026-05-01' },
+      });
+      // accruedMonthlyBenefitAtNRA left blank.
+      clickCalculate();
+
+      expect(screen.getByTestId('pva-results-placeholder')).toBeInTheDocument();
+      expect(scrollIntoView).not.toHaveBeenCalled();
+    });
+
+    it('TC-PVA-Scroll-3: reselecting an already-calculated pension from the list does NOT scroll (no click, no jump)', () => {
+      const scrollIntoView = vi.fn();
+      Element.prototype.scrollIntoView = scrollIntoView;
+      seedM2([
+        { id: 'pen-calc-scroll', category: 'pensions', planName: 'Calculated', whoseplan: 'Client', accrualStatus: 'frozen' },
+        { id: 'pen-fresh-scroll', category: 'pensions', planName: 'Fresh', whoseplan: 'Client', accrualStatus: 'frozen' },
+      ]);
+      render(<PVA />);
+
+      fireEvent.click(screen.getByTestId('pva-asset-picker-item-pen-calc-scroll'));
+      fireEvent.change(screen.getByTestId('pva-input-planNRA').querySelector('input'), {
+        target: { value: '65' },
+      });
+      fireEvent.change(
+        screen.getByTestId('pva-input-accruedMonthlyBenefitAtNRA').querySelector('input'),
+        { target: { value: '3000' } },
+      );
+      fireEvent.change(screen.getByTestId('pva-input-participantDOB'), {
+        target: { value: '1980-01-01' },
+      });
+      fireEvent.change(screen.getByTestId('pva-input-caseEffectiveDate'), {
+        target: { value: '2026-05-01' },
+      });
+      clickCalculate();
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+
+      // Switch away and back — neither hop involves a Calculate click.
+      fireEvent.click(screen.getByTestId('pva-asset-picker-item-pen-fresh-scroll'));
+      fireEvent.click(screen.getByTestId('pva-asset-picker-item-pen-calc-scroll'));
+      expect(screen.getByTestId('pva-bignumber-headline')).toBeInTheDocument();
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
     });
   });
 });

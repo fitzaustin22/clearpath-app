@@ -2,10 +2,13 @@
 
 /**
  * InputsPanel — v3 reskin. Visual wrapper only; all engine and store logic
- * unchanged. Adds intro callout, form-card wrapper, Assumptions collapsible
- * (CommonFields via display:none — NOT conditional rendering, so
- * TC-PVA-InputsPanel-1 testids remain in DOM regardless of toggle state),
- * and a "Calculate present value" CTA that calls onCalculate?.().
+ * unchanged. Adds intro callout, form-card wrapper, an always-visible
+ * required-inputs block (CommonFields section="required" — participantDOB
+ * drives the annuity-factor lookup and is not pre-populated, so it must stay
+ * surfaced or the engine throws → null PV), an Optional-assumptions collapsible
+ * (CommonFields section="assumptions" via display:none — NOT conditional
+ * rendering, so TC-PVA-InputsPanel-1 testids remain in DOM regardless of toggle
+ * state), and a "Calculate present value" CTA that calls onCalculate?.().
  */
 
 import { useState } from 'react';
@@ -79,7 +82,13 @@ export default function InputsPanel({ assetId, path, frozenRoutingApplied = fals
         <PlanTypeSelector inputs={safeInputs} onChange={updateField} />
         <PensionStatusSelector inputs={safeInputs} onChange={updateField} />
 
-        {/* Assumptions collapsible — display:none preserves testids in DOM */}
+        {/* Required compute inputs — always visible. participantDOB drives the
+            annuity-factor lookup and is not pre-populated; hiding it (as the
+            first reskin pass did) starved the engine and produced a null PV. */}
+        <CommonFields inputs={safeInputs} onChange={updateField} section="required" />
+
+        {/* Optional-assumptions collapsible — display:none preserves testids in
+            DOM. Only seeded/inert/optional fields live here now. */}
         <div style={{ marginTop: 16 }}>
           <button
             type="button"
@@ -100,10 +109,10 @@ export default function InputsPanel({ assetId, path, frozenRoutingApplied = fals
             }}
           >
             <span style={{ color: T.GOLD, fontSize: 12 }}>{assumptionsOpen ? '▾' : '▸'}</span>
-            <span>Assumptions (discount rate, mortality table)</span>
+            <span>Optional assumptions (mortality table)</span>
           </button>
           <div style={{ display: assumptionsOpen ? 'block' : 'none' }}>
-            <CommonFields inputs={safeInputs} onChange={updateField} />
+            <CommonFields inputs={safeInputs} onChange={updateField} section="assumptions" />
           </div>
         </div>
 
