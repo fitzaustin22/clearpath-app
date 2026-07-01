@@ -11,6 +11,7 @@ import useBlueprintStore from '@/src/stores/blueprintStore';
 import { deriveSupportEstimate } from '@/src/lib/supportRange/computeSupportRange';
 import { buildSupportRangePayload } from '@/src/lib/supportRange/buildSupportRangePayload';
 import { prePopulateSupportRange, isSupportRangeFreshDefault } from '@/src/lib/supportRange/prefill';
+import { buildInputSnapshot, isSupportSaved } from './resultValidity.js';
 import { Eyebrow, StepHeading, FooterCTA } from './wizard/ui';
 import { EYEBROW, HEADINGS, SUBS, FOOTER_TITLES, FOOTER_SUBS, nextLabel } from './wizard/copy';
 import StepIncome from './wizard/StepIncome';
@@ -22,8 +23,12 @@ import StepResults from './wizard/StepResults';
  * Module 5 Support Estimator — four-step wizard (Income -> Children & custody ->
  * Marriage details -> Results). Uniform-AAML rule-of-thumb math (src/lib/supportRange),
  * region display-only. Live recompute on every input change; "Save to my Blueprint"
- * writes §8 (the saved/count state is DERIVED from blueprintStore completion, not a
- * local flag). Tier gating is handled at the landing/route layer (unchanged behavior).
+ * writes §8. The Save-button-vs-Saved-pill state is DERIVED (see resultValidity.js) —
+ * complete in blueprintStore AND its persisted input snapshot still matches the
+ * current inputs — never a local flag. An edit after save imperatively CLEARS §8
+ * (in `set`, below) rather than merely hiding it, so the Blueprint is never left
+ * showing a stale/un-re-saved figure. Tier gating is handled at the landing/route
+ * layer (unchanged behavior).
  */
 export function SupportEstimator({ userTier, disablePrePop = false }) {
   void userTier; // accepted for route compatibility; gating handled upstream
@@ -40,9 +45,10 @@ export function SupportEstimator({ userTier, disablePrePop = false }) {
   const payStubDecoder = useM3Store((s) => s.payStubDecoder);
   const filingStatusOptimizer = useM4Store((s) => s.filingStatusOptimizer);
 
-  // Saved state is the TRUE Blueprint completion, not a local flag.
-  const s8status = useBlueprintStore((s) => s.sections.s8.status);
-  const saved = s8status === 'complete';
+  // Saved state is the TRUE Blueprint completion AND validity-relative-to-
+  // current-inputs, not a local flag and not status alone (see resultValidity.js).
+  const s8 = useBlueprintStore((s) => s.sections.s8);
+  const saved = isSupportSaved(inputs, s8);
 
   // One-time mount prefill, gated to fresh-default inputs (so we never clobber
   // a returning user's edits). incomeYou <- M3 gross monthly; incomeSpouse <- M4
@@ -71,6 +77,15 @@ export function SupportEstimator({ userTier, disablePrePop = false }) {
     // second field write can't resurrect a badge the first write just cleared.
     const live = useM5Store.getState().supportRange._prePopSources;
     if (live && live[field]) setSources({ ...live, [field]: null });
+    // Imperative invalidation, fired from the edit action itself — NOT a
+    // useEffect watching inputs. An effect here would race the live-recompute
+    // path (mirrors the #97 lesson: effect-based invalidation raced the
+    // compute effect and had to be rewritten imperative). An edit means §8 is
+    // CLEARED, not gated: an un-re-saved edit must never leave a stale figure
+    // sitting in the Blueprint.
+    if (useBlueprintStore.getState().sections.s8.status === 'complete') {
+      useBlueprintStore.getState().clearSupportAnalysis();
+    }
   };
 
   const goStep = (s) => {
@@ -81,7 +96,10 @@ export function SupportEstimator({ userTier, disablePrePop = false }) {
   };
 
   const onSave = () => {
-    useBlueprintStore.getState().updateSupportAnalysis(buildSupportRangePayload(estimate, inputs));
+    const payload = buildSupportRangePayload(estimate, inputs);
+    useBlueprintStore.getState().updateSupportAnalysis(
+      payload && { ...payload, _inputSnapshot: buildInputSnapshot(inputs) },
+    );
   };
 
   return (

@@ -56,4 +56,22 @@ describe('buildSupportRangePayload', () => {
     expect(p.spousalSupport).toBeNull();
     expect(p.childSupport).toBeNull();
   });
+
+  it('metadata.incomeEntered is true when at least one income is filled in', () => {
+    const p = buildSupportRangePayload(deriveSupportEstimate(inputs), inputs);
+    expect(p.metadata.incomeEntered).toBe(true);
+  });
+
+  it('metadata.incomeEntered is false when both incomes are blank (no genuine data — blueprintStore completion gate)', () => {
+    const blank = { ...inputs, incomeYou: '', incomeSpouse: '' };
+    const p = buildSupportRangePayload(deriveSupportEstimate(blank), blank);
+    expect(p.metadata.incomeEntered).toBe(false);
+    expect(Number.isFinite(Number(p.totalMonthlySupport))).toBe(true); // still finite (coerced 0) — the gate is metadata-driven, not this
+  });
+
+  it('metadata.incomeEntered is true when only one party’s income is entered (a real $0-earner spouse)', () => {
+    const oneEntered = { ...inputs, incomeYou: '', incomeSpouse: '12000' };
+    const p = buildSupportRangePayload(deriveSupportEstimate(oneEntered), oneEntered);
+    expect(p.metadata.incomeEntered).toBe(true);
+  });
 });

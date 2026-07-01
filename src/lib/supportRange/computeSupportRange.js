@@ -94,6 +94,10 @@ export function deriveSupportEstimate(inputs, opts = {}) {
     child.label = 'No child support';
     child.driver = 'You told us there are no children to support.';
   } else if (c.childToHer >= 0) {
+    // TODO(design): a $0 childToHer (e.g. near-equal incomes/parenting time)
+    // still renders here as a $0/$0/$0 "receive" band rather than the
+    // spousal block's dedicated "none" empty-state — pending spec on
+    // whether/how to match that framing.
     child.direction = 'receive';
     child.label = 'Child support you may receive';
     child.driver = 'With ' + c.n + (c.n === 1 ? ' child' : ' children') + ' in your care ' + Math.round(c.herTime * 100) + '% of nights, your spouse covers their share of the children’s costs.';

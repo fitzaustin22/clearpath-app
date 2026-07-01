@@ -408,11 +408,21 @@ const useBlueprintStore = create(
       // exact consumer S8SupportAnalysis shape PLUS attorney-doc lineage
       // metadata (citations/formulaId/jurisdiction/as-of/imputation, D-V2-7).
       // 'complete' when a finite total was computed (an analysis ran, even at
-      // $0); a null/total-less payload reads 'empty'.
+      // $0) AND genuine income was entered; a null/total-less payload, or one
+      // where the producer explicitly flags metadata.incomeEntered === false
+      // (blank-income wizard advance — computeSupportRange.js coerces '' to a
+      // FINITE 0, so "finite total" alone can't tell a real $0 from no-data),
+      // reads 'empty'. metadata.incomeEntered is only set by the reskinned
+      // wizard's payload builder — its absence (older/other payload shapes)
+      // never blocks completion, preserving existing writer contracts.
       updateSupportAnalysis: (payload) => {
         const data = payload ?? null;
         const status =
-          data != null && Number.isFinite(Number(data.totalMonthlySupport)) ? 'complete' : 'empty';
+          data != null &&
+          Number.isFinite(Number(data.totalMonthlySupport)) &&
+          data.metadata?.incomeEntered !== false
+            ? 'complete'
+            : 'empty';
         set(state => ({
           sections: {
             ...state.sections,
@@ -422,6 +432,13 @@ const useBlueprintStore = create(
         }));
         return { status };
       },
+
+      // Imperative clear — invoked from the wizard's input onChange path the
+      // instant an edit lands while §8 was previously saved (mirrors
+      // updatePensionValuation(null) for PVA/#97). Never called from a
+      // reactive effect: firing it inline in the edit handler means there's no
+      // race with the wizard's live recompute.
+      clearSupportAnalysis: () => get().updateSupportAnalysis(null),
 
       // §10 — Negotiation Strategy (M6 multi-source, Phase 0b). Two feeder
       // tools write independent slots into s10.data: Priorities Worksheet →

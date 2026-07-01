@@ -120,6 +120,7 @@ export default function StepResults({ estimate, saved, onSave, onEdit }) {
             <CheckIcon /> {SAVED_LABEL}
           </span>
         ) : (
+          // TODO(design): disabled styling for Save on blank income — pending spec.
           <PrimaryButton onClick={onSave} data-testid="se-save">{SAVE_LABEL}</PrimaryButton>
         )}
         <SecondaryButton onClick={onEdit} data-testid="se-edit">{EDIT_LABEL}</SecondaryButton>

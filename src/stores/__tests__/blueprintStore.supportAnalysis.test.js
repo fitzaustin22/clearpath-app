@@ -53,4 +53,27 @@ describe('blueprintStore.updateSupportAnalysis — §8 writer (V2 Phase 2)', () 
     expect(useBlueprintStore.getState().sections.s8.status).toBe('empty');
     expect(useBlueprintStore.getState().sections.s8.data).toBeNull();
   });
+
+  it('metadata.incomeEntered === false marks §8 empty even with a finite total (blank-income gate)', () => {
+    const ret = useBlueprintStore.getState().updateSupportAnalysis({
+      totalMonthlySupport: 0,
+      metadata: { ...samplePayload().metadata, incomeEntered: false },
+    });
+    expect(ret).toEqual({ status: 'empty' });
+    expect(useBlueprintStore.getState().sections.s8.status).toBe('empty');
+    expect(useBlueprintStore.getState().sections.s8.data).toBeNull();
+  });
+
+  it('a payload with no metadata.incomeEntered field is unaffected by the gate', () => {
+    const ret = useBlueprintStore.getState().updateSupportAnalysis(samplePayload());
+    expect(ret).toEqual({ status: 'complete' });
+  });
+
+  it('clearSupportAnalysis resets §8 to empty (the wizard edit-invalidation path)', () => {
+    useBlueprintStore.getState().updateSupportAnalysis(samplePayload());
+    expect(useBlueprintStore.getState().sections.s8.status).toBe('complete');
+    useBlueprintStore.getState().clearSupportAnalysis();
+    expect(useBlueprintStore.getState().sections.s8.status).toBe('empty');
+    expect(useBlueprintStore.getState().sections.s8.data).toBeNull();
+  });
 });

@@ -9,6 +9,8 @@ export default function StepIncome({ inputs, set, sources }) {
     <div data-testid="se-step-income">
       <WizardSection title="MONTHLY INCOME" first>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
+          {/* TODO(design): blank-income error state — wire WizardField's existing
+              `error` prop + copy once Claude Design has specced the message. */}
           <WizardField label="What you earn" field="incomeYou" value={inputs.incomeYou}
             onChange={set} numeric prefix="$" prefilledFrom={sources?.incomeYou ? 'M3' : undefined}
             tooltip={HELP.incomeYou} />
