@@ -118,8 +118,10 @@ export default function M1Page() {
         </div>
 
         {/* Card 1 — Readiness Assessment (flagship, first). No card header: the
-            component's own welcome screen is the centerpiece. */}
+            component's own welcome screen is the centerpiece. The id is the
+            in-page scroll target the embedded Budget Gap back-link points at. */}
         <section
+          id="m1-readiness-section"
           style={{
             backgroundColor: T.CARD,
             border: `1px solid ${T.LINE}`,
@@ -129,12 +131,16 @@ export default function M1Page() {
             marginBottom: 30,
           }}
         >
-          <ReadinessAssessment />
+          {/* embedded: suppress the component's standalone chrome; its CTA
+              smooth-scrolls down to the Budget Gap section instead of routing. */}
+          <ReadinessAssessment embedded inPageTargetId="m1-budget-gap-section" />
         </section>
 
         {/* Card 2 — Budget Gap Calculator (second). Fuller header: the component
-            has no welcome screen of its own. */}
+            has no welcome screen of its own. The id is the in-page scroll target
+            the embedded Readiness CTA points at. */}
         <section
+          id="m1-budget-gap-section"
           style={{
             backgroundColor: T.CARD,
             border: `1px solid ${T.LINE}`,
@@ -163,7 +169,9 @@ export default function M1Page() {
               actually costs &mdash; in one clear number.
             </p>
           </div>
-          <BudgetGapCalculator />
+          {/* embedded: suppress the tool's standalone page chrome / card-in-card;
+              its back-link smooth-scrolls up to the Readiness section. */}
+          <BudgetGapCalculator embedded inPageTargetId="m1-readiness-section" />
         </section>
       </div>
     </main>

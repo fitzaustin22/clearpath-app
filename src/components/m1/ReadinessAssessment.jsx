@@ -169,7 +169,11 @@ const eyebrowStyle = {
 // ════════════════════════════════════════════════════════════════
 // Component
 // ════════════════════════════════════════════════════════════════
-export default function ReadinessAssessment() {
+// `embedded` (default false = standalone): when rendered inline on the M1
+// landing, the per-tier Budget-Gap CTA smooth-scrolls to the sibling section the
+// landing owns (id passed via inPageTargetId) instead of routing to the
+// standalone sub-route. Standalone render keeps native route navigation.
+export default function ReadinessAssessment({ embedded = false, inPageTargetId = 'm1-budget-gap-section' }) {
   const {
     readinessAssessment,
     setReadinessAnswer,
@@ -205,6 +209,18 @@ export default function ReadinessAssessment() {
   const resultsHeadingRef = useRef(null);
 
   const autoAdvance = !reduceMotion;
+
+  // ── In-page nav (D1 split): embedded ⇒ the Budget-Gap CTA scrolls to the
+  // landing's Budget Gap section instead of navigating; standalone keeps the
+  // route. The landing owns the target id (passed as a prop), so the component
+  // never traverses parent DOM — it just resolves an id the landing declared. ──
+  const budgetGapHref = embedded ? `#${inPageTargetId}` : '/modules/m1/budget-gap';
+  const handleBudgetGapNav = embedded
+    ? (e) => {
+        e.preventDefault();
+        document.getElementById(inPageTargetId)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    : undefined;
 
   // ── Keep reduced-motion preference live ──
   useEffect(() => {
@@ -867,7 +883,7 @@ export default function ReadinessAssessment() {
                 Ready for the next step? The Budget Gap Calculator answers the question most women
                 start with: <em>Can I afford to live on my own?</em>
               </p>
-              <PrimaryLink href="/modules/m1/budget-gap">
+              <PrimaryLink href={budgetGapHref} onClick={handleBudgetGapNav}>
                 Take the Budget Gap Calculator&nbsp;&nbsp;&rarr;
               </PrimaryLink>
             </>
@@ -890,7 +906,7 @@ export default function ReadinessAssessment() {
                 </p>
               )}
               {!budgetGapCompleted && (
-                <PrimaryLink href="/modules/m1/budget-gap">
+                <PrimaryLink href={budgetGapHref} onClick={handleBudgetGapNav}>
                   Take the Budget Gap Calculator&nbsp;&nbsp;&rarr;
                 </PrimaryLink>
               )}
@@ -1187,12 +1203,15 @@ export default function ReadinessAssessment() {
   );
 }
 
-// Navy pill link used for the per-tier CTAs (anchor, not button — preserves the
-// existing routes + native navigation).
-function PrimaryLink({ href, children }) {
+// Navy pill link used for the per-tier CTAs. Anchor in both modes: standalone
+// uses a real route href; embedded uses an in-page hash href + an onClick that
+// smooth-scrolls (progressive enhancement — the hash anchor still jumps if JS
+// is off). onClick is optional so route CTAs (no handler) are unaffected.
+function PrimaryLink({ href, children, onClick }) {
   return (
     <a
       href={href}
+      onClick={onClick}
       className="cp-ra-primary"
       style={{
         display: 'inline-block',
