@@ -253,6 +253,28 @@ describe('Support Estimator wizard flow', () => {
     );
   });
 
+  it('a $0 child-support result renders the sibling label+sentence, no $0/$0/$0 range track', () => {
+    render(<SupportEstimator disablePrePop />);
+    // Equal incomes + default 2 children; set 50/50 nights on step 2 so
+    // spOwes === youOwes -> childToHer is exactly 0.
+    fillIncomes('4000', '4000');
+    fireEvent.click(screen.getByTestId('se-next')); // 1 -> 2
+    fireEvent.change(screen.getByTestId('se-parenting-input'), { target: { value: '50' } });
+    fireEvent.click(screen.getByTestId('se-next')); // 2 -> 3
+    fireEvent.click(screen.getByTestId('se-next')); // 3 -> 4
+
+    const results = screen.getByTestId('se-step-results');
+    expect(within(results).getByText('NO CHILD SUPPORT INDICATED')).toBeInTheDocument();
+    expect(within(results).getByText(
+      'With 2 children in your care 50% of nights, the guideline points to little or no child support changing hands here.',
+    )).toBeInTheDocument();
+    // Spousal is also 'none' here (equal incomes), so NO range track anywhere —
+    // and specifically no $0 LOW / MOST LIKELY / HIGH figures.
+    expect(within(results).queryByTestId('se-range-low')).not.toBeInTheDocument();
+    expect(within(results).queryByTestId('se-range-likely')).not.toBeInTheDocument();
+    expect(within(results).queryByTestId('se-range-high')).not.toBeInTheDocument();
+  });
+
   it('server-renders step 1 without throwing, with the responsive two-up income grid', () => {
     // SSR smoke: catches first-paint/SSR-only bugs (window access during render,
     // effect-only state) the way a cold page load would — the live route is

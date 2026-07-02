@@ -120,7 +120,8 @@ export default function StepResults({ estimate, saved, onSave, onEdit }) {
             <CheckIcon /> {SAVED_LABEL}
           </span>
         ) : (
-          // TODO(design): disabled styling for Save on blank income — pending spec.
+          // Blank-income Save styling is moot: step 1's Continue gate means
+          // results are unreachable without both incomes entered.
           <PrimaryButton onClick={onSave} data-testid="se-save">{SAVE_LABEL}</PrimaryButton>
         )}
         <SecondaryButton onClick={onEdit} data-testid="se-edit">{EDIT_LABEL}</SecondaryButton>
