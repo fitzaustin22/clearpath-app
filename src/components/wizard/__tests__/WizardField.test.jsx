@@ -309,6 +309,92 @@ describe('WizardField — tooltip (Q-3/Q-6/Q-7)', () => {
   });
 });
 
+describe('WizardField — required-field additions (M5 income refinement)', () => {
+  it('passes placeholder through to the input', () => {
+    render(<WizardField {...baseProps} placeholder="e.g. 4,200" />);
+    expect(screen.getByTestId('wizard-field-input').getAttribute('placeholder')).toBe('e.g. 4,200');
+  });
+
+  it('renders no placeholder attribute when the prop is absent', () => {
+    render(<WizardField {...baseProps} />);
+    expect(screen.getByTestId('wizard-field-input').getAttribute('placeholder')).toBeNull();
+  });
+
+  it('styles placeholder text muted via a scoped ::placeholder rule', () => {
+    const { container } = render(<WizardField {...baseProps} placeholder="e.g. 4,200" />);
+    const style = container.querySelector('style');
+    expect(style).not.toBeNull();
+    expect(style.textContent).toContain('::placeholder');
+    expect(style.textContent).toContain(T.MUTED);
+    expect(screen.getByTestId('wizard-field-input').className).toContain('cp-wf-input');
+  });
+
+  it('renders the quiet uppercase Required tag when required is set', () => {
+    render(<WizardField {...baseProps} required />);
+    const tag = screen.getByTestId('wizard-field-required');
+    expect(tag).toHaveTextContent('Required');
+    expect(tag).toHaveStyle({
+      fontSize: '10px',
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '0.5px',
+      color: T.MUTED,
+    });
+  });
+
+  it('does not render the Required tag by default', () => {
+    render(<WizardField {...baseProps} />);
+    expect(screen.queryByTestId('wizard-field-required')).toBeNull();
+  });
+
+  it('renders Required alongside the provenance badge when both are set', () => {
+    render(<WizardField {...baseProps} required prefilledFrom="M3" />);
+    expect(screen.getByTestId('wizard-field-badge')).toHaveTextContent('From M3');
+    expect(screen.getByTestId('wizard-field-required')).toHaveTextContent('Required');
+  });
+
+  it('tone="amber" renders amber border/bg/ring and T.INK_2 helper text — no red', () => {
+    render(
+      <WizardField {...baseProps} error="Add what you earn to continue." tone="amber" />,
+    );
+    const input = screen.getByTestId('wizard-field-input');
+    expect(input).toHaveStyle({
+      borderColor: T.AMBER_BORDER,
+      backgroundColor: T.AMBER_BG,
+    });
+    expect(input.style.outlineWidth).toBe('3px');
+    expect(input.style.outlineColor).toBe('rgba(198, 138, 18, 0.12)');
+    const helper = screen.getByTestId('wizard-field-error');
+    expect(helper).toHaveTextContent('Add what you earn to continue.');
+    expect(helper).toHaveStyle({ color: T.INK_2 });
+  });
+
+  it('tone="amber" keeps aria-invalid + describedby wiring', () => {
+    render(<WizardField {...baseProps} error="Add it." tone="amber" />);
+    const input = screen.getByTestId('wizard-field-input');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(input.getAttribute('aria-describedby') || '').toContain(
+      screen.getByTestId('wizard-field-error').getAttribute('id'),
+    );
+  });
+
+  it('error without tone still renders the red treatment (backward compat)', () => {
+    render(<WizardField {...baseProps} error="Required" />);
+    expect(screen.getByTestId('wizard-field-input')).toHaveStyle({
+      borderColor: T.RED,
+      backgroundColor: T.CARD,
+    });
+    expect(screen.getByTestId('wizard-field-error')).toHaveStyle({ color: T.RED });
+  });
+
+  it('calls onBlur with (field, value) when the input blurs', () => {
+    const onBlur = vi.fn();
+    render(<WizardField {...baseProps} onBlur={onBlur} value="123" />);
+    fireEvent.blur(screen.getByTestId('wizard-field-input'));
+    expect(onBlur).toHaveBeenCalledWith('homeValue', '123');
+  });
+});
+
 describe('WizardField — source contract', () => {
   it("declares 'use client' at the top", () => {
     expect(SOURCE.startsWith("'use client';")).toBe(true);

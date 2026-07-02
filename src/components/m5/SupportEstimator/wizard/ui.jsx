@@ -41,7 +41,9 @@ export function SecondaryButton({ onClick, children, 'data-testid': testId }) {
 }
 
 // Navy footer CTA bar (steps 1–3). title/sub on the left, Back + Continue on the right.
-export function FooterCTA({ title, sub, showBack, onBack, onNext, nextLabel }) {
+// nextDisabled renders Continue genuinely disabled (PrimaryButton's existing recipe:
+// gold fill kept, opacity .5, cursor not-allowed, click inert) — not just handler-less.
+export function FooterCTA({ title, sub, showBack, onBack, onNext, nextLabel, nextDisabled }) {
   return (
     <div style={{ backgroundColor: T.NAVY, padding: '16px 22px', borderRadius: 12, marginTop: 16,
       display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
@@ -51,8 +53,7 @@ export function FooterCTA({ title, sub, showBack, onBack, onNext, nextLabel }) {
       </div>
       <div style={{ display: 'flex', gap: 10 }}>
         {showBack && <SecondaryButton onClick={onBack} data-testid="se-back">Back</SecondaryButton>}
-        {/* TODO(design): disabled styling for Continue on blank income — pending spec. */}
-        <PrimaryButton onClick={onNext} data-testid="se-next">{nextLabel}</PrimaryButton>
+        <PrimaryButton onClick={onNext} disabled={nextDisabled} data-testid="se-next">{nextLabel}</PrimaryButton>
       </div>
     </div>
   );
