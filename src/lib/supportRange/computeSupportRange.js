@@ -93,11 +93,15 @@ export function deriveSupportEstimate(inputs, opts = {}) {
     child.direction = 'none';
     child.label = 'No child support';
     child.driver = 'You told us there are no children to support.';
+  } else if (childMag < 1) {
+    // Twin of the spousal aMag < 1 zero-state (2026-07 design refinement): a ~$0
+    // computation renders the calm label+sentence, never a $0/$0/$0 band. Copy
+    // echoes only the real input the tool has (the custody split) plus the calm
+    // finding — no cost/income rationale the engine didn't actually compute.
+    child.direction = 'none';
+    child.label = 'No child support indicated';
+    child.driver = 'With ' + c.n + (c.n === 1 ? ' child' : ' children') + ' in your care ' + Math.round(c.herTime * 100) + '% of nights, the guideline points to little or no child support changing hands here.';
   } else if (c.childToHer >= 0) {
-    // TODO(design): a $0 childToHer (e.g. near-equal incomes/parenting time)
-    // still renders here as a $0/$0/$0 "receive" band rather than the
-    // spousal block's dedicated "none" empty-state — pending spec on
-    // whether/how to match that framing.
     child.direction = 'receive';
     child.label = 'Child support you may receive';
     child.driver = 'With ' + c.n + (c.n === 1 ? ' child' : ' children') + ' in your care ' + Math.round(c.herTime * 100) + '% of nights, your spouse covers their share of the children’s costs.';
@@ -118,7 +122,8 @@ export function deriveSupportEstimate(inputs, opts = {}) {
   };
 
   // Duration (spousal): blank if no spousal / no marriage length entered
-  // Prototype-faithful: a typed "0" (not blank) yields "About 1 year"; childToHer===0 with kids yields a $0 "receive" band. Intentional — do not "fix" without product sign-off.
+  // Prototype-faithful: a typed "0" (not blank) yields "About 1 year". Intentional — do not "fix" without product sign-off.
+  // (The former ~$0-child "receive" band got that sign-off: it now renders the 'none' zero-state above.)
   let duration;
   if (aMag < 1 || inputs.marriageYears === '' || inputs.marriageYears == null) {
     duration = '—';
