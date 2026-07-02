@@ -7,6 +7,7 @@ import useBlueprintStore from '@/src/stores/blueprintStore';
 import { useM3Store } from '@/src/stores/m3Store';
 import { useM4Store } from '@/src/stores/m4Store';
 import { makeInitialSupportRangeInputs } from '@/src/lib/supportRange/prefill';
+import { T } from '@/src/lib/brand/tokens';
 
 // next/link reaches for the App Router; stub it so jsdom renders don't throw.
 vi.mock('next/link', () => ({ default: ({ children }) => children }));
@@ -191,6 +192,65 @@ describe('Support Estimator wizard flow', () => {
     fireEvent.click(screen.getByTestId('se-next')); // 2 -> 3
     expect(screen.getByTestId('se-step-marriage')).toBeInTheDocument();
     expect(screen.getByTestId('se-next')).toBeEnabled();
+  });
+
+  it('shows example placeholders on the income fields, not a literal $0', () => {
+    render(<SupportEstimator disablePrePop />);
+    const inputs = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-input');
+    expect(inputs[0].getAttribute('placeholder')).toBe('e.g. 4,200');
+    expect(inputs[1].getAttribute('placeholder')).toBe('e.g. 3,600');
+    expect(inputs[0]).toHaveValue('');
+    expect(inputs[1]).toHaveValue('');
+  });
+
+  it('marks both income fields with the quiet Required tag', () => {
+    render(<SupportEstimator disablePrePop />);
+    const tags = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-required');
+    expect(tags).toHaveLength(2);
+  });
+
+  it('shows the calm amber helper only after a field is touched then left empty — never red', () => {
+    render(<SupportEstimator disablePrePop />);
+    const step = screen.getByTestId('se-step-income');
+    expect(within(step).queryByTestId('wizard-field-error')).not.toBeInTheDocument();
+
+    const inputs = within(step).getAllByTestId('wizard-field-input');
+    fireEvent.focus(inputs[0]);
+    fireEvent.blur(inputs[0]); // touched, left empty
+    const helper = within(step).getByTestId('wizard-field-error');
+    expect(helper).toHaveTextContent('Add what you earn to continue.');
+    expect(helper).toHaveStyle({ color: T.INK_2 }); // ink-2 helper, not red
+    expect(inputs[0]).toHaveStyle({ borderColor: T.AMBER_BORDER, backgroundColor: T.AMBER_BG });
+  });
+
+  it('clears the amber helper the instant the field has a value (no re-blur needed)', () => {
+    render(<SupportEstimator disablePrePop />);
+    const step = screen.getByTestId('se-step-income');
+    const inputs = within(step).getAllByTestId('wizard-field-input');
+    fireEvent.blur(inputs[0]);
+    expect(within(step).getByTestId('wizard-field-error')).toBeInTheDocument();
+    fireEvent.change(inputs[0], { target: { value: '4200' } });
+    expect(within(step).queryByTestId('wizard-field-error')).not.toBeInTheDocument();
+  });
+
+  it('does not nudge the spouse field when only the first field was touched', () => {
+    render(<SupportEstimator disablePrePop />);
+    const step = screen.getByTestId('se-step-income');
+    const inputs = within(step).getAllByTestId('wizard-field-input');
+    fireEvent.blur(inputs[0]);
+    const helpers = within(step).getAllByTestId('wizard-field-error');
+    expect(helpers).toHaveLength(1);
+    expect(helpers[0]).toHaveTextContent('Add what you earn to continue.');
+  });
+
+  it('spouse field gets its own copy when touched and left empty', () => {
+    render(<SupportEstimator disablePrePop />);
+    const step = screen.getByTestId('se-step-income');
+    const inputs = within(step).getAllByTestId('wizard-field-input');
+    fireEvent.blur(inputs[1]);
+    expect(within(step).getByTestId('wizard-field-error')).toHaveTextContent(
+      'Add what your spouse earns to continue.',
+    );
   });
 
   it('server-renders step 1 without throwing, with the responsive two-up income grid', () => {
