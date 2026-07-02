@@ -19,11 +19,16 @@ beforeEach(() => {
   useM4Store.setState({ filingStatusOptimizer: { inputs: { spouseGrossAnnualIncome: 0 } } });
 });
 
-// Walk to step 4 by entering the two incomes on step 1 and advancing.
-function enterIncomesAndAdvanceToResults() {
+// Fill both step-1 incomes (required — Continue is disabled until both present).
+function fillIncomes(you = '2000', spouse = '12000') {
   const inputs = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-input');
-  fireEvent.change(inputs[0], { target: { value: '2000' } });   // incomeYou
-  fireEvent.change(inputs[1], { target: { value: '12000' } });  // incomeSpouse
+  fireEvent.change(inputs[0], { target: { value: you } });    // incomeYou
+  fireEvent.change(inputs[1], { target: { value: spouse } }); // incomeSpouse
+}
+
+// Walk to step 4 by entering the two incomes on step 1 and advancing.
+function enterIncomesAndAdvanceToResults(you, spouse) {
+  fillIncomes(you, spouse);
   fireEvent.click(screen.getByTestId('se-next')); // 1 -> 2
   fireEvent.click(screen.getByTestId('se-next')); // 2 -> 3
   fireEvent.click(screen.getByTestId('se-next')); // 3 -> 4
@@ -97,23 +102,20 @@ describe('Support Estimator wizard flow', () => {
     expect(s8.data.totalMonthlySupport).toBe(8675);
   });
 
-  it('advancing to results with blank income does not mark §8 complete', () => {
+  it('blank incomes cannot advance past step 1 at all (§8 blank-income path now unreachable)', () => {
+    // Supersedes the old "advance to results with blank income" walk: the step-1
+    // Continue gate makes that UI path impossible. The #100 pipeline gate
+    // (metadata.incomeEntered) stays unit-tested in buildSupportRangePayload tests.
     render(<SupportEstimator disablePrePop />);
-    fireEvent.click(screen.getByTestId('se-next')); // 1 -> 2, incomes left blank
-    fireEvent.click(screen.getByTestId('se-next')); // 2 -> 3
-    fireEvent.click(screen.getByTestId('se-next')); // 3 -> 4
-    fireEvent.click(screen.getByTestId('se-save'));
-
-    const s8 = useBlueprintStore.getState().sections.s8;
-    expect(s8.status).not.toBe('complete');
-    expect(s8.data).toBeNull();
+    fireEvent.click(screen.getByTestId('se-next')); // disabled — should not advance
+    expect(screen.getByTestId('se-step-income')).toBeInTheDocument();
+    expect(screen.queryByTestId('se-step-children')).not.toBeInTheDocument();
+    expect(useBlueprintStore.getState().sections.s8.data).toBeNull();
   });
 
   it('Edit my answers returns to step 1', () => {
     render(<SupportEstimator disablePrePop />);
-    fireEvent.click(screen.getByTestId('se-next'));
-    fireEvent.click(screen.getByTestId('se-next'));
-    fireEvent.click(screen.getByTestId('se-next'));
+    enterIncomesAndAdvanceToResults();
     expect(screen.getByTestId('se-step-results')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('se-edit'));
     expect(screen.getByTestId('se-step-income')).toBeInTheDocument();
@@ -121,6 +123,7 @@ describe('Support Estimator wizard flow', () => {
 
   it('Back from step 2 returns to step 1', () => {
     render(<SupportEstimator disablePrePop />);
+    fillIncomes();
     fireEvent.click(screen.getByTestId('se-next')); // 1 -> 2
     expect(screen.getByTestId('se-step-children')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('se-back')); // 2 -> 1
@@ -146,6 +149,48 @@ describe('Support Estimator wizard flow', () => {
     fireEvent.change(incomeInputs[0], { target: { value: '7500' } }); // she overrides her income
     expect(incomeInputs[0]).toHaveValue('7500');
     expect(screen.queryByText('From M3')).not.toBeInTheDocument();
+  });
+
+  it('disables Continue while either income is blank and enables the instant both are filled', () => {
+    render(<SupportEstimator disablePrePop />);
+    const next = screen.getByTestId('se-next');
+    expect(next).toBeDisabled();
+    const inputs = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-input');
+    fireEvent.change(inputs[0], { target: { value: '4200' } });
+    expect(next).toBeDisabled();
+    fireEvent.change(inputs[1], { target: { value: '3600' } });
+    expect(next).toBeEnabled();
+  });
+
+  it('whitespace-only income keeps Continue disabled', () => {
+    render(<SupportEstimator disablePrePop />);
+    const inputs = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-input');
+    fireEvent.change(inputs[0], { target: { value: '   ' } });
+    fireEvent.change(inputs[1], { target: { value: '3600' } });
+    expect(screen.getByTestId('se-next')).toBeDisabled();
+  });
+
+  it('re-disables Continue when a filled income is cleared', () => {
+    render(<SupportEstimator disablePrePop />);
+    const inputs = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-input');
+    fireEvent.change(inputs[0], { target: { value: '4200' } });
+    fireEvent.change(inputs[1], { target: { value: '3600' } });
+    expect(screen.getByTestId('se-next')).toBeEnabled();
+    fireEvent.change(inputs[0], { target: { value: '' } });
+    expect(screen.getByTestId('se-next')).toBeDisabled();
+  });
+
+  it('does not gate Continue on steps 2 and 3', () => {
+    render(<SupportEstimator disablePrePop />);
+    const inputs = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-input');
+    fireEvent.change(inputs[0], { target: { value: '4200' } });
+    fireEvent.change(inputs[1], { target: { value: '3600' } });
+    fireEvent.click(screen.getByTestId('se-next')); // 1 -> 2
+    expect(screen.getByTestId('se-step-children')).toBeInTheDocument();
+    expect(screen.getByTestId('se-next')).toBeEnabled();
+    fireEvent.click(screen.getByTestId('se-next')); // 2 -> 3
+    expect(screen.getByTestId('se-step-marriage')).toBeInTheDocument();
+    expect(screen.getByTestId('se-next')).toBeEnabled();
   });
 
   it('server-renders step 1 without throwing, with the responsive two-up income grid', () => {

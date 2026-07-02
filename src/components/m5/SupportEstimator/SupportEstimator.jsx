@@ -70,6 +70,11 @@ export function SupportEstimator({ userTier, disablePrePop = false }) {
 
   const estimate = useMemo(() => deriveSupportEstimate(inputs), [inputs]);
 
+  // Step-1 Continue gate: both incomes are required before the wizard advances —
+  // blank incomes previously flowed through as a misleading $0 computation.
+  const isBlank = (v) => !String(v ?? '').trim();
+  const incomesMissing = isBlank(inputs.incomeYou) || isBlank(inputs.incomeSpouse);
+
   // Write a field and clear its "from M3/M4" badge once the user overrides it.
   const set = (field, value) => {
     setInputs({ [field]: value });
@@ -120,7 +125,8 @@ export function SupportEstimator({ userTier, disablePrePop = false }) {
       </WizardCard>
       {step < 4 && (
         <FooterCTA title={FOOTER_TITLES[step]} sub={FOOTER_SUBS[step]} showBack={step > 1}
-          onBack={() => goStep(step - 1)} onNext={() => goStep(step + 1)} nextLabel={nextLabel(step)} />
+          onBack={() => goStep(step - 1)} onNext={() => goStep(step + 1)} nextLabel={nextLabel(step)}
+          nextDisabled={step === 1 && incomesMissing} />
       )}
     </div>
   );
