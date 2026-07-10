@@ -64,31 +64,40 @@ function makeInitialHomeDecision() {
       currentFMV: null,
       existingMortgageBalance: null,
       existingMortgageRate: null,
-      existingMortgageRemainingTermMonths: 360,
+      // Blank-≠-filled-with-default discipline (HDA correctness fix PR1):
+      // these fields used to seed a real, engine-consumable number (0, 360,
+      // 0.5, 0.05, 0.02, 50...) so an untouched field rendered indistinguishably
+      // from a user-confirmed value and fed the engine as if it were one. They
+      // now seed `null` like every other blank-until-typed field; the calc
+      // boundary in HomeDecisionAnalyzer.jsx's `calcInputs` restores the same
+      // sensible defaults via `??` so the engine's math is unaffected once a
+      // scenario is genuine (gated on hasGenuineHomeData) — see calc-boundary
+      // comment there for the full field-by-field mapping.
+      existingMortgageRemainingTermMonths: null,
       monthlyPropertyTax: null,
       monthlyInsurance: null,
-      monthlyHOA: 0,
+      monthlyHOA: null,
       userPostDivorceGrossMonthlyIncome: null,
-      userTotalMonthlyDebtPayments: 0,
+      userTotalMonthlyDebtPayments: null,
       startingLiquidCash: null,
       userCreditScoreBand: null,
       userState: null,
       homeAcquisitionYear: null,
-      propertyAppreciationRateReal: 0,
-      spouseEquityShare: 0.5,
+      propertyAppreciationRateReal: null,
+      spouseEquityShare: null,
       // §9.3.2 keep & refinance
       buyoutAmount: null,
       refiRate: null,
       refiClosingCostsPercent: null,
       refiTerm: '30-year',
       // §9.3.2 sell now (realtor/closing constants shared with deferred-sale per Q-3)
-      realtorCommissionPercent: 0.05,
-      saleClosingCostsPercent: 0.02,
+      realtorCommissionPercent: null,
+      saleClosingCostsPercent: null,
       expectedFilingStatusAtSellNow: null,
-      userMovedOutYearsAgo: 0,
+      userMovedOutYearsAgo: null,
       // §9.3.2 deferred sale
       occupancyYears: null,
-      interimCostSharePct: 50,
+      interimCostSharePct: null,
       stressTestUserPays100Pct: false,
       deferredSaleMortgageContinuity: 'refi-at-current',
     },

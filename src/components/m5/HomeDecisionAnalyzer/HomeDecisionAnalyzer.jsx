@@ -24,6 +24,19 @@
  *   #4 interimCostSharePct converted ×0.01 (store 0–100 → lib fraction) ONLY
  *      at the calc boundary; m5Store/prePopulate untouched.
  *   #5 One-shot pre-pop sentinel: homeDecision._prePopSources == null.
+ *   #6 (HDA correctness fix PR1) `calc` is gated on hasGenuineHomeData(inputs)
+ *      — a blank form (or one where currentFMV is still blank) computes to
+ *      null rather than a coerced-zero result. This ONE gate is the choke
+ *      point every consumer already reads through: the results-grid
+ *      placeholder (`!scenarios`), the Save button (`!calc` in handleSave),
+ *      the qualification badge (nested under `scenarios`), and
+ *      m5Landing.adapter.js's progress pill (`results != null`) — none of
+ *      those needed a separate check.
+ *   #7 (HDA correctness fix PR1) the persist-to-m5Store effect now explicitly
+ *      clears `results`/`metadata` back to null when `calc` is non-genuine,
+ *      instead of merely skipping the write — so un-filling a previously
+ *      genuine form doesn't leave stale numbers behind in the store (or on
+ *      the module-landing progress pill).
  */
 
 import { useEffect, useMemo, useState } from 'react';
@@ -33,7 +46,7 @@ import { useM3Store } from '@/src/stores/m3Store';
 import { useM5Store } from '@/src/stores/m5Store';
 import useBlueprintStore from '@/src/stores/blueprintStore';
 import { prePopulateHomeDecisionInputs } from '@/src/stores/prePopulate';
-import { calculateHomeDecision } from '@/src/lib/homeDecision';
+import { calculateHomeDecision, hasGenuineHomeData } from '@/src/lib/homeDecision';
 import HomeDecisionComparator from './HomeDecisionComparator.jsx';
 import HomeDecisionInputs from './HomeDecisionInputs.jsx';
 import HomeDecisionMobileSummary from './HomeDecisionMobileSummary.jsx';
@@ -108,16 +121,45 @@ export default function HomeDecisionAnalyzer() {
   }, [prePop, setHomeDecisionInputs, setHomeDecisionPrePopSources]);
 
   // ─── Reactive calc (PVA pattern: try/catch → null soft-state) ───────────
+  // Resolution #6: gated on hasGenuineHomeData BEFORE the engine runs — the
+  // engine itself never throws on blank inputs (confirmed during discovery),
+  // so without this gate a blank form still produces a full coerced-$0
+  // scenario object instead of null.
   const calc = useMemo(() => {
-    if (!inputs) return null;
+    if (!inputs || !hasGenuineHomeData(inputs)) return null;
     const interim =
       inputs.interimCostSharePct == null ? 0.5 : inputs.interimCostSharePct * 0.01;
     const primaryResidence = (costBasisEntries ?? []).find(
       (e) => e?.isPrimaryResidence,
     );
+    // Calc-boundary defaults (HDA correctness fix PR1): these fields now seed
+    // `null` in m5Store (blank-≠-default discipline) rather than a real
+    // number, so an untouched field can't be mistaken for a user-confirmed
+    // value. `??` restores the same sensible default the store used to bake
+    // in, exactly mirroring the pre-existing `interimCostSharePct` idiom
+    // above — the engine's own math is unaffected once a scenario is
+    // genuine. Values match the retired store defaults 1:1.
     const calcInputs = {
       ...inputs,
       interimCostSharePct: interim,
+      monthlyHOA: inputs.monthlyHOA ?? 0,
+      userTotalMonthlyDebtPayments: inputs.userTotalMonthlyDebtPayments ?? 0,
+      existingMortgageRemainingTermMonths:
+        inputs.existingMortgageRemainingTermMonths ?? 360,
+      propertyAppreciationRateReal: inputs.propertyAppreciationRateReal ?? 0,
+      spouseEquityShare: inputs.spouseEquityShare ?? 0.5,
+      realtorCommissionPercent: inputs.realtorCommissionPercent ?? 0.05,
+      saleClosingCostsPercent: inputs.saleClosingCostsPercent ?? 0.02,
+      userMovedOutYearsAgo: inputs.userMovedOutYearsAgo ?? 0,
+      // NOTE: currentFMV / existingMortgageBalance / existingMortgageRate /
+      // monthlyPropertyTax / monthlyInsurance / userPostDivorceGrossMonthlyIncome
+      // / startingLiquidCash / buyoutAmount / refiRate / refiClosingCostsPercent
+      // / occupancyYears / homeAcquisitionYear intentionally get NO fallback
+      // here — they never had a sensible non-zero default (a real home's FMV,
+      // a real person's income, etc. can't be assumed), so they stay genuinely
+      // required. currentFMV is what the hasGenuineHomeData gate above keys
+      // off; the others null-coercing to 0 within an otherwise-genuine
+      // scenario is a known, separately-scoped residual (out of this fix).
       costBasis: primaryResidence?.costBasis ?? 0,
       costBasisFilingStatus: blueprintFilingStatus ?? null,
       currentYear: new Date().getFullYear(),
@@ -132,8 +174,19 @@ export default function HomeDecisionAnalyzer() {
   }, [inputs, costBasisEntries, blueprintFilingStatus]);
 
   // ─── Persist calc to m5Store (scenarios stay object-shaped, resolution #2) ─
+  // Resolution #7: an explicit clear (not just a skip) when `calc` goes
+  // non-genuine, so a previously-genuine result doesn't linger stale in the
+  // store — or on the module-landing progress pill, which reads
+  // `results != null` as its sole completion signal.
   useEffect(() => {
-    if (!calc) return;
+    if (!calc) {
+      const hd = useM5Store.getState().homeDecision;
+      if (hd.results !== null || hd.metadata !== null) {
+        setHomeDecisionResults(null);
+        setHomeDecisionMetadata(null);
+      }
+      return;
+    }
     setHomeDecisionResults(calc.scenarios);
     // calculateHomeDecision hardcodes metadata._prePopSources: {} — PR 3
     // overlays the real provenance (resolution #3: keep prePopulate's

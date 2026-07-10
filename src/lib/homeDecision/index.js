@@ -3,6 +3,7 @@
 // Public API barrel for the Home Decision Analyzer lib per spec §13 step 7.
 
 export { calculateHomeDecision } from './calculateHomeDecision';
+export { hasGenuineHomeData } from './hasGenuineHomeData';
 export { evaluateRefiVerdict } from './refiQualifier';
 export { evaluateBuyoutFeasibility } from './buyoutFeasibility';
 export {

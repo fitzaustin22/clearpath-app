@@ -30,17 +30,21 @@ describe('m5Store homeDecision slice extension (§9.3 / §9.10 / §14.1)', () =>
     const hd = useM5Store.getState().homeDecision;
     expect(hd).toBeDefined();
 
-    // Spot-check §9.3 locked defaults
+    // Spot-check §9.3 locked defaults. Blank-≠-default discipline (HDA
+    // correctness fix PR1): the ambiguous numeric fields below seed null, not
+    // a real number — see hasGenuineHomeData.js and the calc-boundary
+    // comment in HomeDecisionAnalyzer.jsx for where the sensible defaults
+    // (0.5, 50, 0, 0, 0, 360...) are restored for the engine.
     expect(hd.inputs.currentFMV).toBeNull();
-    expect(hd.inputs.spouseEquityShare).toBe(0.5);
-    expect(hd.inputs.interimCostSharePct).toBe(50);
-    expect(hd.inputs.propertyAppreciationRateReal).toBe(0);
-    expect(hd.inputs.monthlyHOA).toBe(0);
-    expect(hd.inputs.userTotalMonthlyDebtPayments).toBe(0);
+    expect(hd.inputs.spouseEquityShare).toBeNull();
+    expect(hd.inputs.interimCostSharePct).toBeNull();
+    expect(hd.inputs.propertyAppreciationRateReal).toBeNull();
+    expect(hd.inputs.monthlyHOA).toBeNull();
+    expect(hd.inputs.userTotalMonthlyDebtPayments).toBeNull();
     // §9.3.1 fields the scaffold omitted — locked here so the pre-pop seam
     // (prePopulateHomeDecisionInputs emits startingLiquidCash) is explicit.
     expect(hd.inputs.startingLiquidCash).toBeNull();
-    expect(hd.inputs.existingMortgageRemainingTermMonths).toBe(360);
+    expect(hd.inputs.existingMortgageRemainingTermMonths).toBeNull();
     expect(hd.inputs.refiTerm).toBe('30-year');
     expect(hd.inputs.deferredSaleMortgageContinuity).toBe('refi-at-current');
 
@@ -57,9 +61,9 @@ describe('m5Store homeDecision slice extension (§9.3 / §9.10 / §14.1)', () =>
     const hd = useM5Store.getState().homeDecision;
     expect(hd.inputs.currentFMV).toBe(700000);
     // Other keys must survive
-    expect(hd.inputs.spouseEquityShare).toBe(0.5);
+    expect(hd.inputs.spouseEquityShare).toBeNull();
     expect(hd.inputs.refiTerm).toBe('30-year');
-    expect(hd.inputs.interimCostSharePct).toBe(50);
+    expect(hd.inputs.interimCostSharePct).toBeNull();
     // Top-level siblings untouched
     expect(hd.results).toBeNull();
     expect(hd.metadata).toBeNull();
@@ -96,7 +100,7 @@ describe('m5Store homeDecision slice extension (§9.3 / §9.10 / §14.1)', () =>
     const hd = useM5Store.getState().homeDecision;
     expect(hd.results).toEqual(results);
     expect(hd.inputs.currentFMV).toBe(500000);
-    expect(hd.inputs.spouseEquityShare).toBe(0.5);
+    expect(hd.inputs.spouseEquityShare).toBeNull();
     expect(hd.metadata).toBeNull();
     expect(hd.userSelection).toBeNull();
     expect(hd._prePopSources).toBeNull();
@@ -168,9 +172,9 @@ describe('m5Store homeDecision slice extension (§9.3 / §9.10 / §14.1)', () =>
 
     const hd = useM5Store.getState().homeDecision;
     expect(hd.inputs.currentFMV).toBeNull();
-    expect(hd.inputs.spouseEquityShare).toBe(0.5);
+    expect(hd.inputs.spouseEquityShare).toBeNull();
     expect(hd.inputs.refiTerm).toBe('30-year');
-    expect(hd.inputs.interimCostSharePct).toBe(50);
+    expect(hd.inputs.interimCostSharePct).toBeNull();
     expect(hd.results).toBeNull();
     expect(hd.metadata).toBeNull();
     expect(hd.userSelection).toBeNull();

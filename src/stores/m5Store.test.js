@@ -55,19 +55,23 @@ describe('m5Store initial-state shapes (§13 step 2 conformance)', () => {
 
   it('homeDecision.inputs hydrated with §9.3 input model defaults (not §14 metadata schema)', () => {
     const inputs = useM5Store.getState().homeDecision.inputs;
-    // §9.3.1 shared inputs
-    expect(inputs.monthlyHOA).toBe(0);
-    expect(inputs.userTotalMonthlyDebtPayments).toBe(0);
-    expect(inputs.propertyAppreciationRateReal).toBe(0);
-    expect(inputs.spouseEquityShare).toBe(0.5);
+    // §9.3.1 shared inputs — blank-≠-default discipline (HDA correctness fix
+    // PR1): these seed null now, not a real number, so an untouched field
+    // can't be mistaken for a user-confirmed value. The engine still sees
+    // the same sensible defaults, restored at the calc boundary in
+    // HomeDecisionAnalyzer.jsx once a scenario is genuine.
+    expect(inputs.monthlyHOA).toBeNull();
+    expect(inputs.userTotalMonthlyDebtPayments).toBeNull();
+    expect(inputs.propertyAppreciationRateReal).toBeNull();
+    expect(inputs.spouseEquityShare).toBeNull();
     // §9.3.2 keep-refi
     expect(inputs.refiTerm).toBe('30-year');
     // §9.3.2 sell-now
-    expect(inputs.realtorCommissionPercent).toBe(0.05);
-    expect(inputs.saleClosingCostsPercent).toBe(0.02);
-    expect(inputs.userMovedOutYearsAgo).toBe(0);
+    expect(inputs.realtorCommissionPercent).toBeNull();
+    expect(inputs.saleClosingCostsPercent).toBeNull();
+    expect(inputs.userMovedOutYearsAgo).toBeNull();
     // §9.3.2 deferred-sale
-    expect(inputs.interimCostSharePct).toBe(50);
+    expect(inputs.interimCostSharePct).toBeNull();
     expect(inputs.stressTestUserPays100Pct).toBe(false);
     expect(inputs.deferredSaleMortgageContinuity).toBe('refi-at-current');
     // Sentinel: shape does NOT use the §14 post-calc metadata fields.
