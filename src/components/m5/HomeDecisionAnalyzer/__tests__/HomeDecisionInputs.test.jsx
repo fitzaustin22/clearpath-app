@@ -157,9 +157,12 @@ describe('HomeDecisionInputs', () => {
     expect(
       screen.getByTestId('hda-input-currentFMV').querySelector('input'),
     ).toHaveValue('700000');
+    // spouseEquityShare is percent-display (PR-percent-2): stored fraction 0.6
+    // renders as "60", not "0.6" — the store keeps the fraction, only the
+    // input's displayed digits are ×100.
     expect(
       screen.getByTestId('hda-input-spouseEquityShare').querySelector('input'),
-    ).toHaveValue('0.6');
+    ).toHaveValue('60');
   });
 
   describe('RefiRateInput integration wiring', () => {
@@ -344,6 +347,76 @@ describe('HomeDecisionInputs', () => {
         fireEvent.change(input, { target: { value: acc } });
       }
     }
+  });
+
+  // PR-percent-2: spouseEquityShare and propertyAppreciationRateReal join
+  // the percent-display convention (mirrors PR-FIX-2 above). Store keeps the
+  // fraction (0.5, 0.03); the input shows/accepts percent (50, 3). Guards
+  // against the same off-by-100 class of error as PR-FIX-2, this time for
+  // the equity-split and appreciation-assumption fields.
+  describe('PR-percent-2 — spouseEquityShare / propertyAppreciationRateReal accept percent form', () => {
+    it('spouseEquityShare: typing "50" writes the fraction 0.5 to the store', () => {
+      const onChange = vi.fn();
+      // baseInputs already seeds 0.5 (→ displayed "50"); start from a blank
+      // field so the keystroke is a real DOM value change, not a no-op that
+      // React's change tracker would silently swallow.
+      render(
+        <HomeDecisionInputs
+          inputs={{ ...baseInputs, spouseEquityShare: null }}
+          onChange={onChange}
+        />,
+      );
+      const input = screen.getByTestId('hda-input-spouseEquityShare').querySelector('input');
+      fireEvent.change(input, { target: { value: '50' } });
+      expect(onChange).toHaveBeenCalledWith('spouseEquityShare', 0.5);
+    });
+
+    it('spouseEquityShare: a stored fraction 0.5 displays as "50"', () => {
+      render(
+        <HomeDecisionInputs
+          inputs={{ ...baseInputs, spouseEquityShare: 0.5 }}
+          onChange={vi.fn()}
+        />,
+      );
+      const input = screen.getByTestId('hda-input-spouseEquityShare').querySelector('input');
+      expect(input).toHaveValue('50');
+    });
+
+    it('propertyAppreciationRateReal: typing "3" writes the fraction 0.03 to the store', () => {
+      const onChange = vi.fn();
+      render(<HomeDecisionInputs inputs={baseInputs} onChange={onChange} />);
+      const input = screen
+        .getByTestId('hda-input-propertyAppreciationRateReal')
+        .querySelector('input');
+      fireEvent.change(input, { target: { value: '3' } });
+      expect(onChange).toHaveBeenCalledWith('propertyAppreciationRateReal', 0.03);
+    });
+
+    it('propertyAppreciationRateReal: a stored fraction 0.03 displays as "3"', () => {
+      render(
+        <HomeDecisionInputs
+          inputs={{ ...baseInputs, propertyAppreciationRateReal: 0.03 }}
+          onChange={vi.fn()}
+        />,
+      );
+      const input = screen
+        .getByTestId('hda-input-propertyAppreciationRateReal')
+        .querySelector('input');
+      expect(input).toHaveValue('3');
+    });
+
+    it('propertyAppreciationRateReal: stored 0.0007 displays as "0.07" (no IEEE float artifact)', () => {
+      render(
+        <HomeDecisionInputs
+          inputs={{ ...baseInputs, propertyAppreciationRateReal: 0.0007 }}
+          onChange={vi.fn()}
+        />,
+      );
+      const input = screen
+        .getByTestId('hda-input-propertyAppreciationRateReal')
+        .querySelector('input');
+      expect(input).toHaveValue('0.07');
+    });
   });
 
   describe('Phase 3 — stress-test row spacing', () => {

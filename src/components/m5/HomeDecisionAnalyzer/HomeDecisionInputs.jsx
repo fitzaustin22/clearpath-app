@@ -18,12 +18,17 @@ import RefiRateInput from './RefiRateInput.jsx';
  * the m5Store read + `setHomeDecisionInputs` write and passes `onChange(field,
  * value)`. Accordion expand/collapse is local UI state only.
  *
- * Value/unit convention (PR 3): fields edit the RAW m5Store value. The store
- * mixes fraction units (realtor/closing/appreciation/equity-share) with a
- * percent unit (`interimCostSharePct` 0–100); that seam is Fitz's polish-
- * backlog item 8 and is NOT reconciled here. The orchestrator converts
- * `interimCostSharePct` ×0.01 at the calc boundary (resolution #4). Per-field
- * helper text states the unit so the raw value is unambiguous.
+ * Value/unit convention (PR 3, amended PR-percent-2): fields edit the RAW
+ * m5Store value, which stays fraction for `spouseEquityShare` and
+ * `propertyAppreciationRateReal` — only the DISPLAY is percent, via
+ * NumericFieldBridge's `percent` prop (same convert-at-boundary mechanism
+ * already used for `existingMortgageRate`; no persist-shape change, no
+ * migration). `realtorCommissionPercent`/`saleClosingCostsPercent`/
+ * `refiClosingCostsPercent` remain raw-fraction display (Fitz's polish-
+ * backlog item 8, not reconciled here) and `interimCostSharePct` remains the
+ * one percent-in-the-store field (0–100), converted ×0.01 at the calc
+ * boundary (resolution #4). Per-field helper text states the unit so the
+ * raw value is unambiguous.
  *
  * `refiRate` is a plain number field in PR 3; the Q-11 force-input UX
  * (RefiRateInput.jsx) is deferred to PR 4 per the approved split.
@@ -283,20 +288,24 @@ export default function HomeDecisionInputs({ inputs, onChange }) {
         />
         <NumericFieldBridge
           field="propertyAppreciationRateReal"
-          label="Real property appreciation rate (fraction)"
-          tooltip="Real-dollar terms. Default 0 (≈ 2.5% nominal). 0.01 = 1% real."
+          label="Real property appreciation rate (%)"
+          tooltip="Real-dollar terms. Default 0% (≈ 2.5% nominal). 1 = 1% real."
+          suffix="%"
           value={inputs.propertyAppreciationRateReal ?? ''}
           onChange={onChange}
           parser="number"
+          percent
           data-testid="hda-input-propertyAppreciationRateReal"
         />
         <NumericFieldBridge
           field="spouseEquityShare"
-          label="Spouse equity share (fraction 0–1)"
-          tooltip="Default 0.5 (equal split). 0.5 = spouse receives 50% of net equity."
+          label="Spouse equity share (%)"
+          tooltip="Default 50% (equal split). 50 = spouse receives 50% of net equity."
+          suffix="%"
           value={inputs.spouseEquityShare ?? ''}
           onChange={onChange}
           parser="number"
+          percent
           data-testid="hda-input-spouseEquityShare"
         />
       </FieldSection>
