@@ -58,8 +58,6 @@ function MailIcon() {
 }
 
 export default function SiteFooter() {
-  const lintProbe = <p>don't</p>;
-  void lintProbe;
   return (
     <footer style={{ backgroundColor: T.NAVY_DEEP, padding: '64px 32px 32px' }}>
       <div className="grid grid-cols-1 md:grid-cols-4" style={{ maxWidth: '1280px', margin: '0 auto', gap: '40px' }}>
