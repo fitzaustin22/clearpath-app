@@ -58,7 +58,7 @@ All 7 modules feed a **Cumulative Data Pipeline** (JSON, per user). Data entered
 
 ## Tech stack (decided — do not deviate)
 
-- **Framework:** Next.js 14 (App Router)
+- **Framework:** Next.js 16 (App Router)
 - **Styling:** Tailwind CSS
 - **State:** Zustand
 - **Charts:** Recharts
