@@ -168,13 +168,23 @@ describe('§5 disclosure — division split is the parties’ Module 2 designati
   });
 });
 
+// Real @react-pdf renders. The first case pays cold font loading; on GitHub
+// Actions runners it has taken 3.6–5.2 s (one timeout at the 5 s default),
+// vs <1 s locally. Give each render explicit headroom instead of raising the
+// global vitest timeout.
+const PDF_RENDER_TIMEOUT_MS = 20000;
+
 describe('renderer — produces a valid PDF for every fixture', () => {
-  it.each(['F1', 'F2', 'F3', 'F4b'])('%s renders to a non-trivial PDF buffer', async (id) => {
-    const buf = await renderAttorneyBlueprint(MODELS[id], {
-      clientName: FIXTURES[id].persona?.name,
-      preparedDate: '2026-06-01',
-    });
-    expect(buf.slice(0, 5).toString('latin1')).toBe('%PDF-');
-    expect(buf.length).toBeGreaterThan(3000);
-  });
+  it.each(['F1', 'F2', 'F3', 'F4b'])(
+    '%s renders to a non-trivial PDF buffer',
+    async (id) => {
+      const buf = await renderAttorneyBlueprint(MODELS[id], {
+        clientName: FIXTURES[id].persona?.name,
+        preparedDate: '2026-06-01',
+      });
+      expect(buf.slice(0, 5).toString('latin1')).toBe('%PDF-');
+      expect(buf.length).toBeGreaterThan(3000);
+    },
+    PDF_RENDER_TIMEOUT_MS,
+  );
 });
