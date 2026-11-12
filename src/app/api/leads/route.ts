@@ -16,15 +16,21 @@ const MAX_BODY_BYTES = 10_000;
 
 export async function POST(request: Request) {
   try {
-    // Reject oversized payloads before parsing.
+    // Reject oversized payloads. The declared length is a cheap early exit, but a
+    // client can omit or understate it, so the bytes actually received are
+    // measured before anything is parsed.
     const declaredLen = Number(request.headers.get("content-length") ?? 0);
     if (declaredLen > MAX_BODY_BYTES) {
+      return NextResponse.json({ error: "Payload too large" }, { status: 413 });
+    }
+    const raw = await request.text();
+    if (Buffer.byteLength(raw, "utf8") > MAX_BODY_BYTES) {
       return NextResponse.json({ error: "Payload too large" }, { status: 413 });
     }
 
     let body: unknown;
     try {
-      body = await request.json();
+      body = JSON.parse(raw);
     } catch {
       return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
     }

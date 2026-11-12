@@ -1,7 +1,20 @@
 import type { NextConfig } from "next";
 
+// Baseline security headers for every response. A full Content-Security-Policy
+// (script/style/connect sources) is deliberately out of scope here: it needs a
+// browser pass. `frame-ancestors` is the only CSP directive set, to block framing.
+const securityHeaders = [
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "Content-Security-Policy", value: "frame-ancestors 'none'" },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+];
+
 const nextConfig: NextConfig = {
-  /* config options here */
+  async headers() {
+    return [{ source: "/:path*", headers: securityHeaders }];
+  },
 };
 
 export default nextConfig;
