@@ -26,6 +26,7 @@ export const EXPORT_COVER_COPY = {
 
 export const EXPORT_DISCLAIMER =
   'This Financial Blueprint is an organizing document that brings together the ' +
-  'information you entered across ClearPath. It is not legal, tax, or financial ' +
-  'advice. Please confirm all figures and decisions with your attorney, CPA, or ' +
-  'Certified Divorce Financial Analyst® before acting on them.';
+  'information you entered across ClearPath. ClearPath is not a law firm, and this ' +
+  'Blueprint is not legal, tax, or financial advice. Please confirm all figures and ' +
+  'decisions with your attorney, CPA, or Certified Divorce Financial Analyst® before ' +
+  'acting on them.';
