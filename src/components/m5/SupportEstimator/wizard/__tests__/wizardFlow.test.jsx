@@ -7,6 +7,7 @@ import useBlueprintStore from '@/src/stores/blueprintStore';
 import { useM3Store } from '@/src/stores/m3Store';
 import { useM4Store } from '@/src/stores/m4Store';
 import { makeInitialSupportRangeInputs } from '@/src/lib/supportRange/prefill';
+import { T } from '@/src/lib/brand/tokens';
 
 // next/link reaches for the App Router; stub it so jsdom renders don't throw.
 vi.mock('next/link', () => ({ default: ({ children }) => children }));
@@ -19,11 +20,16 @@ beforeEach(() => {
   useM4Store.setState({ filingStatusOptimizer: { inputs: { spouseGrossAnnualIncome: 0 } } });
 });
 
-// Walk to step 4 by entering the two incomes on step 1 and advancing.
-function enterIncomesAndAdvanceToResults() {
+// Fill both step-1 incomes (required — Continue is disabled until both present).
+function fillIncomes(you = '2000', spouse = '12000') {
   const inputs = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-input');
-  fireEvent.change(inputs[0], { target: { value: '2000' } });   // incomeYou
-  fireEvent.change(inputs[1], { target: { value: '12000' } });  // incomeSpouse
+  fireEvent.change(inputs[0], { target: { value: you } });    // incomeYou
+  fireEvent.change(inputs[1], { target: { value: spouse } }); // incomeSpouse
+}
+
+// Walk to step 4 by entering the two incomes on step 1 and advancing.
+function enterIncomesAndAdvanceToResults(you, spouse) {
+  fillIncomes(you, spouse);
   fireEvent.click(screen.getByTestId('se-next')); // 1 -> 2
   fireEvent.click(screen.getByTestId('se-next')); // 2 -> 3
   fireEvent.click(screen.getByTestId('se-next')); // 3 -> 4
@@ -97,23 +103,20 @@ describe('Support Estimator wizard flow', () => {
     expect(s8.data.totalMonthlySupport).toBe(8675);
   });
 
-  it('advancing to results with blank income does not mark §8 complete', () => {
+  it('blank incomes cannot advance past step 1 at all (§8 blank-income path now unreachable)', () => {
+    // Supersedes the old "advance to results with blank income" walk: the step-1
+    // Continue gate makes that UI path impossible. The #100 pipeline gate
+    // (metadata.incomeEntered) stays unit-tested in buildSupportRangePayload tests.
     render(<SupportEstimator disablePrePop />);
-    fireEvent.click(screen.getByTestId('se-next')); // 1 -> 2, incomes left blank
-    fireEvent.click(screen.getByTestId('se-next')); // 2 -> 3
-    fireEvent.click(screen.getByTestId('se-next')); // 3 -> 4
-    fireEvent.click(screen.getByTestId('se-save'));
-
-    const s8 = useBlueprintStore.getState().sections.s8;
-    expect(s8.status).not.toBe('complete');
-    expect(s8.data).toBeNull();
+    fireEvent.click(screen.getByTestId('se-next')); // disabled — should not advance
+    expect(screen.getByTestId('se-step-income')).toBeInTheDocument();
+    expect(screen.queryByTestId('se-step-children')).not.toBeInTheDocument();
+    expect(useBlueprintStore.getState().sections.s8.data).toBeNull();
   });
 
   it('Edit my answers returns to step 1', () => {
     render(<SupportEstimator disablePrePop />);
-    fireEvent.click(screen.getByTestId('se-next'));
-    fireEvent.click(screen.getByTestId('se-next'));
-    fireEvent.click(screen.getByTestId('se-next'));
+    enterIncomesAndAdvanceToResults();
     expect(screen.getByTestId('se-step-results')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('se-edit'));
     expect(screen.getByTestId('se-step-income')).toBeInTheDocument();
@@ -121,6 +124,7 @@ describe('Support Estimator wizard flow', () => {
 
   it('Back from step 2 returns to step 1', () => {
     render(<SupportEstimator disablePrePop />);
+    fillIncomes();
     fireEvent.click(screen.getByTestId('se-next')); // 1 -> 2
     expect(screen.getByTestId('se-step-children')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('se-back')); // 2 -> 1
@@ -146,6 +150,129 @@ describe('Support Estimator wizard flow', () => {
     fireEvent.change(incomeInputs[0], { target: { value: '7500' } }); // she overrides her income
     expect(incomeInputs[0]).toHaveValue('7500');
     expect(screen.queryByText('From M3')).not.toBeInTheDocument();
+  });
+
+  it('disables Continue while either income is blank and enables the instant both are filled', () => {
+    render(<SupportEstimator disablePrePop />);
+    const next = screen.getByTestId('se-next');
+    expect(next).toBeDisabled();
+    const inputs = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-input');
+    fireEvent.change(inputs[0], { target: { value: '4200' } });
+    expect(next).toBeDisabled();
+    fireEvent.change(inputs[1], { target: { value: '3600' } });
+    expect(next).toBeEnabled();
+  });
+
+  it('whitespace-only income keeps Continue disabled', () => {
+    render(<SupportEstimator disablePrePop />);
+    const inputs = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-input');
+    fireEvent.change(inputs[0], { target: { value: '   ' } });
+    fireEvent.change(inputs[1], { target: { value: '3600' } });
+    expect(screen.getByTestId('se-next')).toBeDisabled();
+  });
+
+  it('re-disables Continue when a filled income is cleared', () => {
+    render(<SupportEstimator disablePrePop />);
+    const inputs = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-input');
+    fireEvent.change(inputs[0], { target: { value: '4200' } });
+    fireEvent.change(inputs[1], { target: { value: '3600' } });
+    expect(screen.getByTestId('se-next')).toBeEnabled();
+    fireEvent.change(inputs[0], { target: { value: '' } });
+    expect(screen.getByTestId('se-next')).toBeDisabled();
+  });
+
+  it('does not gate Continue on steps 2 and 3', () => {
+    render(<SupportEstimator disablePrePop />);
+    const inputs = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-input');
+    fireEvent.change(inputs[0], { target: { value: '4200' } });
+    fireEvent.change(inputs[1], { target: { value: '3600' } });
+    fireEvent.click(screen.getByTestId('se-next')); // 1 -> 2
+    expect(screen.getByTestId('se-step-children')).toBeInTheDocument();
+    expect(screen.getByTestId('se-next')).toBeEnabled();
+    fireEvent.click(screen.getByTestId('se-next')); // 2 -> 3
+    expect(screen.getByTestId('se-step-marriage')).toBeInTheDocument();
+    expect(screen.getByTestId('se-next')).toBeEnabled();
+  });
+
+  it('shows example placeholders on the income fields, not a literal $0', () => {
+    render(<SupportEstimator disablePrePop />);
+    const inputs = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-input');
+    expect(inputs[0].getAttribute('placeholder')).toBe('e.g. 4,200');
+    expect(inputs[1].getAttribute('placeholder')).toBe('e.g. 3,600');
+    expect(inputs[0]).toHaveValue('');
+    expect(inputs[1]).toHaveValue('');
+  });
+
+  it('marks both income fields with the quiet Required tag', () => {
+    render(<SupportEstimator disablePrePop />);
+    const tags = within(screen.getByTestId('se-step-income')).getAllByTestId('wizard-field-required');
+    expect(tags).toHaveLength(2);
+  });
+
+  it('shows the calm amber helper only after a field is touched then left empty — never red', () => {
+    render(<SupportEstimator disablePrePop />);
+    const step = screen.getByTestId('se-step-income');
+    expect(within(step).queryByTestId('wizard-field-error')).not.toBeInTheDocument();
+
+    const inputs = within(step).getAllByTestId('wizard-field-input');
+    fireEvent.focus(inputs[0]);
+    fireEvent.blur(inputs[0]); // touched, left empty
+    const helper = within(step).getByTestId('wizard-field-error');
+    expect(helper).toHaveTextContent('Add what you earn to continue.');
+    expect(helper).toHaveStyle({ color: T.INK_2 }); // ink-2 helper, not red
+    expect(inputs[0]).toHaveStyle({ borderColor: T.AMBER_BORDER, backgroundColor: T.AMBER_BG });
+  });
+
+  it('clears the amber helper the instant the field has a value (no re-blur needed)', () => {
+    render(<SupportEstimator disablePrePop />);
+    const step = screen.getByTestId('se-step-income');
+    const inputs = within(step).getAllByTestId('wizard-field-input');
+    fireEvent.blur(inputs[0]);
+    expect(within(step).getByTestId('wizard-field-error')).toBeInTheDocument();
+    fireEvent.change(inputs[0], { target: { value: '4200' } });
+    expect(within(step).queryByTestId('wizard-field-error')).not.toBeInTheDocument();
+  });
+
+  it('does not nudge the spouse field when only the first field was touched', () => {
+    render(<SupportEstimator disablePrePop />);
+    const step = screen.getByTestId('se-step-income');
+    const inputs = within(step).getAllByTestId('wizard-field-input');
+    fireEvent.blur(inputs[0]);
+    const helpers = within(step).getAllByTestId('wizard-field-error');
+    expect(helpers).toHaveLength(1);
+    expect(helpers[0]).toHaveTextContent('Add what you earn to continue.');
+  });
+
+  it('spouse field gets its own copy when touched and left empty', () => {
+    render(<SupportEstimator disablePrePop />);
+    const step = screen.getByTestId('se-step-income');
+    const inputs = within(step).getAllByTestId('wizard-field-input');
+    fireEvent.blur(inputs[1]);
+    expect(within(step).getByTestId('wizard-field-error')).toHaveTextContent(
+      'Add what your spouse earns to continue.',
+    );
+  });
+
+  it('a $0 child-support result renders the sibling label+sentence, no $0/$0/$0 range track', () => {
+    render(<SupportEstimator disablePrePop />);
+    // Equal incomes + default 2 children; set 50/50 nights on step 2 so
+    // spOwes === youOwes -> childToHer is exactly 0.
+    fillIncomes('4000', '4000');
+    fireEvent.click(screen.getByTestId('se-next')); // 1 -> 2
+    fireEvent.change(screen.getByTestId('se-parenting-input'), { target: { value: '50' } });
+    fireEvent.click(screen.getByTestId('se-next')); // 2 -> 3
+    fireEvent.click(screen.getByTestId('se-next')); // 3 -> 4
+
+    const results = screen.getByTestId('se-step-results');
+    expect(within(results).getByText('NO CHILD SUPPORT INDICATED')).toBeInTheDocument();
+    expect(within(results).getByText(
+      'With 2 children in your care 50% of nights, the guideline points to little or no child support changing hands here.',
+    )).toBeInTheDocument();
+    // Spousal is also 'none' here (equal incomes), so NO range track anywhere —
+    // and specifically no $0 LOW / MOST LIKELY / HIGH figures.
+    expect(within(results).queryByTestId('se-range-low')).not.toBeInTheDocument();
+    expect(within(results).queryByTestId('se-range-likely')).not.toBeInTheDocument();
+    expect(within(results).queryByTestId('se-range-high')).not.toBeInTheDocument();
   });
 
   it('server-renders step 1 without throwing, with the responsive two-up income grid', () => {

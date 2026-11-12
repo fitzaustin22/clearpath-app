@@ -33,6 +33,14 @@ export const CHILDREN_OPTIONS = [
   { value: '5', label: '5 or more' },
 ];
 
+// Required-income refinement (design handoff 2026-07): greyed example values
+// instead of a misleading literal 0, and the calm blur-nudge helper lines.
+export const INCOME_PLACEHOLDERS = { incomeYou: 'e.g. 4,200', incomeSpouse: 'e.g. 3,600' };
+export const INCOME_REQUIRED_HELP = {
+  incomeYou: 'Add what you earn to continue.',
+  incomeSpouse: 'Add what your spouse earns to continue.',
+};
+
 export const HELP = {
   incomeYou: 'Gross, before taxes',
   incomeSpouse: 'A best estimate is fine',

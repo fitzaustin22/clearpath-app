@@ -109,3 +109,54 @@ describe('deriveSupportEstimate — bands, no-spousal threshold, duration, summa
     expect(e.combined.headline).toBe(4975);
   });
 });
+
+describe('deriveSupportEstimate — child zero-state (twin of the spousal none branch)', () => {
+  it('~$0 child support with kids -> direction none, sibling label, calm dynamic sentence', () => {
+    // Equal incomes + 50/50 nights: spOwes === youOwes -> childToHer exactly 0.
+    const e = deriveSupportEstimate({
+      ...base, incomeYou: '4000', incomeSpouse: '4000', numChildren: '2', parentingPct: 50,
+    });
+    expect(e.child.direction).toBe('none');
+    expect(e.child.label).toBe('No child support indicated');
+    expect(e.child.driver).toBe(
+      'With 2 children in your care 50% of nights, the guideline points to little or no child support changing hands here.',
+    );
+  });
+
+  it('uses singular copy for one child', () => {
+    const e = deriveSupportEstimate({
+      ...base, incomeYou: '4000', incomeSpouse: '4000', numChildren: '1', parentingPct: 65,
+    });
+    // 65/35 with equal incomes is NOT zero; force zero via 50/50.
+    const z = deriveSupportEstimate({
+      ...base, incomeYou: '4000', incomeSpouse: '4000', numChildren: '1', parentingPct: 50,
+    });
+    expect(e.child.direction).not.toBe('none');
+    expect(z.child.direction).toBe('none');
+    expect(z.child.driver).toBe(
+      'With 1 child in your care 50% of nights, the guideline points to little or no child support changing hands here.',
+    );
+  });
+
+  it('blank incomes with kids -> none (the reported $0/$0/$0 band bug path)', () => {
+    const e = deriveSupportEstimate({ ...base, numChildren: '2', parentingPct: 65 });
+    expect(e.child.direction).toBe('none');
+    expect(e.child.label).toBe('No child support indicated');
+    expect(e.child.driver).toContain('2 children in your care 65% of nights');
+  });
+
+  it('keeps the dedicated no-children branch unchanged', () => {
+    const e = deriveSupportEstimate({ ...base, incomeYou: '4000', incomeSpouse: '4000', numChildren: '0' });
+    expect(e.child.direction).toBe('none');
+    expect(e.child.label).toBe('No child support');
+    expect(e.child.driver).toBe('You told us there are no children to support.');
+  });
+
+  it('a real nonzero child amount still returns a receive/pay band', () => {
+    const r = deriveSupportEstimate({ ...base, incomeYou: '2000', incomeSpouse: '12000', numChildren: '2', parentingPct: 65 });
+    expect(r.child.direction).toBe('receive');
+    expect(r.child.likely).toBeGreaterThan(0);
+    const p = deriveSupportEstimate({ ...base, incomeYou: '12000', incomeSpouse: '2000', numChildren: '2', parentingPct: 20 });
+    expect(p.child.direction).toBe('pay');
+  });
+});

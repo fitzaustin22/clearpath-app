@@ -29,7 +29,14 @@
  * @param {string} [props.suffix] muted affix shown inside the input end
  * @param {string} [props.prefilledFrom] provenance source; renders a "From X" badge
  * @param {boolean} [props.disabled] muted, not-allowed, no opacity (Q-2)
- * @param {string|null} [props.error] error message; red border/ring + inline text
+ * @param {string|null} [props.error] error message; border/ring + inline text (tone-aware)
+ * @param {'red'|'amber'} [props.tone] error tone. 'amber' is the calm required-field
+ *   nudge (amber border/bg/ring, T.INK_2 helper text — no red); default 'red' keeps
+ *   every existing consumer's treatment unchanged
+ * @param {string} [props.placeholder] greyed example value (T.MUTED) shown when empty
+ * @param {boolean} [props.required] renders a quiet uppercase "Required" tag in the
+ *   label row's right slot, neutral tone, beside any provenance badge
+ * @param {(field: string, value: string) => void} [props.onBlur] blur handler
  * @param {string|null} [props.tooltip] info-icon tooltip content
  * @param {string} [props.data-testid] root test id (default "wizard-field")
  * @returns {JSX.Element}
@@ -52,6 +59,10 @@ export default function WizardField({
   prefilledFrom,
   disabled,
   error,
+  tone = 'red',
+  placeholder,
+  required,
+  onBlur,
   tooltip,
   'data-testid': testId = 'wizard-field',
 }) {
@@ -105,11 +116,14 @@ export default function WizardField({
   let outlineWidth = '0';
   let outlineStyle = 'none';
   let outlineColor = 'transparent';
+  const amber = tone === 'amber';
   if (error) {
-    borderColor = T.RED;
+    borderColor = amber ? T.AMBER_BORDER : T.RED;
     outlineWidth = '3px';
     outlineStyle = 'solid';
-    outlineColor = 'rgba(168, 53, 30, 0.20)';
+    // Ring literals are the token colors at low alpha (red = T.RED @ 20%,
+    // amber = T.AMBER @ 12%) — same idiom as GOLD_FOCUS_RING.
+    outlineColor = amber ? 'rgba(198, 138, 18, 0.12)' : 'rgba(168, 53, 30, 0.20)';
   } else if (focused) {
     borderColor = T.GOLD;
     outlineWidth = '3px';
@@ -129,7 +143,7 @@ export default function WizardField({
     fontSize: '14px',
     fontFamily: T.FONT_BODY,
     color: disabled ? T.MUTED : T.INK,
-    backgroundColor: disabled ? T.NAVY_06 : T.CARD,
+    backgroundColor: disabled ? T.NAVY_06 : error && amber ? T.AMBER_BG : T.CARD,
     cursor: disabled ? 'not-allowed' : 'auto',
     transition: 'border-color 120ms ease, outline-color 120ms ease',
     paddingLeft: prefix ? '24px' : '12px',
@@ -240,27 +254,52 @@ export default function WizardField({
             </span>
           ) : null}
         </span>
-        {prefilledFrom ? (
+        {prefilledFrom || required ? (
           <span
-            data-testid="wizard-field-badge"
-            title={badgeText}
             style={{
               flexShrink: 0,
-              maxWidth: '160px',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              fontSize: '10px',
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.5px',
-              color: T.PILL_TEXT,
-              backgroundColor: T.PARCHMENT_DEEP,
-              padding: '2px 7px',
-              borderRadius: '999px',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
             }}
           >
-            {badgeText}
+            {prefilledFrom ? (
+              <span
+                data-testid="wizard-field-badge"
+                title={badgeText}
+                style={{
+                  maxWidth: '160px',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  color: T.PILL_TEXT,
+                  backgroundColor: T.PARCHMENT_DEEP,
+                  padding: '2px 7px',
+                  borderRadius: '999px',
+                }}
+              >
+                {badgeText}
+              </span>
+            ) : null}
+            {required ? (
+              <span
+                data-testid="wizard-field-required"
+                style={{
+                  fontSize: '10px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  color: T.MUTED,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Required
+              </span>
+            ) : null}
           </span>
         ) : null}
       </div>
@@ -279,7 +318,9 @@ export default function WizardField({
           id={inputId}
           data-testid="wizard-field-input"
           type="text"
+          className="cp-wf-input"
           inputMode={numeric ? 'decimal' : undefined}
+          placeholder={placeholder || undefined}
           value={value ?? ''}
           disabled={disabled || undefined}
           aria-disabled={disabled ? 'true' : undefined}
@@ -287,9 +328,17 @@ export default function WizardField({
           aria-describedby={describedBy}
           onChange={(e) => onChange?.(field, e.target.value)}
           onFocus={() => setFocused(true)}
-          onBlur={() => setFocused(false)}
+          onBlur={(e) => {
+            setFocused(false);
+            onBlur?.(field, e.target.value);
+          }}
           style={inputStyle}
         />
+        {placeholder ? (
+          // Scoped ::placeholder color (inline styles can't reach the
+          // pseudo-element) — BudgetGapCalculator precedent.
+          <style>{`.cp-wf-input::placeholder { color: ${T.MUTED}; opacity: 1; }`}</style>
+        ) : null}
         {suffix ? (
           <span
             data-testid="wizard-field-suffix"
@@ -305,7 +354,7 @@ export default function WizardField({
         <div
           id={errId}
           data-testid="wizard-field-error"
-          style={{ fontSize: '11px', color: T.RED, marginTop: '4px' }}
+          style={{ fontSize: '11px', color: amber ? T.INK_2 : T.RED, marginTop: '4px' }}
         >
           {error}
         </div>
