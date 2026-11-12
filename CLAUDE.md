@@ -148,3 +148,13 @@ produces false-green results. Before any gate, verify `git rev-parse --show-topl
 worktree path. As a backstop: if you wrote N tests and the post-run test-count delta is 0, you ran
 against the wrong checkout — stop and re-run from the worktree.
 
+### CI and the lint baseline
+
+Every pull request and every push to `main` runs `.github/workflows/ci.yml`: `npm ci`, `npm run typecheck`, `npm run lint`, `npm run test:run`, `npm run build`. Run the same four scripts from inside the worktree before pushing. Green CI does not replace the Cowork browser pass for gating, validity or interaction UI.
+
+`npm run lint` must exit 0. Legacy violations are recorded in `eslint-suppressions.json`. Any new error fails the run, and so does any warning beyond the `--max-warnings` ceiling in the `lint` script.
+
+- Never run `eslint --suppress-all` and never hand-edit `eslint-suppressions.json` to make a failure go away. Fix the code. CI rejects a baseline that grows, and re-baselining is the owner's decision, never an agent's.
+- If you fix baseline violations, ESLint exits 2 until you run `npx eslint . --prune-suppressions`. Commit the smaller file, and lower `--max-warnings` in `package.json` if you removed warnings.
+- `src/proxy.ts` is the app's auth gate. CI fails if the build output loses its `Proxy (Middleware)` line. Do not rename or remove the file.
+
