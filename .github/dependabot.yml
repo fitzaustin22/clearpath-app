@@ -11,6 +11,16 @@ updates:
         patterns: ["next", "eslint-config-next", "react", "react-dom"]
       minor-and-patch:
         update-types: ["minor", "patch"]
+    # These rules hold back routine version bumps only. Security updates still arrive.
+    ignore:
+      # 4.9.0 scrambles the text layer of the generated PDFs (18 PDF tests fail on it).
+      # Stay on 4.5.x until a newer release has been tried by hand and passes CI.
+      - dependency-name: "@react-pdf/renderer"
+        update-types: ["version-update:semver-minor", "version-update:semver-major"]
+      # Node's type definitions follow the Node version the app runs on. Raise the
+      # major by hand when that version changes.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
     commit-message:
       prefix: "chore(deps)"
 
