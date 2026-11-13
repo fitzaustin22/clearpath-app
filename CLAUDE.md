@@ -158,3 +158,14 @@ Every pull request and every push to `main` runs `.github/workflows/ci.yml`: `np
 - If you fix baseline violations, ESLint exits 2 until you run `npx eslint . --prune-suppressions`. Commit the smaller file, and lower `--max-warnings` in `package.json` if you removed warnings.
 - `src/proxy.ts` is the app's auth gate. CI fails if the build output loses its `Proxy (Middleware)` line. Do not rename or remove the file.
 
+## Billing (Stripe)
+
+Access is decided by `public.users.tier` alone. `src/app/api/stripe/create-checkout-session/route.ts` opens Checkout. `src/app/api/webhooks/stripe/route.ts` is the only code that grants or removes a paid tier.
+
+- A purchase can raise a tier and never lowers one. Only the subscription on file for a user can lower their tier, when Stripe reports it unpaid, paused or ended.
+- The webhook answers 500 whenever it could not finish, so that Stripe retries. Never turn a failure into a 200. It answers 200 only when a retry cannot help (no matching user, or a price this app does not sell).
+- The webhook acts on the session or subscription as Stripe reports it now, which it re-reads on every event. It never trusts the event payload: events arrive late, twice and out of order.
+- Checkout takes the mode from `PLANS` in `src/lib/plans.ts`, never from the request, and only prices listed in `PLANS` can be bought or fulfilled. If a price is ever replaced in Stripe, keep the old price id recognised, or subscribers still on it stop being matched.
+- Two rules are marked `DECISION PENDING (owner)` in the webhook: the tier a subscriber falls back to when a subscription ends (`essentials` today), and whether access continues while a renewal is `past_due` (yes today). The tests pin both. Change neither without the owner's decision.
+- Stripe must send the webhook these five events: `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted`.
+- The route tests use no network and no real keys. Never test against live Stripe keys.

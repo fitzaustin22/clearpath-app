@@ -59,6 +59,12 @@ export const PLANS: Plan[] = [
   },
 ]
 
+// The plan a Stripe price belongs to, or null for any price this app does not sell.
+export function getPlanForPriceId(priceId: string): Plan | null {
+  if (!priceId) return null
+  return PLANS.find((p) => p.priceId === priceId) ?? null
+}
+
 export function getTierForPriceId(priceId: string): PlanTier | null {
-  return PLANS.find((p) => p.priceId === priceId)?.tier ?? null
+  return getPlanForPriceId(priceId)?.tier ?? null
 }

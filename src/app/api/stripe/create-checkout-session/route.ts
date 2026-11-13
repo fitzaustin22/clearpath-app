@@ -2,6 +2,7 @@ import { auth, clerkClient } from '@clerk/nextjs/server'
 import Stripe from 'stripe'
 import { NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/src/lib/supabase/server'
+import { getPlanForPriceId } from '@/src/lib/plans'
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!)
 
@@ -12,23 +13,30 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { priceId, mode = 'subscription' } = await request.json()
-    console.log('[checkout] RECEIVED BODY:', JSON.stringify({ priceId, mode }))
+    const body = await request.json().catch(() => null)
+    const priceId = typeof body?.priceId === 'string' ? body.priceId : ''
     if (!priceId) {
       return NextResponse.json({ error: 'priceId is required' }, { status: 400 })
     }
-    if (mode !== 'payment' && mode !== 'subscription') {
-      return NextResponse.json({ error: 'mode must be payment or subscription' }, { status: 400 })
+
+    // Only prices this app sells. The plan also decides payment versus
+    // subscription: the `mode` the browser sends is ignored.
+    const plan = getPlanForPriceId(priceId)
+    if (!plan) {
+      return NextResponse.json({ error: 'Unknown priceId' }, { status: 400 })
     }
 
     const clerk = await clerkClient()
     const user = await clerk.users.getUser(userId)
+    const email = user.emailAddresses[0]?.emailAddress
 
     let stripeCustomerId = user.publicMetadata?.stripeCustomerId as string | undefined
 
     if (!stripeCustomerId) {
-      const email = user.emailAddresses[0]?.emailAddress
-      const customer = await stripe.customers.create({ email })
+      const customer = await stripe.customers.create({
+        email,
+        metadata: { clerkUserId: userId },
+      })
       stripeCustomerId = customer.id
 
       await clerk.users.updateUserMetadata(userId, {
@@ -41,8 +49,9 @@ export async function POST(request: Request) {
       console.log(`[checkout] Created Stripe customer ${stripeCustomerId} for user ${userId}`)
     }
 
-    const email = user.emailAddresses[0]?.emailAddress
-    await supabaseAdmin.from('users').upsert(
+    // The webhook finds the buyer through this row, so nobody is sent to pay
+    // unless it was saved.
+    const { error: upsertError } = await supabaseAdmin.from('users').upsert(
       {
         id: userId,
         email,
@@ -51,17 +60,26 @@ export async function POST(request: Request) {
       },
       { onConflict: 'id' },
     )
+    if (upsertError) {
+      console.error(`[checkout] Could not save the users row for ${userId}:`, upsertError.message)
+      return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    }
 
     const session = await stripe.checkout.sessions.create({
       customer: stripeCustomerId,
-      line_items: [{ price: priceId, quantity: 1 }],
-      mode,
+      line_items: [{ price: plan.priceId, quantity: 1 }],
+      mode: plan.mode,
+      // Both carry the Clerk user id so the webhook can find the buyer.
+      client_reference_id: userId,
       metadata: { clerkUserId: userId },
+      ...(plan.mode === 'subscription'
+        ? { subscription_data: { metadata: { clerkUserId: userId } } }
+        : {}),
       success_url: `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/dashboard?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'}/upgrade`,
     })
 
-    console.log(`[checkout] Created session ${session.id} for user ${userId}, price ${priceId}`)
+    console.log(`[checkout] Created session ${session.id} for user ${userId}, price ${plan.priceId}`)
 
     return NextResponse.json({ url: session.url })
   } catch (err) {
